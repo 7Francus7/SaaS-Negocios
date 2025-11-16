@@ -23,8 +23,8 @@ class ActualizadorTealdi:
     """Sistema de actualización automática desde GitHub"""
 
     # CONFIGURACIÓN - Cambia estos valores según tu repo
-    GITHUB_USER = "TU_USUARIO_GITHUB"  # ← Cambiar por tu usuario
-    GITHUB_REPO = "bebidas-tealdi"     # ← Cambiar por tu repo
+    GITHUB_USER = "7Francus7"  # ← Cambiar por tu usuario
+    GITHUB_REPO = "BEBIDAS-TEALDI"     # ← Cambiar por tu repo
     VERSION_ACTUAL = "4.0.0"           # ← Versión actual del programa
 
     # URLs de GitHub

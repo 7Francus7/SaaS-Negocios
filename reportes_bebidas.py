@@ -1,14 +1,15 @@
 """
-reportes_bebidas.py - MÓDULO DE ANÁLISIS DE VENTAS
+reportes_bebidas.py - MÓDULO DE ANÁLISIS DE VENTAS CON EXPORTACIÓN A EXCEL
 
-Dashboard profesional con estadísticas, comparativas y reportes
+Dashboard profesional con estadísticas, comparativas y exportación a Excel
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple
 import sqlite3
+import os
 
 from database_bebidas import db
 from ui_helpers_bebidas import (
@@ -18,6 +19,15 @@ from ui_helpers_bebidas import (
     formatear_precio,
     formatear_numero,
 )
+
+# Importar openpyxl para Excel
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    EXCEL_DISPONIBLE = True
+except ImportError:
+    EXCEL_DISPONIBLE = False
 
 
 class VentanaReportesTealdi:
@@ -81,6 +91,9 @@ class VentanaReportesTealdi:
         self.crear_productos_top(scrollable_frame)
         self.crear_ventas_por_categoria(scrollable_frame)
         self.crear_tabla_ventas_diarias(scrollable_frame)
+
+        # NUEVO: Botón de exportación
+        self.crear_boton_exportar(scrollable_frame)
 
     def crear_header(self):
         header_shadow = tk.Frame(self.ventana, bg=Tema.SHADOW, height=70)
@@ -561,17 +574,293 @@ class VentanaReportesTealdi:
                 formatear_precio(ticket_prom)
             ))
 
-    # ============ MÉTODOS DE DATOS ============
+    def crear_boton_exportar(self, parent):
+        """NUEVO: Botón para exportar reporte a Excel"""
+        shadow, export_frame = WidgetFactory.crear_frame_card(parent)
+        shadow.pack(fill=tk.X, pady=(0, 15), padx=5)
+
+        tk.Label(
+            export_frame,
+            text="📥 EXPORTAR REPORTE",
+            font=(Tema.FONT_FAMILY, 14, "bold"),
+            bg=Tema.BG_CARD,
+            fg=Tema.PRIMARY,
+        ).pack(anchor=tk.W, padx=15, pady=(10, 5))
+
+        info_frame = tk.Frame(export_frame, bg=Tema.BG_CARD)
+        info_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
+
+        tk.Label(
+            info_frame,
+            text="Exporta todos los reportes y estadísticas a un archivo Excel profesional",
+            font=(Tema.FONT_FAMILY, 10),
+            bg=Tema.BG_CARD,
+            fg=Tema.TEXT_SECONDARY,
+        ).pack(anchor=tk.W)
+
+        if not EXCEL_DISPONIBLE:
+            tk.Label(
+                export_frame,
+                text="⚠️ Instala openpyxl para exportar: pip install openpyxl",
+                font=(Tema.FONT_FAMILY, 10),
+                bg=Tema.BG_CARD,
+                fg=Tema.DANGER,
+            ).pack(padx=15, pady=10)
+        else:
+            WidgetFactory.crear_boton(
+                export_frame,
+                "📥 EXPORTAR A EXCEL",
+                self.exportar_a_excel,
+                "success",
+                width=32
+            ).pack(padx=15, pady=(0, 15))
+
+    # ============ EXPORTACIÓN A EXCEL ============
+
+    def exportar_a_excel(self):
+        """Exporta el reporte completo a Excel con formato profesional"""
+        if not EXCEL_DISPONIBLE:
+            messagebox.showerror(
+                "Error - Tealdi",
+                "Librería openpyxl no instalada.\n\nInstala con: pip install openpyxl",
+                parent=self.ventana
+            )
+            return
+
+        try:
+            # Pedir ubicación para guardar
+            mes_actual = datetime.now().strftime("%Y-%m")
+            nombre_archivo = f"Reporte_Tealdi_{mes_actual}.xlsx"
+
+            archivo = filedialog.asksaveasfilename(
+                parent=self.ventana,
+                title="Guardar Reporte Excel",
+                defaultextension=".xlsx",
+                initialfile=nombre_archivo,
+                filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
+            )
+
+            if not archivo:
+                return
+
+            # Crear workbook
+            wb = Workbook()
+
+            # Crear hojas
+            self._crear_hoja_resumen(wb)
+            self._crear_hoja_ventas_diarias(wb)
+            self._crear_hoja_productos_top(wb)
+            self._crear_hoja_categorias(wb)
+
+            # Eliminar hoja por defecto
+            if "Sheet" in wb.sheetnames:
+                wb.remove(wb["Sheet"])
+
+            # Guardar archivo
+            wb.save(archivo)
+
+            # Mostrar mensaje de éxito
+            messagebox.showinfo(
+                "Exportación Exitosa - Tealdi",
+                f"Reporte exportado exitosamente en:\n{archivo}",
+                parent=self.ventana
+            )
+
+            # Abrir archivo
+            os.startfile(archivo)
+
+        except Exception as e:
+            messagebox.showerror(
+                "Error - Tealdi",
+                f"Error al exportar reporte:\n{str(e)}",
+                parent=self.ventana
+            )
+
+    def _crear_hoja_resumen(self, wb):
+        """Crea hoja de resumen con KPIs principales"""
+        ws = wb.active
+        ws.title = "Resumen"
+
+        # Estilos
+        header_fill = PatternFill(start_color="007BFF", end_color="007BFF", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True, size=12)
+        title_font = Font(bold=True, size=16)
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        # Título
+        ws['A1'] = "REPORTE DE VENTAS - BEBIDAS TEALDI"
+        ws['A1'].font = title_font
+        ws.merge_cells('A1:D1')
+
+        ws['A2'] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        ws.merge_cells('A2:D2')
+
+        # KPIs
+        row = 4
+        ws[f'A{row}'] = "INDICADORES CLAVE"
+        ws[f'A{row}'].font = Font(bold=True, size=14)
+
+        row += 2
+        mes_actual = datetime.now().strftime("%Y-%m")
+        hoy = datetime.now().strftime("%Y-%m-%d")
+
+        ventas_hoy = self.obtener_total_ventas_dia(hoy)
+        ventas_mes = self.obtener_total_ventas_mes(mes_actual)
+        cantidad_ventas = self.obtener_cantidad_ventas_mes(mes_actual)
+        ticket_promedio = ventas_mes / cantidad_ventas if cantidad_ventas > 0 else 0
+
+        kpis = [
+            ("💰 Ventas de Hoy", f"${ventas_hoy:,.2f}"),
+            ("📈 Ventas del Mes", f"${ventas_mes:,.2f}"),
+            ("🧾 Cantidad de Transacciones", cantidad_ventas),
+            ("💳 Ticket Promedio", f"${ticket_promedio:,.2f}"),
+        ]
+
+        for kpi_name, kpi_value in kpis:
+            ws[f'A{row}'] = kpi_name
+            ws[f'A{row}'].font = Font(bold=True)
+            ws[f'B{row}'] = kpi_value
+            ws[f'B{row}'].font = Font(size=12)
+            row += 1
+
+        # Comparativa
+        row += 2
+        ws[f'A{row}'] = "COMPARATIVA MENSUAL"
+        ws[f'A{row}'].font = Font(bold=True, size=14)
+
+        row += 2
+        mes_anterior = (datetime.now() - timedelta(days=30)).strftime("%Y-%m")
+        ventas_anterior = self.obtener_total_ventas_mes(mes_anterior)
+        diferencia = ventas_mes - ventas_anterior
+
+        ws[f'A{row}'] = "Mes Anterior"
+        ws[f'B{row}'] = f"${ventas_anterior:,.2f}"
+        row += 1
+        ws[f'A{row}'] = "Mes Actual"
+        ws[f'B{row}'] = f"${ventas_mes:,.2f}"
+        row += 1
+        ws[f'A{row}'] = "Diferencia"
+        ws[f'A{row}'].font = Font(bold=True)
+        ws[f'B{row}'] = f"${diferencia:,.2f}"
+        ws[f'B{row}'].font = Font(bold=True, color="00B050" if diferencia >= 0 else "FF0000")
+
+        # Ajustar anchos
+        ws.column_dimensions['A'].width = 35
+        ws.column_dimensions['B'].width = 20
+
+    def _crear_hoja_ventas_diarias(self, wb):
+        """Crea hoja con ventas diarias"""
+        ws = wb.create_sheet("Ventas Diarias")
+
+        # Headers
+        headers = ["Fecha", "Día", "N° Ventas", "Total Vendido", "Ticket Promedio"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(1, col, header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="007BFF", end_color="007BFF", fill_type="solid")
+            cell.alignment = Alignment(horizontal='center')
+
+        # Datos
+        ventas_diarias = self.obtener_ventas_diarias_mes()
+        row = 2
+
+        for fecha, cantidad, total in ventas_diarias:
+            fecha_obj = datetime.strptime(fecha, "%Y-%m-%d")
+            fecha_format = fecha_obj.strftime("%d/%m/%Y")
+            dia_semana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][fecha_obj.weekday()]
+            ticket_prom = total / cantidad if cantidad > 0 else 0
+
+            ws.cell(row, 1, fecha_format)
+            ws.cell(row, 2, dia_semana)
+            ws.cell(row, 3, cantidad)
+            ws.cell(row, 4, f"${total:,.2f}")
+            ws.cell(row, 5, f"${ticket_prom:,.2f}")
+            row += 1
+
+        # Totales
+        total_ventas = sum(v[1] for v in ventas_diarias)
+        total_monto = sum(v[2] for v in ventas_diarias)
+
+        ws.cell(row, 1, "TOTALES").font = Font(bold=True)
+        ws.cell(row, 3, total_ventas).font = Font(bold=True)
+        ws.cell(row, 4, f"${total_monto:,.2f}").font = Font(bold=True)
+
+        # Ajustar anchos
+        for col in range(1, 6):
+            ws.column_dimensions[get_column_letter(col)].width = 18
+
+    def _crear_hoja_productos_top(self, wb):
+        """Crea hoja con productos más vendidos"""
+        ws = wb.create_sheet("Top Productos")
+
+        # Headers
+        headers = ["#", "Producto", "Cantidad Vendida", "Total Generado"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(1, col, header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="28A745", end_color="28A745", fill_type="solid")
+            cell.alignment = Alignment(horizontal='center')
+
+        # Datos
+        productos = self.obtener_productos_mas_vendidos(20)
+        row = 2
+
+        for i, (nombre, cantidad, total) in enumerate(productos, 1):
+            ws.cell(row, 1, i)
+            ws.cell(row, 2, nombre)
+            ws.cell(row, 3, cantidad)
+            ws.cell(row, 4, f"${total:,.2f}")
+            row += 1
+
+        # Ajustar anchos
+        ws.column_dimensions['A'].width = 8
+        ws.column_dimensions['B'].width = 35
+        ws.column_dimensions['C'].width = 18
+        ws.column_dimensions['D'].width = 18
+
+    def _crear_hoja_categorias(self, wb):
+        """Crea hoja con ventas por categoría"""
+        ws = wb.create_sheet("Por Categoría")
+
+        # Headers
+        headers = ["Categoría", "Cantidad Vendida", "Total Generado", "% del Total"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(1, col, header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="FFC107", end_color="FFC107", fill_type="solid")
+            cell.alignment = Alignment(horizontal='center')
+
+        # Datos
+        categorias = self.obtener_ventas_por_categoria()
+        total_general = sum(c[2] for c in categorias)
+        row = 2
+
+        for categoria, cantidad, total in categorias:
+            porcentaje = (total / total_general * 100) if total_general > 0 else 0
+            ws.cell(row, 1, categoria)
+            ws.cell(row, 2, cantidad)
+            ws.cell(row, 3, f"${total:,.2f}")
+            ws.cell(row, 4, f"{porcentaje:.1f}%")
+            row += 1
+
+        # Ajustar anchos
+        ws.column_dimensions['A'].width = 20
+        ws.column_dimensions['B'].width = 18
+        ws.column_dimensions['C'].width = 18
+        ws.column_dimensions['D'].width = 15
+
+    # ============ MÉTODOS DE DATOS (sin cambios) ============
 
     def obtener_total_ventas_dia(self, fecha: str) -> float:
-        """Obtiene el total de ventas de un día específico"""
         try:
             conn = sqlite3.connect("bebidas_tealdi.db")
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT SUM(total) FROM ventas
-                WHERE DATE(fecha) = ?
-            """, (fecha,))
+            cursor.execute("SELECT SUM(total) FROM ventas WHERE DATE(fecha) = ?", (fecha,))
             resultado = cursor.fetchone()[0]
             conn.close()
             return resultado if resultado else 0.0
@@ -579,14 +868,10 @@ class VentanaReportesTealdi:
             return 0.0
 
     def obtener_total_ventas_mes(self, mes: str) -> float:
-        """Obtiene el total de ventas de un mes (formato: YYYY-MM)"""
         try:
             conn = sqlite3.connect("bebidas_tealdi.db")
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT SUM(total) FROM ventas
-                WHERE strftime('%Y-%m', fecha) = ?
-            """, (mes,))
+            cursor.execute("SELECT SUM(total) FROM ventas WHERE strftime('%Y-%m', fecha) = ?", (mes,))
             resultado = cursor.fetchone()[0]
             conn.close()
             return resultado if resultado else 0.0
@@ -594,14 +879,10 @@ class VentanaReportesTealdi:
             return 0.0
 
     def obtener_cantidad_ventas_mes(self, mes: str) -> int:
-        """Obtiene la cantidad de transacciones de un mes"""
         try:
             conn = sqlite3.connect("bebidas_tealdi.db")
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT COUNT(*) FROM ventas
-                WHERE strftime('%Y-%m', fecha) = ?
-            """, (mes,))
+            cursor.execute("SELECT COUNT(*) FROM ventas WHERE strftime('%Y-%m', fecha) = ?", (mes,))
             resultado = cursor.fetchone()[0]
             conn.close()
             return resultado if resultado else 0
@@ -609,7 +890,6 @@ class VentanaReportesTealdi:
             return 0
 
     def obtener_mejor_dia_mes(self) -> Tuple[str, float]:
-        """Obtiene el mejor día del mes actual"""
         try:
             mes_actual = datetime.now().strftime("%Y-%m")
             conn = sqlite3.connect("bebidas_tealdi.db")
@@ -629,7 +909,6 @@ class VentanaReportesTealdi:
             return None
 
     def obtener_peor_dia_mes(self) -> Tuple[str, float]:
-        """Obtiene el peor día del mes actual (con ventas > 0)"""
         try:
             mes_actual = datetime.now().strftime("%Y-%m")
             conn = sqlite3.connect("bebidas_tealdi.db")
@@ -649,7 +928,6 @@ class VentanaReportesTealdi:
             return None
 
     def obtener_productos_mas_vendidos(self, limite: int = 5) -> List[Tuple]:
-        """Obtiene los productos más vendidos del mes"""
         try:
             mes_actual = datetime.now().strftime("%Y-%m")
             conn = sqlite3.connect("bebidas_tealdi.db")
@@ -670,7 +948,6 @@ class VentanaReportesTealdi:
             return []
 
     def obtener_ventas_por_categoria(self) -> List[Tuple]:
-        """Obtiene ventas agrupadas por categoría"""
         try:
             mes_actual = datetime.now().strftime("%Y-%m")
             conn = sqlite3.connect("bebidas_tealdi.db")
@@ -690,7 +967,6 @@ class VentanaReportesTealdi:
             return []
 
     def obtener_ventas_diarias_mes(self) -> List[Tuple]:
-        """Obtiene ventas diarias del mes actual"""
         try:
             mes_actual = datetime.now().strftime("%Y-%m")
             conn = sqlite3.connect("bebidas_tealdi.db")
@@ -710,7 +986,7 @@ class VentanaReportesTealdi:
 
     def cargar_estadisticas(self):
         """Carga todas las estadísticas al abrir la ventana"""
-        pass  # Las estadísticas se cargan al crear cada sección
+        pass
 
 
 def abrir_ventana_reportes_bebidas(sistema_principal):
@@ -719,7 +995,6 @@ def abrir_ventana_reportes_bebidas(sistema_principal):
 
 
 if __name__ == "__main__":
-    # Para testing standalone
     root = tk.Tk()
     root.withdraw()
     class FakeSistema:
