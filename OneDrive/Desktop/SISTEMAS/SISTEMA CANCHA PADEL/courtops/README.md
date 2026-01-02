@@ -29,8 +29,22 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy on Vercel (Production)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Push to GitHub**: Make sure this code is in a GitHub repository.
+2. **Import to Vercel**: Go to [vercel.com/new](https://vercel.com/new) and import your repository.
+3. **Add Database**:
+   - In the project configuration (or after deployment fails first time), go to the **Storage** tab.
+   - Click "Connect Store" -> "Postgres".
+   - Accept default settings to create the database.
+   - Vercel will automatically add `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, etc., to your environment variables.
+   
+   **IMPORTANT**: You need to ensure the environment variable `DATABASE_URL` is set to the value of `POSTGRES_PRISMA_URL` (or `POSTGRES_URL_NON_POOLING`) in the settings if Vercel doesn't map it automatically. Usually, Vercel Postgres sets `POSTGRES_PRISMA_URL` which Prisma detects if configured, but our schema uses `DATABASE_URL`.
+   - **Fix**: In Vercel Project Settings -> Environment Variables, create a new variable named `DATABASE_URL` and set its value to the same value as `POSTGRES_PRISMA_URL` (you can copy-paste it from the storage setup).
+
+4. **Initialize Database**:
+   - Vercel usually attempts to build, but you need to run migrations.
+   - You can add a "build command" override: `prisma migrate deploy && next build`.
+   - OR, purely for the first time, you can connect to the database locally (copying the connection string to your local `.env`) and run `npx prisma migrate deploy`.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
