@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Club {
+  id                 String         @id @default(uuid())
+  name               String
+  slug               String         @unique
+  logoUrl            String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  timezone           String         @default("America/Argentina/Buenos_Aires")
+  currency           String         @default("ARS")
+  openTime           String         @default("14:00")
+  closeTime          String         @default("00:30")
+  slotDuration       Int            @default(90)
+  cancelHours        Int            @default(6)
+  plan               String         @default("BASIC")
+  subscriptionStatus String         @default("TRIAL")
+  nextBillingDate    DateTime?
+  maxCourts          Int            @default(2)
+  maxUsers           Int            @default(3)
+  hasKiosco          Boolean        @default(false)
+  hasOnlinePayments  Boolean        @default(false)
+  hasAdvancedReports Boolean        @default(false)
+  hasCustomDomain    Boolean        @default(false)
+  bookings           Booking[]
+  cashRegisters      CashRegister[]
+  clients            Client[]
+  courts             Court[]
+  priceRules         PriceRule[]
+  products           Product[]
+  users              User[]
+  auditLogs          AuditLog[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String
+  clubId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  club      Club?    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  auditLogs AuditLog[]
+}
+
+model Court {
+  id        Int       @id @default(autoincrement())
+  clubId    String
+  name      String
+  surface   String?
+  isIndoor  Boolean   @default(false)
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  bookings  Booking[]
+  club      Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id           Int           @id @default(autoincrement())
+  clubId       String
+  name         String
+  phone        String
+  notes        String?
+  createdAt    DateTime      @default(now())
+  email        String?
+  bookings     Booking[]
+  club         Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([clubId, phone])
+  @@index([clubId, name]) // Búsqueda rápida de clientes
+}
+
+model PriceRule {
+  id         Int       @id @default(autoincrement())
+  clubId     String
+  name       String?
+  priority   Int       @default(0)
+  startDate  DateTime?
+  endDate    DateTime?
+  daysOfWeek String?
+  startTime  String
+  endTime    String
+  price      Float
+  club       Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id            Int      @id @default(autoincrement())
+  clubId        String
+  courtId       Int
+  clientId      Int?
+  publicToken   String?
+  startTime     DateTime
+  endTime       DateTime
+  price         Float
+  status        String
+  paymentStatus String
+  paymentMethod String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  client        Client?  @relation(fields: [clientId], references: [id])
+  court         Court    @relation(fields: [courtId], references: [id])
+  club          Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, startTime]) // Dashboard agenda
+  @@index([clubId, status])    // Filtros de estado
+  @@index([clubId, clientId])  // Historial del cliente
+}
+
+model Product {
+  id           Int               @id @default(autoincrement())
+  clubId       String
+  name         String
+  category     String
+  cost         Float
+  price        Float
+  stock        Int
+  minStock     Int               @default(5)
+  imageUrl     String?
+  isActive     Boolean           @default(true)
+  club         Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  transactions TransactionItem[]
+}
+
+model CashRegister {
+  id              Int           @id @default(autoincrement())
+  clubId          String
+  date            DateTime      @default(now())
+  openedAt        DateTime      @default(now())
+  closedAt        DateTime?
+  startAmount     Float         @default(0)
+  endAmountCash   Float?
+  endAmountTransf Float?
+  status          String
+  club            Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+
+  @@index([clubId, date])
+}
+
+model Transaction {
+  id             Int               @id @default(autoincrement())
+  cashRegisterId Int
+  clientId       Int?
+  type           String
+  category       String
+  amount         Float
+  method         String
+  description    String?
+  createdAt      DateTime          @default(now())
+  client         Client?           @relation(fields: [clientId], references: [id])
+  cashRegister   CashRegister      @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+  items          TransactionItem[]
+}
+
+model TransactionItem {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  productId     Int?
+  quantity      Int
+  unitPrice     Float
+  subtotal      Float
+  product       Product?    @relation(fields: [productId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  clubId    String
+  userId    String?
+  action    String   // CREATE, UPDATE, DELETE, LOGIN
+  entity    String   // BOOKING, CLIENT, SETTINGS
+  entityId  String?
+  details   String?  // JSON string con detalles del cambio
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([clubId, createdAt])
+  @@index([clubId, entity, entityId])
+}
