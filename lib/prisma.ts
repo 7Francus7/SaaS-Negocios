@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
+       const url = process.env.DATABASE_URL;
+
+       if (url && url.startsWith('neondb://')) {
+              process.env.DATABASE_URL = url.replace('neondb://', 'postgresql://');
+       }
+
        return new PrismaClient()
 }
 
