@@ -80,11 +80,8 @@ function SidebarContent() {
                      </div>
 
                      <nav className="flex-1 px-4 py-8 space-y-1">
-                            {godMode && (
-                                   <p className="px-4 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Administración Global</p>
-                            )}
-
-                            {menuItems.map((item) => {
+                            {/* Standard menu items - ONLY visible if NOT in godMode */}
+                            {!godMode && menuItems.map((item) => {
                                    const Icon = item.icon;
                                    const isActive = pathname === item.href;
 
@@ -94,21 +91,15 @@ function SidebarContent() {
                                                  href={item.href}
                                                  className={cn(
                                                         "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group",
-                                                        godMode
-                                                               ? (isActive
-                                                                      ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.05)]"
-                                                                      : "text-gray-500 hover:bg-white/5 hover:text-white")
-                                                               : (isActive
-                                                                      ? "bg-blue-50 text-blue-700 shadow-sm"
-                                                                      : "text-gray-700 hover:bg-gray-100")
+                                                        isActive
+                                                               ? "bg-blue-50 text-blue-700 shadow-sm"
+                                                               : "text-gray-700 hover:bg-gray-100"
                                                  )}
                                           >
                                                  <Icon className={cn("h-5 w-5 mr-3 transition-transform group-hover:scale-110",
-                                                        godMode
-                                                               ? (isActive ? "text-yellow-400" : "text-gray-600 group-hover:text-yellow-400")
-                                                               : (isActive ? "text-blue-600" : "text-gray-400")
+                                                        isActive ? "text-blue-600" : "text-gray-400"
                                                  )} />
-                                                 <span className={cn(godMode && (isActive ? "font-bold" : "font-semibold"))}>
+                                                 <span>
                                                         {item.label}
                                                  </span>
                                           </Link>
@@ -116,18 +107,18 @@ function SidebarContent() {
                             })}
 
                             {godMode && (
-                                   <div className="pt-8">
-                                          <p className="px-4 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Sistema Premium</p>
+                                   <div>
+                                          <p className="px-4 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Sistema Premium</p>
                                           <Link
                                                  href="/dashboard/admin"
                                                  className={cn(
                                                         "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group border",
                                                         pathname === "/dashboard/admin"
                                                                ? "bg-yellow-400/10 text-yellow-400 border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.05)] font-bold"
-                                                               : "text-gray-500 hover:bg-white/5 hover:text-white border-transparent"
+                                                               : "text-slate-400 hover:bg-white/5 hover:text-white border-transparent"
                                                  )}
                                           >
-                                                 <Shield className={cn("h-5 w-5 mr-3 transition-transform group-hover:scale-110", pathname === "/dashboard/admin" ? "text-yellow-400" : "text-gray-600 group-hover:text-yellow-400")} />
+                                                 <Shield className={cn("h-5 w-5 mr-3 transition-transform group-hover:scale-110", pathname === "/dashboard/admin" ? "text-yellow-400" : "text-slate-500 group-hover:text-yellow-400")} />
                                                  Panel Global
                                           </Link>
                                    </div>
@@ -136,13 +127,13 @@ function SidebarContent() {
 
                      <div className={cn("p-6 border-t", godMode ? "border-white/5" : "border-gray-100")}>
                             {godMode && (
-                                   <div className="px-4 py-3 bg-white/5 rounded-xl flex items-center gap-3 mb-4 border border-white/5">
+                                   <div className="px-4 py-3 bg-white/5 rounded-xl flex items-center gap-3 mb-4 border border-white/5 shadow-2xl">
                                           <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black text-[10px] shadow-[0_0_15px_rgba(250,204,21,0.3)]">
                                                  GM
                                           </div>
                                           <div className="flex flex-col overflow-hidden">
                                                  <span className="text-xs font-bold text-white truncate">Root Admin</span>
-                                                 <span className="text-[10px] text-gray-500 truncate">admin@system.io</span>
+                                                 <span className="text-[10px] text-slate-500 truncate">admin@system.io</span>
                                           </div>
                                    </div>
                             )}
@@ -152,7 +143,7 @@ function SidebarContent() {
                                           "flex items-center w-full px-4 py-3 text-sm font-bold uppercase tracking-wider rounded-xl transition-all",
                                           godMode
                                                  ? "text-red-500 hover:bg-red-500/10"
-                                                 : "text-gray-700 hover:bg-red-50 hover:text-red-700"
+                                                 : "text-gray-700 hover:bg-red-50 hover:text-red-700 font-bold"
                                    )}
                             >
                                    <LogOut className={cn("h-5 w-5 mr-3", godMode ? "text-red-500" : "text-gray-400")} />

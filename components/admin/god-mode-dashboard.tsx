@@ -133,13 +133,13 @@ export function GodModeDashboard() {
                             <div className="flex items-center gap-6 flex-1">
                                    <div className="flex flex-col">
                                           <span className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em]">Panel Maestro</span>
-                                          <span className="font-bold text-lg tracking-tight">CONTROL DE TENANTS</span>
+                                          <span className="font-bold text-lg tracking-tight text-white">CONTROL DE TENANTS</span>
                                    </div>
                                    <div className="h-8 w-[1px] bg-white/10 hidden md:block"></div>
                                    <div className="relative w-full max-w-xl hidden md:block">
                                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
                                           <input
-                                                 className="w-full bg-white/5 border-none rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-yellow-500/20 transition-all placeholder:text-slate-600 outline-none"
+                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-yellow-500/20 transition-all placeholder:text-slate-600 outline-none text-white font-medium"
                                                  placeholder="Buscar por ID de Tenant, Dominio o Email de Administrador..."
                                                  type="text"
                                                  value={searchTerm}
@@ -194,7 +194,7 @@ export function GodModeDashboard() {
                                           <div className="bg-[#161618] p-8 rounded-[2rem] border border-white/5 shadow-2xl sticky top-28">
                                                  <div className="flex items-center gap-3 mb-2">
                                                         <Building2 className="text-yellow-400 w-6 h-6 font-bold" />
-                                                        <h2 className="text-xl font-black uppercase tracking-tight">Provisionar Tenant</h2>
+                                                        <h2 className="text-xl font-black uppercase tracking-tight text-white">Provisionar Tenant</h2>
                                                  </div>
                                                  <p className="text-sm text-slate-500 mb-8 leading-relaxed">
                                                         Cree una nueva instancia aislada para un nuevo cliente. Se generarán las bases de datos y el acceso administrativo automáticamente.
@@ -202,10 +202,10 @@ export function GodModeDashboard() {
 
                                                  <form className="space-y-6" onSubmit={handleCreate}>
                                                         <div>
-                                                               <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-2">Nombre de la Organización</label>
+                                                               <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Nombre de la Organización</label>
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500/50 outline-none transition-all text-sm"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-600"
                                                                       placeholder="Ej: MegaKiosco del Este"
                                                                       type="text"
                                                                       value={formData.storeName}
@@ -213,22 +213,22 @@ export function GodModeDashboard() {
                                                                />
                                                         </div>
                                                         <div>
-                                                               <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-2">Plan de Suscripción</label>
+                                                               <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Plan de Suscripción</label>
                                                                <select
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500 transition-all text-sm outline-none"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500 transition-all text-sm outline-none text-white"
                                                                       value={formData.plan}
                                                                       onChange={e => setFormData({ ...formData, plan: e.target.value })}
                                                                >
-                                                                      <option>SaaS Basic (Limitado)</option>
-                                                                      <option>SaaS Professional (Recomendado)</option>
-                                                                      <option>SaaS Enterprise (Ilimitado)</option>
+                                                                      <option className="bg-[#161618]">SaaS Basic (Limitado)</option>
+                                                                      <option className="bg-[#161618]">SaaS Professional (Recomendado)</option>
+                                                                      <option className="bg-[#161618]">SaaS Enterprise (Ilimitado)</option>
                                                                </select>
                                                         </div>
                                                         <div className="space-y-4 pt-4 border-t border-white/5">
-                                                               <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Credenciales del Administrador</label>
+                                                               <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Credenciales del Administrador</label>
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600"
                                                                       placeholder="Nombre Completo"
                                                                       type="text"
                                                                       value={formData.ownerName}
@@ -236,7 +236,7 @@ export function GodModeDashboard() {
                                                                />
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600"
                                                                       placeholder="email@tenant-admin.com"
                                                                       type="email"
                                                                       value={formData.email}
@@ -244,7 +244,7 @@ export function GodModeDashboard() {
                                                                />
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600"
                                                                       placeholder="Contraseña Temporal"
                                                                       type="password"
                                                                       value={formData.password}
@@ -273,7 +273,7 @@ export function GodModeDashboard() {
                                    <div className="lg:col-span-8">
                                           <div className="flex items-center justify-between mb-8">
                                                  <div>
-                                                        <h2 className="text-2xl font-black uppercase tracking-tighter">Negocios Activos</h2>
+                                                        <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Negocios Activos</h2>
                                                         <p className="text-xs text-slate-500 font-medium">Listado de todas las instancias SaaS desplegadas actualmente.</p>
                                                  </div>
                                                  <div className="flex gap-2 p-1 bg-white/5 rounded-2xl">
@@ -299,17 +299,17 @@ export function GodModeDashboard() {
                                                  </div>
                                           ) : filteredTenants.length === 0 ? (
                                                  <div className="bg-[#161618] rounded-[2.5rem] border-2 border-dashed border-white/5 flex flex-col items-center justify-center py-32 px-8 text-center">
-                                                        <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-8 relative">
+                                                        <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-8 relative border border-white/5">
                                                                <Building2 className="w-12 h-12 text-slate-700" />
                                                                <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full border-4 border-[#161618] flex items-center justify-center">
                                                                       <Plus className="text-black w-4 h-4 font-bold" />
                                                                </div>
                                                         </div>
-                                                        <h3 className="text-xl font-bold mb-3 tracking-tight">Base de datos vacía</h3>
+                                                        <h3 className="text-xl font-bold mb-3 tracking-tight text-white">Base de datos vacía</h3>
                                                         <p className="text-slate-500 max-w-sm mb-10 leading-relaxed text-sm">
                                                                No hemos detectado nunguna instancia SaaS configurada. Comienza por crear tu primer negocio.
                                                         </p>
-                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                                                                <Terminal className="w-3 h-3" />
                                                                Todos los despliegues son monitoreados en tiempo real
                                                         </div>
@@ -321,9 +321,9 @@ export function GodModeDashboard() {
                                                         ))}
                                                  </div>
                                           ) : (
-                                                 <div className="bg-[#161618] rounded-3xl border border-white/5 overflow-hidden">
+                                                 <div className="bg-[#161618] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
                                                         <table className="w-full text-left">
-                                                               <thead className="bg-white/5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                               <thead className="bg-white/5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                                                       <tr>
                                                                              <th className="px-6 py-4">Tenant / Dominio</th>
                                                                              <th className="px-6 py-4">Estado</th>
@@ -363,7 +363,7 @@ function StatCard({ title, value, subtext, icon, primary = false }: { title: str
 
 function TenantGridCard({ tenant, onDelete }: { tenant: Tenant, onDelete: () => void }) {
        return (
-              <div className="bg-[#161618] p-6 rounded-[2rem] border border-white/5 hover:border-yellow-500/30 transition-all group relative overflow-hidden">
+              <div className="bg-[#161618] p-6 rounded-[2rem] border border-white/5 hover:border-yellow-500/30 transition-all group relative overflow-hidden shadow-sm">
                      <div className="flex justify-between items-start mb-6">
                             <div className="flex-1">
                                    <div className="flex items-center gap-2 mb-1">
@@ -375,16 +375,16 @@ function TenantGridCard({ tenant, onDelete }: { tenant: Tenant, onDelete: () => 
                                    </p>
                             </div>
                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <button className="p-2 bg-white/5 rounded-xl hover:text-white transition-colors">
+                                   <button className="p-2 bg-white/5 rounded-xl hover:text-white transition-colors text-slate-400">
                                           <Edit3 className="w-4 h-4" />
                                    </button>
-                                   <button onClick={onDelete} className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
+                                   <button onClick={onDelete} className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10">
                                           <Trash2 className="w-4 h-4" />
                                    </button>
                             </div>
                      </div>
 
-                     <div className="grid grid-cols-3 gap-2 py-4 border-y border-white/5 mb-4">
+                     <div className="grid grid-cols-3 gap-2 py-4 border-y border-white/5 mb-4 bg-[#0A0A0B]/30 rounded-xl px-2">
                             <div className="text-center">
                                    <p className="text-xl font-black text-white">{tenant._count.products}</p>
                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Stock</p>
@@ -400,11 +400,11 @@ function TenantGridCard({ tenant, onDelete }: { tenant: Tenant, onDelete: () => 
                      </div>
 
                      <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                                   <Users className="w-3 h-3" />
+                            <div className="flex items-center gap-1.5 font-medium">
+                                   <Users className="w-3 h-3 text-slate-600" />
                                    {tenant.users?.[0]?.email || "sin admin"}
                             </div>
-                            <button className="flex items-center gap-1 text-yellow-400 hover:underline">
+                            <button className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300 transition-colors">
                                    Acceder <ArrowRight className="w-3 h-3" />
                             </button>
                      </div>
@@ -414,7 +414,7 @@ function TenantGridCard({ tenant, onDelete }: { tenant: Tenant, onDelete: () => 
 
 function TenantListRow({ tenant, onDelete }: { tenant: Tenant, onDelete: () => void }) {
        return (
-              <tr className="hover:bg-white/5 transition-colors group">
+              <tr className="hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0 text-white">
                      <td className="px-6 py-5">
                             <div className="flex flex-col">
                                    <span className="font-bold text-sm text-white uppercase tracking-tight">{tenant.name}</span>
@@ -444,10 +444,10 @@ function TenantListRow({ tenant, onDelete }: { tenant: Tenant, onDelete: () => v
                      </td>
                      <td className="px-6 py-5 text-right">
                             <div className="flex items-center justify-end gap-2">
-                                   <button className="p-2 hover:bg-white/10 rounded-xl text-slate-400 hover:text-yellow-400 transition-all">
+                                   <button className="p-2 hover:bg-white/10 rounded-xl text-slate-400 hover:text-yellow-400 transition-all font-bold">
                                           <LogIn className="w-4 h-4" />
                                    </button>
-                                   <button onClick={onDelete} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all">
+                                   <button onClick={onDelete} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all font-bold">
                                           <Trash2 className="w-4 h-4" />
                                    </button>
                             </div>
