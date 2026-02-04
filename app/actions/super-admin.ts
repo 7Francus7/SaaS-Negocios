@@ -102,9 +102,9 @@ export async function createTenant(data: {
               revalidatePath("/dashboard/admin");
               return { success: true, data: safeSerialize(result) };
 
-       } catch (error) {
+       } catch (error: any) {
               console.error("Create Tenant Error:", error);
-              return { success: false, error: "Error al crear el tenant." };
+              return { success: false, error: error.message || "Error al crear el tenant." };
        }
 }
 
