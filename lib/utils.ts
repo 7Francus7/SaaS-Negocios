@@ -1,3 +1,13 @@
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/**
+ * Utility for Tailwind CSS class merging.
+ */
+export function cn(...inputs: ClassValue[]) {
+       return twMerge(clsx(inputs));
+}
+
 /**
  * Utility to safe-serialize Prisma objects for Next.js Server Actions.
  * Handles Decimals (converts to Number) and ensures plain JS objects.
@@ -17,3 +27,4 @@ export function safeSerialize<T>(data: T): T {
               return value;
        })) as T;
 }
+
