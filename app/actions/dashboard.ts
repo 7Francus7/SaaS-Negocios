@@ -48,8 +48,8 @@ export async function getDashboardStats() {
               ]);
 
               const salesTodayTotal = salesTodayDetailed.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-              const profitToday = salesTodayDetailed.reduce((acc, sale) => {
-                     const cost = sale.items.reduce((sum, item) => sum + Number(item.subtotalCost), 0);
+              const profitToday = salesTodayDetailed.reduce((acc, sale: any) => {
+                     const cost = (sale.items || []).reduce((sum: number, item: any) => sum + Number(item.subtotalCost || 0), 0);
                      return acc + (Number(sale.totalAmount) - cost);
               }, 0);
 

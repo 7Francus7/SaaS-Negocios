@@ -12,7 +12,7 @@ export async function processSale(
        items: SaleItemInput[],
        paymentMethod: string = "EFECTIVO",
        customerId?: number,
-       discountPercentage: number = 0
+       discountAmount: number = 0
 ) {
        const storeId = await getStoreId();
 
@@ -86,8 +86,7 @@ export async function processSale(
               }
 
               // 3. Totals
-              const discountAmount = (subtotal * discountPercentage) / 100;
-              const total = subtotal - discountAmount;
+              const total = Math.max(0, subtotal - discountAmount);
 
               // 4. Create Sale
               const sale = await tx.sale.create({

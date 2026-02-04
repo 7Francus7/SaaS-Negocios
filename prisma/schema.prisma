@@ -47,6 +47,7 @@ model Store {
   settings    StoreSetting[]
   suppliers   Supplier[]
   purchases   Purchase[]
+  promotions  Promotion[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -64,6 +65,7 @@ model Category {
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   
   products  Product[]
+  promotionItems PromotionItem[]
 
   @@unique([storeId, name])
   @@map("categories")
@@ -104,6 +106,7 @@ model ProductVariant {
   stockMovements StockMovement[]
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
+  promotionItems PromotionItem[]
 
   @@unique([storeId, barcode]) 
   @@map("product_variants")
@@ -296,4 +299,43 @@ model PurchaseItem {
   variant         ProductVariant @relation(fields: [variantId], references: [id])
 
   @@map("purchase_items")
+}
+
+model Promotion {
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  type            String   // PERCENTAGE, FIXED, MULTIBUY, PAYMENT_METHOD
+  value           Decimal  @default(0.00) // Percentage or Fixed amount
+  
+  buyQuantity     Int?     // For MULTIBUY (e.g. 2 in 2x1)
+  payQuantity     Int?     // For MULTIBUY (e.g. 1 in 2x1)
+  
+  paymentMethod   String?  // For PAYMENT_METHOD type (e.g. "EFECTIVO")
+
+  active          Boolean  @default(true)
+  startDate       DateTime?
+  endDate         DateTime?
+
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  allProducts     Boolean  @default(false)
+  items           PromotionItem[]
+
+  @@map("promotions")
+}
+
+model PromotionItem {
+  id              Int      @id @default(autoincrement())
+  promotionId     Int
+  promotion       Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  
+  variantId       Int?
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  
+  categoryId      Int?
+  category        Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("promotion_items")
 }
