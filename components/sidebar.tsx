@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import {
        LayoutDashboard,
        Package,
@@ -11,7 +12,8 @@ import {
        LogOut,
        Store,
        DollarSign,
-       Truck
+       Truck,
+       Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,14 +27,40 @@ const menuItems = [
        { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];
 
-export function Sidebar() {
+function SidebarContent() {
        const pathname = usePathname();
+       const router = useRouter();
+       const searchParams = useSearchParams();
+       const [godMode, setGodMode] = useState(false);
+
+       useEffect(() => {
+              const isGod = searchParams.get('view') === 'god';
+              if (isGod) {
+                     localStorage.setItem('godMode', 'true');
+                     setGodMode(true);
+              } else {
+                     if (typeof window !== 'undefined' && localStorage.getItem('godMode') === 'true') {
+                            setGodMode(true);
+                     }
+              }
+       }, [searchParams]);
+
+       const handleLogout = () => {
+              localStorage.removeItem('godMode');
+              router.push('/');
+       };
 
        return (
-              <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full fixed left-0 top-0">
-                     <div className="h-16 flex items-center px-6 border-b border-gray-100">
-                            <Store className="h-6 w-6 text-blue-600 mr-2" />
-                            <span className="font-bold text-xl tracking-tight text-gray-900">Despensa SaaS</span>
+              <aside className={cn("w-64 border-r flex flex-col h-full fixed left-0 top-0 transition-all duration-300", godMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200")}>
+                     <div className={cn("h-16 flex items-center px-6 border-b transition-colors", godMode ? "border-slate-800" : "border-gray-100")}>
+                            {godMode ? (
+                                   <Crown className="h-6 w-6 text-yellow-500 mr-2" />
+                            ) : (
+                                   <Store className="h-6 w-6 text-blue-600 mr-2" />
+                            )}
+                            <span className={cn("font-bold text-xl tracking-tight", godMode ? "text-white" : "text-gray-900")}>
+                                   {godMode ? "GOD MODE" : "Despensa SaaS"}
+                            </span>
                      </div>
 
                      <nav className="flex-1 px-3 py-6 space-y-1">
@@ -46,24 +74,44 @@ export function Sidebar() {
                                                  href={item.href}
                                                  className={cn(
                                                         "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                                                        isActive
-                                                               ? "bg-blue-50 text-blue-700"
-                                                               : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                                        godMode
+                                                               ? (isActive ? "bg-slate-800 text-yellow-400" : "text-slate-400 hover:bg-slate-800 hover:text-white")
+                                                               : (isActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900")
                                                  )}
                                           >
-                                                 <Icon className={cn("h-5 w-5 mr-3", isActive ? "text-blue-600" : "text-gray-400")} />
+                                                 <Icon className={cn("h-5 w-5 mr-3",
+                                                        godMode
+                                                               ? (isActive ? "text-yellow-400" : "text-slate-500")
+                                                               : (isActive ? "text-blue-600" : "text-gray-400")
+                                                 )} />
                                                  {item.label}
                                           </Link>
                                    );
                             })}
                      </nav>
 
-                     <div className="p-4 border-t border-gray-100">
-                            <button className="flex items-center w-full px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors">
-                                   <LogOut className="h-5 w-5 mr-3 text-gray-400 group-hover:text-red-600" />
+                     <div className={cn("p-4 border-t", godMode ? "border-slate-800" : "border-gray-100")}>
+                            <button
+                                   onClick={handleLogout}
+                                   className={cn(
+                                          "flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                                          godMode
+                                                 ? "text-slate-400 hover:bg-red-900/20 hover:text-red-400"
+                                                 : "text-gray-700 hover:bg-red-50 hover:text-red-700"
+                                   )}
+                            >
+                                   <LogOut className={cn("h-5 w-5 mr-3", godMode ? "text-slate-500 group-hover:text-red-400" : "text-gray-400 group-hover:text-red-600")} />
                                    Cerrar Sesión
                             </button>
                      </div>
               </aside>
+       );
+}
+
+export function Sidebar() {
+       return (
+              <Suspense fallback={<div className="w-64 bg-white border-r h-full fixed" />}>
+                     <SidebarContent />
+              </Suspense>
        );
 }
