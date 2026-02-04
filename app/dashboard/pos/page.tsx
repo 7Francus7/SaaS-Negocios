@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight } from "lucide-react";
-import { getProducts, type ProductFilter } from "@/app/actions/products";
+import { getProducts, findProductByBarcode, type ProductFilter } from "@/app/actions/products";
 import { processSale, type SaleItemInput } from "@/app/actions/sales";
 import { getCustomers } from "@/app/actions/customers";
+import { getOpenSession } from "@/app/actions/cash";
 import { Modal } from "@/components/ui/modal";
 import { Ticket } from "@/components/pos/ticket";
 
@@ -24,10 +25,78 @@ export default function POSPage() {
        const [cart, setCart] = useState<CartItem[]>([]);
        const [loadingSearch, setLoadingSearch] = useState(false);
 
+       // Barcode Scanner State
+       const lastKeyTime = useRef<number>(0);
+       const barcodeBuffer = useRef<string>("");
+
+       // Barcode Scanner Listener
+       useEffect(() => {
+              const handleGlobalKeyDown = async (e: KeyboardEvent) => {
+                     const isInputFocused = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+
+                     // If input is focused and it's not the scanner (fast typing), let it behave normally.
+                     // But scanners act like keyboard. If user is in search box, let them type manually.
+                     // We detect scanner by speed ( < 50ms between keys usually).
+
+                     const now = Date.now();
+                     const timeDiff = now - lastKeyTime.current;
+                     lastKeyTime.current = now;
+
+                     if (e.key === 'Enter') {
+                            if (barcodeBuffer.current.length > 3 && !isInputFocused) {
+                                   // Scanner finished
+                                   const code = barcodeBuffer.current;
+                                   barcodeBuffer.current = "";
+                                   await handleBarcodeScan(code);
+                            } else {
+                                   barcodeBuffer.current = "";
+                            }
+                            return;
+                     }
+
+                     if (e.key.length === 1) { // Printable characters
+                            // If typing slow, it's a user. Reset buffer if gap is large (e.g. > 100ms) unless it's first char
+                            if (timeDiff > 100 && barcodeBuffer.current.length > 0) {
+                                   barcodeBuffer.current = "";
+                            }
+                            barcodeBuffer.current += e.key;
+                     }
+              };
+
+              window.addEventListener('keydown', handleGlobalKeyDown);
+              return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+       }, []);
+
+       const handleBarcodeScan = async (code: string) => {
+              setLoadingSearch(true);
+              try {
+                     const product = await findProductByBarcode(code);
+                     if (product) {
+                            if (product.stockQuantity > 0) {
+                                   addToCart(product);
+                                   // Audio Feedback
+                                   const audio = new Audio('/beep.mp3'); // We'd need this file, or just visual feedback
+                                   // audio.play().catch(() => {});
+                            } else {
+                                   alert(`Producto sin stock: ${product.product.name}`);
+                            }
+                     } else {
+                            // If not found in DB, maybe focus search with this code?
+                            // or just ignore
+                            console.log("Barcode not found:", code);
+                     }
+              } finally {
+                     setLoadingSearch(false);
+              }
+       };
+
        // Payment State
        const [paymentMethod, setPaymentMethod] = useState("EFECTIVO");
        const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
        const [customers, setCustomers] = useState<Awaited<ReturnType<typeof getCustomers>>>([]);
+
+       // Session State
+       const [session, setSession] = useState<any>(null);
 
        // UI State
        const [showPayModal, setShowPayModal] = useState(false);
@@ -40,6 +109,7 @@ export default function POSPage() {
               total: number;
               date: Date;
               paymentMethod: string;
+              store?: any;
        }
        const [lastSale, setLastSale] = useState<SaleReceipt | null>(null);
 
@@ -58,6 +128,7 @@ export default function POSPage() {
        // Initial Data
        useEffect(() => {
               getCustomers().then(setCustomers);
+              getOpenSession().then(setSession);
        }, []);
 
        const handleSearch = async (q: string) => {
@@ -122,6 +193,10 @@ export default function POSPage() {
 
        const handleCheckout = async () => {
               if (cart.length === 0) return;
+              if (!session) {
+                     alert("Debe abrir la caja antes de realizar ventas.");
+                     return;
+              }
               setProcessing(true);
               try {
                      const itemsInput: SaleItemInput[] = cart.map(i => ({
@@ -140,7 +215,8 @@ export default function POSPage() {
                             items: [...cart],
                             total,
                             date: new Date(),
-                            paymentMethod
+                            paymentMethod,
+                            store: session.store
                      });
 
                      setCart([]);
@@ -273,8 +349,14 @@ export default function POSPage() {
                                           <span>${total.toFixed(2)}</span>
                                    </div>
 
+                                   {!session && (
+                                          <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm text-center font-medium">
+                                                 ⚠️ La caja está cerrada. Abra caja para vender.
+                                          </div>
+                                   )}
+
                                    <button
-                                          disabled={cart.length === 0}
+                                          disabled={cart.length === 0 || !session}
                                           onClick={() => setShowPayModal(true)}
                                           className="w-full py-4 text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
                                    >

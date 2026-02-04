@@ -59,6 +59,33 @@ export async function getProducts(filter: ProductFilter = {}) {
        return serializedVariants;
 }
 
+export async function findProductByBarcode(barcode: string) {
+       const storeId = await getStoreId();
+
+       if (!barcode) return null;
+
+       const variant = await prisma.productVariant.findFirst({
+              where: {
+                     storeId,
+                     barcode: barcode,
+                     active: true
+              },
+              include: {
+                     product: true
+              }
+       });
+
+       if (!variant) return null;
+
+       return {
+              ...variant,
+              costPrice: Number(variant.costPrice),
+              salePrice: Number(variant.salePrice),
+              stockQuantity: variant.stockQuantity,
+              product: variant.product
+       };
+}
+
 export async function createProduct(data: {
        name: string;
        description?: string;

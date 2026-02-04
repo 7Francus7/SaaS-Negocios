@@ -32,6 +32,11 @@ model Store {
   slug        String   @unique
   isActive    Boolean  @default(true)
   
+  // Ticket Info
+  address     String?
+  phone       String?
+  cuit        String?
+  
   users       User[]
   products    Product[]
   productVariants ProductVariant[]
@@ -208,7 +213,24 @@ model CashSession {
   
   userId          String?
 
+  movements       CashMovement[]
+
   @@map("cash_sessions")
+}
+
+model CashMovement {
+  id              Int          @id @default(autoincrement())
+  cashSessionId   Int
+  cashSession     CashSession  @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  
+  type            String       // IN, OUT
+  amount          Decimal
+  description     String?
+  timestamp       DateTime     @default(now())
+  
+  userId          String?      
+  
+  @@map("cash_movements")
 }
 
 model StoreSetting {

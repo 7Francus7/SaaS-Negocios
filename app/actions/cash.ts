@@ -10,7 +10,10 @@ export async function getOpenSession() {
               where: { storeId, status: "OPEN" },
               orderBy: { startTime: "desc" },
               include: {
-                     store: true
+                     store: true,
+                     movements: {
+                            orderBy: { timestamp: 'desc' }
+                     }
               }
        });
 
@@ -22,26 +25,54 @@ export async function getOpenSession() {
        return {
               ...safeSerialize(session),
               currentSales: result.totalSales,
-              expectedCash: Number(session.initialCash) + result.totalSales
+              totalIn: result.totalIn,
+              totalOut: result.totalOut,
+              expectedCash: Number(session.initialCash) + result.totalSales + result.totalIn - result.totalOut
        };
 }
 
 async function calculateSessionTotals(sessionId: number, storeId: string, startTime: Date) {
-       // Sum only CASH sales created after session start
-       const salesAggregate = await prisma.sale.aggregate({
-              where: {
-                     storeId,
-                     timestamp: { gte: startTime },
-                     paymentMethod: "EFECTIVO"
-              },
-              _sum: {
-                     totalAmount: true
+       const [salesAggregate, movementsAggregate] = await Promise.all([
+              // Sum only CASH sales created after session start
+              prisma.sale.aggregate({
+                     where: {
+                            storeId,
+                            timestamp: { gte: startTime },
+                            paymentMethod: "EFECTIVO"
+                     },
+                     _sum: { totalAmount: true }
+              }),
+              // Sum Movements
+              prisma.cashMovement.groupBy({
+                     by: ['type'],
+                     where: { cashSessionId: sessionId },
+                     _sum: { amount: true }
+              })
+       ]);
+
+       const totalSales = Number(salesAggregate._sum.totalAmount || 0);
+
+       const totalIn = Number(movementsAggregate.find(m => m.type === 'IN')?._sum.amount || 0);
+       const totalOut = Number(movementsAggregate.find(m => m.type === 'OUT')?._sum.amount || 0);
+
+       return { totalSales, totalIn, totalOut };
+}
+
+export async function registerCashMovement(amount: number, type: 'IN' | 'OUT', description: string) {
+       const session = await getOpenSession();
+       if (!session) throw new Error("No hay caja abierta");
+
+       const movement = await prisma.cashMovement.create({
+              data: {
+                     cashSessionId: session.id,
+                     type,
+                     amount,
+                     description,
+                     timestamp: new Date()
               }
        });
 
-       return {
-              totalSales: Number(salesAggregate._sum.totalAmount || 0)
-       };
+       return safeSerialize(movement);
 }
 
 export async function openSession(initialCash: number) {

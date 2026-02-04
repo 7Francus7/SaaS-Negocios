@@ -12,6 +12,12 @@ interface TicketData {
        items: TicketItem[];
        total: number;
        paymentMethod?: string;
+       store?: {
+              name: string;
+              address?: string | null;
+              phone?: string | null;
+              cuit?: string | null;
+       }
 }
 
 export function Ticket({ data }: { data: TicketData | null }) {
@@ -32,10 +38,10 @@ export function Ticket({ data }: { data: TicketData | null }) {
 
                             {/* HEADER */}
                             <div className="text-center lowercase mb-2">
-                                   <div className="font-bold text-sm uppercase mb-1">DESPENSA DEMO</div>
-                                   <p>Av. Principal 1234</p>
-                                   <p>Tel: 351-1234567</p>
-                                   <p>CUIT: 20-33445566-0</p>
+                                   <div className="font-bold text-sm uppercase mb-1">{data.store?.name || "DESPENSA DEMO"}</div>
+                                   {data.store?.address && <p>{data.store.address}</p>}
+                                   {data.store?.phone && <p>Tel: {data.store.phone}</p>}
+                                   {data.store?.cuit && <p>CUIT: {data.store.cuit}</p>}
                             </div>
 
                             {/* TICKET INFO */}

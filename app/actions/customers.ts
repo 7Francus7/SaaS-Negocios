@@ -92,17 +92,44 @@ export async function registerPayment(
                      });
 
                      if (session) {
-                            await tx.cashSession.update({
-                                   where: { id: session.id },
+                            // Register valid Cash Movement so it appears in Cash Page
+                            await tx.cashMovement.create({
                                    data: {
-                                          finalCashSystem: { increment: amount },
-                                   },
+                                          cashSessionId: session.id,
+                                          type: "IN",
+                                          amount: amount,
+                                          description: `Pago Cta Cte: ${customer.name}`,
+                                          timestamp: new Date()
+                                   }
                             });
+                     } else {
+                            // Warn or throw? For now let's allow receiving money even if box is closed, 
+                            // but ideally we should require open box for cash IN.
+                            // Let's simple ignore linkage to session if closed, but strictly speaking this hides money.
+                            // Better software practice: throw error if cash payment and no box open.
+                            throw new Error("Debe abrir la caja para recibir pagos en efectivo.");
                      }
-                     // Note: If no session open, we accept the payment but don't log it to cash system (just customer account)
-                     // This mimics Python logic where it might just print a warning or fail silently on cash update.
               }
 
               return customer;
        });
+}
+
+export async function getCustomerHistory(customerId: number) {
+       const storeId = await getStoreId();
+
+       // Verify ownership
+       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+       if (!customer || customer.storeId !== storeId) return [];
+
+       const history = await prisma.accountMovement.findMany({
+              where: { customerId },
+              orderBy: { timestamp: "desc" },
+              take: 50
+       });
+
+       return history.map(h => ({
+              ...h,
+              amount: Number(h.amount)
+       }));
 }

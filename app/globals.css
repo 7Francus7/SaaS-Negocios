@@ -1,32 +1,6 @@
 @import "tailwindcss";
 
-@media print {
-  body * {
-    visibility: hidden;
-  }
 
-  #printable-ticket,
-  #printable-ticket * {
-    visibility: visible;
-  }
-
-  #printable-ticket {
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 9999;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    background: white;
-    display: block !important;
-  }
-
-  @page {
-    size: auto;
-    margin: 0;
-  }
-}
 
 :root {
   --background: #ffffff;
@@ -71,18 +45,29 @@ select {
   }
 
   #printable-ticket {
-    position: absolute;
+    position: fixed;
     left: 0;
     top: 0;
+    z-index: 9999;
     width: 100%;
     margin: 0;
     padding: 0;
-    color: black;
     background: white;
+    color: black;
+    display: block !important;
+    /* Override tailwind hidden */
   }
 
   @page {
     size: auto;
     margin: 0;
+  }
+
+  /* Hide headers/sidebars explicitly if needed */
+  header,
+  nav,
+  aside,
+  .modal-overlay {
+    display: none !important;
   }
 }

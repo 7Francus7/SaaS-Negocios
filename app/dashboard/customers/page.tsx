@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Search, Wallet, History, CreditCard } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer } from "@/app/actions/customers";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
 
 interface Customer {
@@ -57,6 +57,23 @@ export default function CustomersPage() {
               } catch (e: any) { alert(e.message); }
        };
 
+       const [history, setHistory] = useState<any[]>([]);
+       const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+       const handleViewHistory = async (customer: Customer) => {
+              setSelectedCustomer(customer);
+              setLoading(true); // Re-use loading or add specific one
+              try {
+                     const hist = await getCustomerHistory(customer.id);
+                     setHistory(hist);
+                     setIsHistoryOpen(true);
+              } catch (e) {
+                     console.error(e);
+              } finally {
+                     setLoading(false);
+              }
+       };
+
        const filtered = customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
        return (
@@ -107,7 +124,10 @@ export default function CustomersPage() {
                                                         <Wallet className="h-4 w-4" />
                                                         Registrar Pago
                                                  </button>
-                                                 <button className="flex-1 bg-gray-50 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 flex items-center justify-center gap-2">
+                                                 <button
+                                                        onClick={() => handleViewHistory(customer)}
+                                                        className="flex-1 bg-gray-50 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 flex items-center justify-center gap-2"
+                                                 >
                                                         <History className="h-4 w-4" />
                                                         Ver Cuenta
                                                  </button>
@@ -115,6 +135,40 @@ export default function CustomersPage() {
                                    </div>
                             ))}
                      </div>
+
+                     {/* History Modal */}
+                     <Modal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} title={`Historial: ${selectedCustomer?.name}`}>
+                            <div className="max-h-[60vh] overflow-y-auto">
+                                   <table className="w-full text-sm text-left">
+                                          <thead className="bg-gray-50 text-gray-500 font-medium">
+                                                 <tr>
+                                                        <th className="p-3">Fecha</th>
+                                                        <th className="p-3">Descripción</th>
+                                                        <th className="p-3 text-right">Monto</th>
+                                                 </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-100">
+                                                 {history.map((h: any) => (
+                                                        <tr key={h.id}>
+                                                               <td className="p-3 text-gray-500">{new Date(h.timestamp).toLocaleDateString()} {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                                               <td className="p-3 text-gray-900">{h.description}</td>
+                                                               <td className={`p-3 text-right font-bold ${h.amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                      {h.amount > 0 ? '+' : ''}{Number(h.amount).toFixed(2)}
+                                                               </td>
+                                                        </tr>
+                                                 ))}
+                                                 {history.length === 0 && (
+                                                        <tr>
+                                                               <td colSpan={3} className="p-4 text-center text-gray-400">Sin movimientos recientes</td>
+                                                        </tr>
+                                                 )}
+                                          </tbody>
+                                   </table>
+                            </div>
+                            <div className="mt-4 pt-4 border-t flex justify-end">
+                                   <button onClick={() => setIsHistoryOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cerrar</button>
+                            </div>
+                     </Modal>
 
                      {/* Create Customer Modal */}
                      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Nuevo Cliente">
@@ -132,7 +186,7 @@ export default function CustomersPage() {
                      </Modal>
 
                      {/* Payment Modal */}
-                     <Modal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} title={`Cobrar a ${selectedCustomer?.name}`}>
+                     <Modal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} title={`Cobrar a ${selectedCustomer?.name || 'Cliente'}`}>
                             <div className="space-y-4">
                                    <div className="bg-red-50 p-4 rounded-lg text-center">
                                           <p className="text-sm text-red-600">Deuda Actual</p>
