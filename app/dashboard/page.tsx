@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DollarSign, Package, Users, AlertTriangle, TrendingUp, ShoppingBag } from "lucide-react";
+import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign } from "lucide-react";
 import { getDashboardStats, getDashboardChartData, DashboardStats } from "@/app/actions/dashboard";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 
@@ -57,33 +57,33 @@ export default function DashboardPage() {
 
        const cards = [
               {
-                     title: "Ventas de Hoy",
+                     title: "Ventas Hoy",
                      value: `$${stats.salesTodayTotal.toFixed(2)}`,
                      subtext: `${stats.salesCount} operaciones`,
-                     icon: DollarSign,
-                     color: "text-green-600",
-                     bg: "bg-green-50"
-              },
-              {
-                     title: "Productos",
-                     value: stats.productsCount,
-                     subtext: "En catálogo",
-                     icon: Package,
+                     icon: ShoppingBag,
                      color: "text-blue-600",
                      bg: "bg-blue-50"
               },
               {
-                     title: "Clientes",
-                     value: stats.customersCount,
-                     subtext: "Activos",
-                     icon: Users,
-                     color: "text-purple-600",
-                     bg: "bg-purple-50"
+                     title: "Ganancia Hoy",
+                     value: `$${stats.profitToday.toFixed(2)}`,
+                     subtext: "Neto estimado",
+                     icon: TrendingUp,
+                     color: "text-emerald-600",
+                     bg: "bg-emerald-50"
+              },
+              {
+                     title: "Inventario",
+                     value: stats.productsCount,
+                     subtext: "Productos",
+                     icon: Package,
+                     color: "text-indigo-600",
+                     bg: "bg-indigo-50"
               },
               {
                      title: "Stock Bajo",
                      value: stats.lowStockCount,
-                     subtext: "Requieren atención",
+                     subtext: "Atención requerida",
                      icon: AlertTriangle,
                      color: "text-orange-600",
                      bg: "bg-orange-50"
@@ -138,8 +138,6 @@ export default function DashboardPage() {
 
                      {/* Charts Section */}
                      <DashboardCharts data={chartData} title={`Ventas: ${getRangeLabel()}`} />
-
-                     {/* ... rest of content ... */}
 
                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Low Stock Alert List */}

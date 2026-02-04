@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight } from "lucide-react";
+import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, MessageSquare } from "lucide-react";
 import { getProducts, findProductByBarcode, type ProductFilter } from "@/app/actions/products";
 import { processSale, type SaleItemInput } from "@/app/actions/sales";
 import { getCustomers } from "@/app/actions/customers";
@@ -445,19 +445,35 @@ export default function POSPage() {
                                           <p className="text-sm text-gray-500">Monto total: <span className="font-bold text-gray-900">${lastSale?.total.toFixed(2) || "0.00"}</span></p>
                                    </div>
 
-                                   <div className="grid grid-cols-2 gap-3 mt-8">
-                                          <button
-                                                 onClick={handlePrint}
-                                                 className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                                          >
-                                                 <Printer className="h-5 w-5" />
-                                                 Imprimir Ticket
-                                          </button>
+                                   <div className="flex flex-col gap-3 mt-8">
+                                          <div className="grid grid-cols-2 gap-3">
+                                                 <button
+                                                        onClick={handlePrint}
+                                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                                                 >
+                                                        <Printer className="h-5 w-5" />
+                                                        Imprimir
+                                                 </button>
+                                                 <button
+                                                        onClick={() => {
+                                                               if (!lastSale) return;
+                                                               const text = `📋 *Detalle de Venta*\n\n` +
+                                                                      lastSale.items.map(i => `• ${i.productName}: $${i.price.toFixed(2)} x ${i.quantity}`).join('\n') +
+                                                                      `\n\n💰 *Total: $${lastSale.total.toFixed(2)}*\n\nGracias por su compra en *${lastSale.store?.name || 'nuestro negocio'}*!`;
+                                                               window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                                        }}
+                                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition-colors"
+                                                 >
+                                                        <MessageSquare className="h-5 w-5" />
+                                                        WhatsApp
+                                                 </button>
+                                          </div>
+
                                           <button
                                                  onClick={handleNewSale}
-                                                 className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                                 className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                                           >
-                                                 <span className="whitespace-nowrap">Nueva Venta</span>
+                                                 Nueva Venta
                                                  <ArrowRight className="h-5 w-5" />
                                           </button>
                                    </div>

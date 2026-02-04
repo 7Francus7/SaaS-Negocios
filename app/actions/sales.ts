@@ -51,7 +51,9 @@ export async function processSale(
                      // Ensure Decimal handled as number for JS math, or use a Decimal lib
                      // Prisma Decimals are objects/strings, converting to Number for simple logic
                      const price = Number(variant.salePrice);
+                     const cost = Number(variant.costPrice);
                      const lineTotal = price * item.quantity;
+                     const lineTotalCost = cost * item.quantity;
                      subtotal += lineTotal;
 
                      saleItemsData.push({
@@ -59,7 +61,9 @@ export async function processSale(
                             productNameSnapshot: `${variant.product.name} ${variant.variantName}`,
                             quantity: item.quantity,
                             unitPrice: price,
+                            unitCost: cost,
                             subtotal: lineTotal,
+                            subtotalCost: lineTotalCost,
                      });
 
                      // Update Stock
@@ -114,6 +118,8 @@ export async function processSale(
                             throw new Error("No hay caja abierta. Debe abrir caja para cobrar en efectivo.");
                      }
 
+                     // finalCashSystem in schema is just a snapshot, the true expected is calculated.
+                     // But we update it for safety.
                      await tx.cashSession.update({
                             where: { id: session.id },
                             data: {
@@ -156,7 +162,9 @@ export async function processSale(
                      items: sale.items.map(item => ({
                             ...item,
                             unitPrice: Number(item.unitPrice),
-                            subtotal: Number(item.subtotal)
+                            unitCost: Number(item.unitCost),
+                            subtotal: Number(item.subtotal),
+                            subtotalCost: Number(item.subtotalCost)
                      }))
               };
        });

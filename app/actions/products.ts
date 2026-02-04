@@ -253,3 +253,24 @@ export async function getCategories() {
               orderBy: { name: 'asc' }
        });
 }
+
+export async function exportProductsToCSV() {
+       const storeId = await getStoreId();
+       const variants = await prisma.productVariant.findMany({
+              where: { storeId, active: true },
+              include: {
+                     product: {
+                            include: { category: true }
+                     }
+              }
+       });
+
+       const header = "Nombre,Categoria,Costo,Precio,Stock,CodigoBarras\n";
+       const rows = variants.map(v => {
+              const name = `${v.product.name} ${v.variantName}`.replace(/,/g, '');
+              const cat = v.product.category?.name || 'General';
+              return `${name},${cat},${v.costPrice},${v.salePrice},${v.stockQuantity},${v.barcode || ''}`;
+       }).join("\n");
+
+       return header + rows;
+}

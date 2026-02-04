@@ -12,20 +12,11 @@ export async function getDashboardStats() {
               today.setHours(0, 0, 0, 0);
 
               const [
-                     salesToday,
                      productsCount,
                      lowStockCount,
-                     customersCount
+                     customersCount,
+                     salesTodayDetailed
               ] = await Promise.all([
-                     // Sales Today
-                     prisma.sale.aggregate({
-                            where: {
-                                   storeId,
-                                   timestamp: { gte: today }
-                            },
-                            _sum: { totalAmount: true },
-                            _count: true
-                     }),
                      // Total Products
                      prisma.productVariant.count({
                             where: { storeId, active: true }
@@ -41,8 +32,26 @@ export async function getDashboardStats() {
                      // Customers
                      prisma.customer.count({
                             where: { storeId, active: true }
+                     }),
+                     // Sales Today for specific logic
+                     prisma.sale.findMany({
+                            where: {
+                                   storeId,
+                                   timestamp: { gte: today }
+                            },
+                            include: {
+                                   items: {
+                                          select: { subtotalCost: true }
+                                   }
+                            }
                      })
               ]);
+
+              const salesTodayTotal = salesTodayDetailed.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+              const profitToday = salesTodayDetailed.reduce((acc, sale) => {
+                     const cost = sale.items.reduce((sum, item) => sum + Number(item.subtotalCost), 0);
+                     return acc + (Number(sale.totalAmount) - cost);
+              }, 0);
 
               // Find critical Low Stock items for list
               const criticalStockItems = await prisma.productVariant.findMany({
@@ -53,8 +62,9 @@ export async function getDashboardStats() {
               });
 
               return safeSerialize({
-                     salesTodayTotal: Number(salesToday._sum.totalAmount || 0),
-                     salesCount: salesToday._count,
+                     salesTodayTotal,
+                     salesCount: salesTodayDetailed.length,
+                     profitToday,
                      productsCount,
                      lowStockCount,
                      customersCount,
@@ -62,10 +72,10 @@ export async function getDashboardStats() {
               });
        } catch (error) {
               console.error("STATS_ERROR:", error);
-              // Return a fallback object instead of throwing, to prevent crashing the whole page
               return {
                      salesTodayTotal: 0,
                      salesCount: 0,
+                     profitToday: 0,
                      productsCount: 0,
                      lowStockCount: 0,
                      customersCount: 0,
@@ -77,10 +87,11 @@ export async function getDashboardStats() {
 export type DashboardStats = {
        salesTodayTotal: number;
        salesCount: number;
+       profitToday: number;
        productsCount: number;
        lowStockCount: number;
        customersCount: number;
-       criticalStockItems: any[]; // Using any for simplicity in return type after serialization
+       criticalStockItems: any[];
 };
 
 export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') {
@@ -135,4 +146,3 @@ export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') 
               return [];
        }
 }
-
