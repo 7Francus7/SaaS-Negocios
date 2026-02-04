@@ -6,23 +6,28 @@
 import prisma from "@/lib/prisma";
 
 export async function getStoreId(): Promise<string> {
-       // TODO: Replace with real authentication logic (NextAuth / Clerk)
-       // For now, we try to find the first store in the DB, or create one if empty.
+       try {
+              const firstStore = await prisma.store.findFirst();
 
-       const firstStore = await prisma.store.findFirst();
-
-       if (firstStore) {
-              return firstStore.id;
-       }
-
-       // Auto-seed for dev experience
-       const newStore = await prisma.store.create({
-              data: {
-                     name: "Tienda Demo",
-                     slug: "demo",
-                     isActive: true
+              if (firstStore) {
+                     return firstStore.id;
               }
-       });
 
-       return newStore.id;
+              // Auto-seed for dev experience
+              // Try to create, if it fails (race condition), find again
+              const newStore = await prisma.store.create({
+                     data: {
+                            name: "Tienda Demo",
+                            slug: `demo-${Math.random().toString(36).substring(7)}`, // Unique slug to avoid collisions
+                            isActive: true
+                     }
+              });
+
+              return newStore.id;
+       } catch (error) {
+              console.error("Store Helper Error:", error);
+              const store = await prisma.store.findFirst();
+              if (store) return store.id;
+              throw new Error("No se pudo identificar o crear una tienda activa.");
+       }
 }
