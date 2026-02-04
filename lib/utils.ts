@@ -17,7 +17,7 @@ export function safeSerialize<T>(data: T): T {
 
        return JSON.parse(JSON.stringify(data, (key, value) => {
               // Handle Prisma Decimal objects
-              if (value && typeof value === 'object' && value.d && value.s && value.e) {
+              if (value && typeof value === 'object' && (value.constructor?.name === 'Decimal' || (value.d && value.e && value.s))) {
                      return Number(value);
               }
               // Handle other possible non-serializable objects (like potential BigInts)

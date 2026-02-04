@@ -62,7 +62,15 @@ export async function getDashboardStats() {
               });
        } catch (error) {
               console.error("STATS_ERROR:", error);
-              throw new Error("No se pudieron cargar las estadísticas del servidor.");
+              // Return a fallback object instead of throwing, to prevent crashing the whole page
+              return {
+                     salesTodayTotal: 0,
+                     salesCount: 0,
+                     productsCount: 0,
+                     lowStockCount: 0,
+                     customersCount: 0,
+                     criticalStockItems: []
+              };
        }
 }
 
@@ -124,7 +132,7 @@ export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') 
               return safeSerialize(chartData);
        } catch (error) {
               console.error("CHART_ERROR:", error);
-              throw new Error("No se pudieron cargar los datos del gráfico.");
+              return [];
        }
 }
 
