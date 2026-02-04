@@ -92,18 +92,18 @@ function SidebarContent() {
 
                             {godMode && (
                                    <div className="pt-4 mt-4 border-t border-slate-800">
-                                          <h4 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Admin Panel</h4>
+                                          <h4 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">GOD MODE</h4>
                                           <Link
-                                                 href="/dashboard/admin/users"
+                                                 href="/dashboard/admin"
                                                  className={cn(
                                                         "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                                                        pathname === "/dashboard/admin/users"
+                                                        pathname === "/dashboard/admin"
                                                                ? "bg-slate-800 text-yellow-400"
                                                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
                                                  )}
                                           >
-                                                 <Shield className={cn("h-5 w-5 mr-3", pathname === "/dashboard/admin/users" ? "text-yellow-400" : "text-slate-500")} />
-                                                 Gestión Usuarios
+                                                 <Shield className={cn("h-5 w-5 mr-3", pathname === "/dashboard/admin" ? "text-yellow-400" : "text-slate-500")} />
+                                                 Panel Global
                                           </Link>
                                    </div>
                             )}
