@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Tag, Plus, Trash2, Edit2, Play, Pause, AlertCircle, ShoppingBag, CreditCard, Percent } from "lucide-react";
 import { getPromotions, createPromotion, togglePromotion, deletePromotion, type PromotionInput } from "@/app/actions/promotions";
 import { getCategories } from "@/app/actions/products";
-import { Modal } from "@/components/modal"; // Assuming Modal exists, if not I'll create it or use simple div
+import { Modal } from "@/components/ui/modal";
 
 export default function PromotionsPage() {
        const [promotions, setPromotions] = useState<any[]>([]);

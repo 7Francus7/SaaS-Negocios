@@ -40,17 +40,16 @@ export async function getDashboardStats() {
                                    timestamp: { gte: today }
                             },
                             include: {
-                                   items: {
-                                          select: { subtotalCost: true }
-                                   }
+                                   items: true
                             }
-                     })
+                     }) as any
               ]);
 
-              const salesTodayTotal = salesTodayDetailed.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-              const profitToday = salesTodayDetailed.reduce((acc, sale: any) => {
+              const salesTodayTotal = salesTodayDetailed.reduce((sum: number, s: any) => sum + Number(s.totalAmount || 0), 0);
+
+              const profitToday = salesTodayDetailed.reduce((acc: number, sale: any) => {
                      const cost = (sale.items || []).reduce((sum: number, item: any) => sum + Number(item.subtotalCost || 0), 0);
-                     return acc + (Number(sale.totalAmount) - cost);
+                     return acc + (Number(sale.totalAmount || 0) - cost);
               }, 0);
 
               // Find critical Low Stock items for list
@@ -97,6 +96,7 @@ export type DashboardStats = {
 export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') {
        try {
               const storeId = await getStoreId();
+
               const today = new Date();
               const startDate = new Date(today);
 
