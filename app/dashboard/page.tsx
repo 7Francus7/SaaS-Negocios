@@ -1,17 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign } from "lucide-react";
 import { getDashboardStats, getDashboardChartData, DashboardStats } from "@/app/actions/dashboard";
+import { checkOnboardingStatus } from "@/app/actions/onboarding";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 
 export default function DashboardPage() {
+       const router = useRouter();
        const [stats, setStats] = useState<DashboardStats | null>(null);
        const [chartData, setChartData] = useState<{ name: string; total: number }[]>([]);
        const [loading, setLoading] = useState(true);
        const [error, setError] = useState("");
 
        const [range, setRange] = useState<'7d' | '30d' | '90d'>("7d");
+
+       // Check onboarding status
+       useEffect(() => {
+              checkOnboardingStatus().then(({ completed }) => {
+                     if (!completed) {
+                            router.push("/onboarding");
+                     }
+              });
+       }, [router]);
 
        const fetchData = async () => {
               setLoading(true);

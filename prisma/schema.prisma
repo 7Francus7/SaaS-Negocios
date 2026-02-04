@@ -32,6 +32,10 @@ model Store {
   slug        String   @unique
   isActive    Boolean  @default(true)
   
+  // Onboarding tracking
+  hasCompletedOnboarding Boolean @default(false)
+  onboardingCompletedAt  DateTime?
+  
   // Ticket Info
   address     String?
   phone       String?
