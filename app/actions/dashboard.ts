@@ -15,7 +15,7 @@ export async function getDashboardStats() {
                      salesToday,
                      productsCount,
                      lowStockCount,
-                    rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr customersCount
+                     customersCount
               ] = await Promise.all([
                      // Sales Today
                      prisma.sale.aggregate({
