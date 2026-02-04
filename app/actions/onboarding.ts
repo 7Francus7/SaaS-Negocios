@@ -168,7 +168,7 @@ export async function completeOnboarding(data: {
               data: {
                      storeId,
                      startTime: new Date(),
-                     initialAmount: 10000,
+                     initialCash: 10000,
                      status: "OPEN",
               },
        });
