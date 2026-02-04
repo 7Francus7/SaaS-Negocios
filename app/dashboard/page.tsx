@@ -35,12 +35,25 @@ export default function DashboardPage() {
               fetchData();
        }, [range]); // Refetch when range changes
 
-       // ... error and loading states ...
        if (loading && !stats) return <div className="p-8 flex justify-center text-gray-500">Cargando tablero...</div>;
 
-       // ... error component ...
+       if (error) {
+              return (
+                     <div className="p-8 flex flex-col items-center justify-center text-center">
+                            <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Error de Carga</h2>
+                            <p className="text-gray-600 mb-4 font-mono text-sm bg-gray-50 p-4 rounded border border-red-100 max-w-md">{error}</p>
+                            <button
+                                   onClick={fetchData}
+                                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                                   Reintentar
+                            </button>
+                     </div>
+              );
+       }
 
-       if (!stats) return null;
+       if (!stats) return <div className="p-8 text-center text-gray-500">No se pudieron cargar las estadísticas.</div>;
 
        const cards = [
               {
