@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Search, Wallet, History, CreditCard, Shield, MapPin, Hash, DollarSign } from "lucide-react";
 import { getCustomers, registerPayment, createCustomer, getCustomerHistory } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
+import { cn } from "@/lib/utils";
 
 interface Customer {
        id: number;
