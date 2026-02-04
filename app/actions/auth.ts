@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { safeSerialize } from "@/lib/utils";
 import { redirect } from "next/navigation";
 
+import bcrypt from "bcryptjs";
+
 export async function login(prevState: any, formData: FormData) {
        const email = formData.get("email") as string;
        const password = formData.get("password") as string;
@@ -26,20 +28,16 @@ export async function login(prevState: any, formData: FormData) {
                      where: { email },
               });
 
-              if (!user) {
-                     // For demo purposes, we might want to auto-create user or fail
-                     // Just fail for now to be realistic
-                     return { error: "Usuario no encontrado" };
+              if (!user || !user.password) {
+                     return { error: "Credenciales inválidas" };
               }
 
-              // Simple password check (INSECURE: assumes plain text for this demo as requested)
-              // If you have bcrypt, use it. But schema didn't show it explicitly, and no bcrypt in deps.
-              if (user.password && user.password !== password) {
-                     return { error: "Contraseña incorrecta" };
-              }
+              // Password Check (Hybrid: Supports Hash & Legacy Plain Text)
+              const isMatch = bcrypt.compareSync(password, user.password) || user.password === password;
 
-              // If password is null in DB (e.g. initial setup), allow login?
-              // Let's assume strict check if password exists.
+              if (!isMatch) {
+                     return { error: "Credenciales inválidas" };
+              }
 
               return { success: true };
        } catch (error) {

@@ -2,21 +2,45 @@
 
 import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
+import { safeSerialize } from "@/lib/utils";
 
 export async function getOpenSession() {
        const storeId = await getStoreId();
        const session = await prisma.cashSession.findFirst({
               where: { storeId, status: "OPEN" },
-              orderBy: { startTime: "desc" }
+              orderBy: { startTime: "desc" },
+              include: {
+                     store: true
+              }
        });
 
        if (!session) return null;
 
+       // Calculate current totals on the fly
+       const result = await calculateSessionTotals(session.id, storeId, session.startTime);
+
        return {
-              ...session,
-              initialCash: Number(session.initialCash),
-              finalCashSystem: Number(session.finalCashSystem),
-              finalCashReal: Number(session.finalCashReal)
+              ...safeSerialize(session),
+              currentSales: result.totalSales,
+              expectedCash: Number(session.initialCash) + result.totalSales
+       };
+}
+
+async function calculateSessionTotals(sessionId: number, storeId: string, startTime: Date) {
+       // Sum only CASH sales created after session start
+       const salesAggregate = await prisma.sale.aggregate({
+              where: {
+                     storeId,
+                     timestamp: { gte: startTime },
+                     paymentMethod: "EFECTIVO"
+              },
+              _sum: {
+                     totalAmount: true
+              }
+       });
+
+       return {
+              totalSales: Number(salesAggregate._sum.totalAmount || 0)
        };
 }
 
@@ -34,21 +58,16 @@ export async function openSession(initialCash: number) {
               data: {
                      storeId,
                      initialCash,
-                     finalCashSystem: 0,
+                     finalCashSystem: initialCash, // Starts equal to initial
                      status: "OPEN",
                      startTime: new Date()
               }
        });
 
-       return {
-              ...session,
-              initialCash: Number(session.initialCash),
-              finalCashSystem: Number(session.finalCashSystem),
-              finalCashReal: Number(session.finalCashReal)
-       };
+       return safeSerialize(session);
 }
 
-export async function closeSession(sessionId: number, finalCashReal: number) {
+export async function closeSession(sessionId: number, finalCashReal: number, notes?: string) {
        const storeId = await getStoreId();
 
        const session = await prisma.cashSession.findUnique({
@@ -58,21 +77,23 @@ export async function closeSession(sessionId: number, finalCashReal: number) {
        if (!session || session.storeId !== storeId) throw new Error("Sesión no válida");
        if (session.status !== "OPEN") throw new Error("La sesión ya está cerrada");
 
+       // Calculate final system expected cash
+       const totals = await calculateSessionTotals(sessionId, storeId, session.startTime);
+       const finalCashSystem = Number(session.initialCash) + totals.totalSales;
+
        const updated = await prisma.cashSession.update({
               where: { id: sessionId },
               data: {
                      status: "CLOSED",
                      endTime: new Date(),
-                     finalCashReal: finalCashReal
+                     finalCashSystem,
+                     finalCashReal,
+                     // We could add notes here if we extend the schema, 
+                     // but for now we just close it.
               }
        });
 
-       return {
-              ...updated,
-              initialCash: Number(updated.initialCash),
-              finalCashSystem: Number(updated.finalCashSystem),
-              finalCashReal: Number(updated.finalCashReal)
-       };
+       return safeSerialize(updated);
 }
 
 export async function getSessionHistory() {
@@ -83,10 +104,5 @@ export async function getSessionHistory() {
               take: 30
        });
 
-       return sessions.map(s => ({
-              ...s,
-              initialCash: Number(s.initialCash),
-              finalCashSystem: Number(s.finalCashSystem),
-              finalCashReal: Number(s.finalCashReal)
-       }));
+       return safeSerialize(sessions);
 }

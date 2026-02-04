@@ -82,9 +82,9 @@ export default function CashPage() {
                                                  <div className="mt-2 text-sm text-gray-600 space-y-1">
                                                         <p>Inicio: {new Date(currentSession.startTime).toLocaleString()}</p>
                                                         <p>Caja Inicial: <span className="font-mono font-medium">${Number(currentSession.initialCash).toFixed(2)}</span></p>
-                                                        <p>Ventas (Sistema): <span className="font-mono font-medium text-blue-600">+${Number(currentSession.finalCashSystem).toFixed(2)}</span></p>
+                                                        <p>Ventas (Sistema): <span className="font-mono font-medium text-blue-600">+${Number(currentSession.currentSales || 0).toFixed(2)}</span></p>
                                                         <div className="mt-3 pt-3 border-t border-gray-100">
-                                                               <p className="text-lg font-bold text-gray-900">Total Esperado: ${diff.toFixed(2)}</p>
+                                                               <p className="text-lg font-bold text-gray-900">Total Esperado: ${Number(currentSession.expectedCash || 0).toFixed(2)}</p>
                                                         </div>
                                                  </div>
                                           )}

@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { safeSerialize } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 
+import bcrypt from "bcryptjs";
+
 // --- USERS ---
 
 export async function getSystemUsers() {
@@ -39,11 +41,13 @@ export async function createSystemUser(data: {
                      return { success: false, error: "El email ya está registrado" };
               }
 
+              const hashedPassword = bcrypt.hashSync(data.password || "123456", 10);
+
               const user = await prisma.user.create({
                      data: {
                             name: data.name,
                             email: data.email,
-                            password: data.password || "123456", // Default password if simple
+                            password: hashedPassword,
                             role: data.role,
                             storeId: data.storeId || null,
                      },
@@ -65,12 +69,18 @@ export async function updateSystemUser(id: string, data: {
        password?: string;
 }) {
        try {
+              const updateData: any = {
+                     ...data,
+                     updatedAt: new Date()
+              };
+
+              if (data.password) {
+                     updateData.password = bcrypt.hashSync(data.password, 10);
+              }
+
               const user = await prisma.user.update({
                      where: { id },
-                     data: {
-                            ...data,
-                            updatedAt: new Date()
-                     }
+                     data: updateData
               });
               revalidatePath("/dashboard/admin/users");
               return { success: true, data: safeSerialize(user) };
