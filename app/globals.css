@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-ticket,
+  #printable-ticket * {
+    visibility: visible;
+  }
+
+  #printable-ticket {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 9999;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+    display: block !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 0;
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Force dark text on inputs since we are using white backgrounds for them */
+input,
+textarea,
+select {
+  color: #171717 !important;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-ticket,
+  #printable-ticket * {
+    visibility: visible;
+  }
+
+  #printable-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    color: black;
+    background: white;
+  }
+
+  @page {
+    size: auto;
+    margin: 0;
+  }
+}

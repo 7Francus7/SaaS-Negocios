@@ -1,0 +1,74 @@
+
+> saas@0.1.0 lint
+> eslint
+
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\actions\suppliers.ts
+  40:14  warning  'storeId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\cash\page.tsx
+  10:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  11:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\customers\page.tsx
+  12:24  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  33:36  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  38:26  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\customers\page.tsx:38:26
+  36 |
+  37 |        // Initial load
+> 38 |        useEffect(() => { fetchCustomers(); }, []);
+     |                          ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |
+  40 |        const handleCreate = async () => {
+  41 |               try {  react-hooks/set-state-in-effect
+  46:27  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  57:27  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\page.tsx
+    4:53  warning  'TrendingUp' is defined but never used    @typescript-eslint/no-unused-vars
+  101:87  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\pos\page.tsx
+    3:20  warning  'useCallback' is defined but never used    @typescript-eslint/no-unused-vars
+    4:52  warning  'RotateCcw' is defined but never used      @typescript-eslint/no-unused-vars
+    5:28  warning  'ProductFilter' is defined but never used  @typescript-eslint/no-unused-vars
+   75:36  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  152:27  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\products\page.tsx
+   9:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\settings\page.tsx
+  3:10  warning  'useState' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\app\dashboard\suppliers\page.tsx
+   4:24  warning  'Filter' is defined but never used        @typescript-eslint/no-unused-vars
+   9:61  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:51  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\components\pos\ticket.tsx
+  30:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\dello\OneDrive\Desktop\SISTEMAS\SAAS NEGOCIOS\components\products\create-product-modal.tsx
+   49:24   warning  'e' is defined but never used                                    @typescript-eslint/no-unused-vars
+   85:29   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  152:112  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:119  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:128  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:136  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:139  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:144  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+✖ 32 problems (24 errors, 8 warnings)
+
