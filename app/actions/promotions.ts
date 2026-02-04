@@ -131,13 +131,17 @@ export async function calculatePromotions(cart: any[], paymentMethod: string) {
                                    appliedPromos.push(promo.name);
                             }
                      }
-              } else if (promo.type === 'PERCENTAGE' && promo.type !== 'PAYMENT_METHOD') {
-                     // Simple percentage on specific items
+              } else if (promo.type === 'PERCENTAGE' || promo.type === 'FIXED') {
+                     // Simple percentage or fixed discount on specific items
                      for (const item of itemsWithDiscount) {
                             const isApplicable = promo.allProducts || promo.items.some(pi => pi.variantId === item.variantId || (pi.categoryId && item.product?.categoryId === pi.categoryId));
 
                             if (isApplicable) {
-                                   const discount = (item.price * item.quantity) * (Number(promo.value) / 100);
+                                   const discountValue = Number(promo.value);
+                                   const discount = promo.type === 'FIXED'
+                                          ? (discountValue * item.quantity)
+                                          : ((item.price * item.quantity) * (discountValue / 100));
+
                                    item.discount += discount;
                                    item.appliedPromo = promo.name;
                                    totalDiscount += discount;
@@ -152,7 +156,8 @@ export async function calculatePromotions(cart: any[], paymentMethod: string) {
 
        for (const promo of activePromis) {
               if (promo.type === 'PAYMENT_METHOD' && promo.paymentMethod === paymentMethod) {
-                     const discount = subtotalAfterProductPromos * (Number(promo.value) / 100);
+                     const discountValue = Number(promo.value);
+                     const discount = subtotalAfterProductPromos * (discountValue / 100);
                      totalDiscount += discount;
                      appliedPromos.push(`${promo.name} (${paymentMethod})`);
               }
