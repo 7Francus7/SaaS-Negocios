@@ -139,7 +139,7 @@ export function GodModeDashboard() {
                                    <div className="relative w-full max-w-xl hidden md:block">
                                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
                                           <input
-                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-yellow-500/20 transition-all placeholder:text-slate-600 outline-none text-white font-medium"
+                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-yellow-500/20 transition-all placeholder:text-slate-600 outline-none text-white font-medium [color-scheme:dark]"
                                                  placeholder="Buscar por ID de Tenant, Dominio o Email de Administrador..."
                                                  type="text"
                                                  value={searchTerm}
@@ -205,7 +205,7 @@ export function GodModeDashboard() {
                                                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Nombre de la Organización</label>
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-600"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-600 [color-scheme:dark]"
                                                                       placeholder="Ej: MegaKiosco del Este"
                                                                       type="text"
                                                                       value={formData.storeName}
@@ -228,7 +228,7 @@ export function GodModeDashboard() {
                                                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Credenciales del Administrador</label>
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600 [color-scheme:dark]"
                                                                       placeholder="Nombre Completo"
                                                                       type="text"
                                                                       value={formData.ownerName}
@@ -236,7 +236,7 @@ export function GodModeDashboard() {
                                                                />
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600 [color-scheme:dark]"
                                                                       placeholder="email@tenant-admin.com"
                                                                       type="email"
                                                                       value={formData.email}
@@ -244,7 +244,7 @@ export function GodModeDashboard() {
                                                                />
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600 [color-scheme:dark]"
                                                                       placeholder="Contraseña Temporal"
                                                                       type="password"
                                                                       value={formData.password}
