@@ -58,7 +58,7 @@ export async function createTenant(data: {
        plan: string;
        ownerName: string;
        email: string;
-       password?: string;
+       password: string;
 }) {
        try {
               // 1. Check if email exists
@@ -75,7 +75,7 @@ export async function createTenant(data: {
               if (existingStore) return { success: false, error: "El nombre del negocio genera un slug duplicado." };
 
               // 3. Transaction: Create Store + User
-              const passwordHash = bcrypt.hashSync(data.password || "123456", 10);
+              const passwordHash = bcrypt.hashSync(data.password, 10);
 
               const result = await prisma.$transaction(async (tx) => {
                      const store = await tx.store.create({

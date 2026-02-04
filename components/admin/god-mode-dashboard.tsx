@@ -97,15 +97,38 @@ export function GodModeDashboard() {
 
        const handleCreate = async (e: React.FormEvent) => {
               e.preventDefault();
+
+              // Validación básica
+              if (!formData.storeName.trim()) {
+                     alert("El nombre del negocio es obligatorio");
+                     return;
+              }
+              if (!formData.ownerName.trim()) {
+                     alert("El nombre del administrador es obligatorio");
+                     return;
+              }
+              if (!formData.email.trim()) {
+                     alert("El email es obligatorio");
+                     return;
+              }
+              if (!formData.password.trim()) {
+                     alert("La contraseña es obligatoria");
+                     return;
+              }
+
               setIsCreating(true);
               try {
                      const res = await createTenant(formData);
                      if (res.success) {
-                            setFormData({ ...formData, storeName: "", ownerName: "", email: "", password: "" });
+                            alert(`✅ ¡Tenant creado exitosamente!\n\nNegocio: ${formData.storeName}\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl cliente ya puede iniciar sesión.`);
+                            setFormData({ storeName: "", plan: "SaaS Professional (Recomendado)", ownerName: "", email: "", password: "" });
                             await loadData();
                      } else {
-                            alert(res.error);
+                            alert(`❌ Error: ${res.error}`);
                      }
+              } catch (error) {
+                     console.error("Error creating tenant:", error);
+                     alert("❌ Error inesperado al crear el tenant. Revisá la consola.");
               } finally {
                      setIsCreating(false);
               }
