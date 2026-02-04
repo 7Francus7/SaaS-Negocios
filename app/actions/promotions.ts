@@ -104,7 +104,7 @@ export async function calculatePromotions(cart: any[], paymentMethod: string) {
                      ]
               },
               include: { items: true }
-       });
+       }) as any[];
 
        let totalDiscount = 0;
        const appliedPromos: string[] = [];
@@ -118,7 +118,7 @@ export async function calculatePromotions(cart: any[], paymentMethod: string) {
                      const pay = promo.payQuantity || 1;
 
                      for (const item of itemsWithDiscount) {
-                            const isApplicable = promo.allProducts || promo.items.some(pi => pi.variantId === item.variantId || (pi.categoryId && item.product?.categoryId === pi.categoryId));
+                            const isApplicable = promo.allProducts || promo.items.some((pi: any) => pi.variantId === item.variantId || (pi.categoryId && item.product?.categoryId === pi.categoryId));
 
                             if (isApplicable && item.quantity >= buy) {
                                    const sets = Math.floor(item.quantity / buy);
@@ -134,7 +134,7 @@ export async function calculatePromotions(cart: any[], paymentMethod: string) {
               } else if (promo.type === 'PERCENTAGE' || promo.type === 'FIXED') {
                      // Simple percentage or fixed discount on specific items
                      for (const item of itemsWithDiscount) {
-                            const isApplicable = promo.allProducts || promo.items.some(pi => pi.variantId === item.variantId || (pi.categoryId && item.product?.categoryId === pi.categoryId));
+                            const isApplicable = promo.allProducts || promo.items.some((pi: any) => pi.variantId === item.variantId || (pi.categoryId && item.product?.categoryId === pi.categoryId));
 
                             if (isApplicable) {
                                    const discountValue = Number(promo.value);
@@ -157,7 +157,7 @@ export async function calculatePromotions(cart: any[], paymentMethod: string) {
        for (const promo of activePromis) {
               if (promo.type === 'PAYMENT_METHOD' && promo.paymentMethod === paymentMethod) {
                      const discountValue = Number(promo.value);
-                     const discount = subtotalAfterProductPromos * (discountValue / 100);
+                     const discount = Math.max(0, subtotalAfterProductPromos * (discountValue / 100));
                      totalDiscount += discount;
                      appliedPromos.push(`${promo.name} (${paymentMethod})`);
               }

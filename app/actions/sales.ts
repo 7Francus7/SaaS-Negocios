@@ -158,13 +158,13 @@ export async function processSale(
                      subtotal: Number(sale.subtotal),
                      discountAmount: Number(sale.discountAmount),
                      totalAmount: Number(sale.totalAmount),
-                     items: sale.items.map(item => ({
+                     items: (sale.items as any[]).map((item: any) => ({
                             ...item,
                             unitPrice: Number(item.unitPrice),
-                            unitCost: Number(item.unitCost),
+                            unitCost: Number(item.unitCost || 0),
                             subtotal: Number(item.subtotal),
-                            subtotalCost: Number(item.subtotalCost)
+                            subtotalCost: Number(item.subtotalCost || 0)
                      }))
-              };
+              } as any;
        });
 }

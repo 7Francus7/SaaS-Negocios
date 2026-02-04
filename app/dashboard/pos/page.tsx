@@ -143,7 +143,7 @@ export default function POSPage() {
        const handleSearch = async (q: string) => {
               setLoadingSearch(true);
               try {
-                     const results = await getProducts({ query: q });
+                     const results = await getProducts({ searchQuery: q });
                      setSearchResults(results);
               } finally {
                      setLoadingSearch(false);

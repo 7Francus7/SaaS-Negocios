@@ -42,12 +42,12 @@ export async function getDashboardStats() {
                             include: {
                                    items: true
                             }
-                     }) as any
+                     }) as Promise<any[]>
               ]);
 
-              const salesTodayTotal = salesTodayDetailed.reduce((sum: number, s: any) => sum + Number(s.totalAmount || 0), 0);
+              const salesTodayTotal = (salesTodayDetailed as any[]).reduce((sum: number, s: any) => sum + Number(s.totalAmount || 0), 0);
 
-              const profitToday = salesTodayDetailed.reduce((acc: number, sale: any) => {
+              const profitToday = (salesTodayDetailed as any[]).reduce((acc: number, sale: any) => {
                      const cost = (sale.items || []).reduce((sum: number, item: any) => sum + Number(item.subtotalCost || 0), 0);
                      return acc + (Number(sale.totalAmount || 0) - cost);
               }, 0);
