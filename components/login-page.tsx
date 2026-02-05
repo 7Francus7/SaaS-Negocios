@@ -14,8 +14,11 @@ export function LoginPage() {
               if (state?.success) {
                      if (state.godMode) {
                             // Special redirect for God Mode
+                            localStorage.setItem('godMode', 'true');
                             router.push("/dashboard?view=god");
                      } else {
+                            // CRITICAL: Ensure we clear any admin state for normal users
+                            localStorage.removeItem('godMode');
                             router.push("/dashboard");
                      }
               }
