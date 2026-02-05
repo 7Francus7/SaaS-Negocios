@@ -103,13 +103,10 @@ export async function registerPayment(
                                    }
                             });
                      } else {
-                            // Warn or throw? For now let's allow receiving money even if box is closed, 
-                            // but ideally we should require open box for cash IN.
-                            // Let's simple ignore linkage to session if closed, but strictly speaking this hides money.
-                            // Better software practice: throw error if cash payment and no box open.
                             throw new Error("Debe abrir la caja para recibir pagos en efectivo.");
                      }
               }
+              // For other methods (TRANSFERENCIA, DEBITO, etc.), we don't touch the cash box.
 
               return customer;
        });

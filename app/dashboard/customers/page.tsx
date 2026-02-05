@@ -36,6 +36,7 @@ export default function CustomersPage() {
               creditLimit: 0
        });
        const [paymentAmount, setPaymentAmount] = useState("");
+       const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("EFECTIVO");
 
        const fetchCustomers = useCallback(async () => {
               setLoading(true);
@@ -62,8 +63,9 @@ export default function CustomersPage() {
        const handlePayment = async () => {
               if (!selectedCustomer) return;
               try {
-                     await registerPayment(selectedCustomer.id, Number(paymentAmount), "Pago a cuenta", "EFECTIVO");
+                     await registerPayment(selectedCustomer.id, Number(paymentAmount), "Pago a cuenta", selectedPaymentMethod);
                      setPaymentAmount("");
+                     setSelectedPaymentMethod("EFECTIVO");
                      setIsPaymentOpen(false);
                      setSelectedCustomer(null);
                      fetchCustomers();
@@ -282,21 +284,50 @@ export default function CustomersPage() {
                      {/* Payment Modal */}
                      <Modal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} title={`CARGAR PAGO: ${selectedCustomer?.name || 'Cliente'}`}>
                             <div className="space-y-6">
-                                   <div className="bg-red-50 p-6 rounded-[2rem] text-center border border-red-100">
-                                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600 mb-1">Deuda Pendiente</p>
+                                   <div className="bg-red-50 p-6 rounded-[2rem] text-center border border-red-100 flex flex-col gap-2">
+                                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Deuda Pendiente</p>
                                           <p className="text-4xl font-black text-red-700">${selectedCustomer ? Number(selectedCustomer.currentBalance).toFixed(2) : "0.00"}</p>
+                                          <button
+                                                 onClick={() => selectedCustomer && setPaymentAmount(Number(selectedCustomer.currentBalance).toString())}
+                                                 className="mx-auto mt-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1"
+                                          >
+                                                 <Wallet className="w-3 h-3" />
+                                                 Saldar Total
+                                          </button>
                                    </div>
-                                   <div>
-                                          <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2 text-center">Monto a abonar ($)</label>
-                                          <input
-                                                 type="number"
-                                                 className="w-full border-2 border-gray-100 p-6 rounded-2xl font-black text-4xl text-center text-gray-900 outline-none focus:border-emerald-500 transition-all shadow-inner"
-                                                 value={paymentAmount}
-                                                 onChange={e => setPaymentAmount(e.target.value)}
-                                                 placeholder="0.00"
-                                                 autoFocus
-                                          />
+
+                                   <div className="space-y-4">
+                                          <div>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Monto a abonar ($)</label>
+                                                 <input
+                                                        type="number"
+                                                        className="w-full border-2 border-gray-100 p-6 rounded-2xl font-black text-4xl text-center text-gray-900 outline-none focus:border-emerald-500 transition-all shadow-inner"
+                                                        value={paymentAmount}
+                                                        onChange={e => setPaymentAmount(e.target.value)}
+                                                        placeholder="0.00"
+                                                        autoFocus
+                                                 />
+                                          </div>
+
+                                          <div>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Método de Pago</label>
+                                                 <div className="grid grid-cols-2 gap-3">
+                                                        {['EFECTIVO', 'TRANSFERENCIA', 'DEBITO', 'CREDITO'].map((method) => (
+                                                               <button
+                                                                      key={method}
+                                                                      onClick={() => setSelectedPaymentMethod(method)}
+                                                                      className={cn(
+                                                                             "p-3 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all",
+                                                                             selectedPaymentMethod === method ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-100 text-gray-400 hover:border-gray-200"
+                                                                      )}
+                                                               >
+                                                                      {method}
+                                                               </button>
+                                                        ))}
+                                                 </div>
+                                          </div>
                                    </div>
+
                                    <button
                                           onClick={handlePayment}
                                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 flex justify-center items-center gap-3 transition-all"
