@@ -110,7 +110,7 @@ export async function closeSession(sessionId: number, finalCashReal: number, not
 
        // Calculate final system expected cash
        const totals = await calculateSessionTotals(sessionId, storeId, session.startTime);
-       const finalCashSystem = Number(session.initialCash) + totals.totalSales;
+       const finalCashSystem = Number(session.initialCash) + totals.totalSales + totals.totalIn - totals.totalOut;
 
        const updated = await prisma.cashSession.update({
               where: { id: sessionId },

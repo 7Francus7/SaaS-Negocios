@@ -313,6 +313,19 @@ export default function CashPage() {
                                                  onChange={e => setDescInput(e.target.value)}
                                                  placeholder={movementModal.type === 'IN' ? "Ej: Aporte de cambio" : "Ej: Pago Coca-Cola"}
                                           />
+                                          {movementModal.type === 'OUT' && (
+                                                 <div className="flex gap-2 mt-2 flex-wrap">
+                                                        {['Pago Proveedor', 'Retiro Dueño', 'Gastos de Limpieza', 'Servicios'].map(tag => (
+                                                               <button
+                                                                      key={tag}
+                                                                      onClick={() => setDescInput(tag)}
+                                                                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full border border-gray-200 transition-colors"
+                                                               >
+                                                                      {tag}
+                                                               </button>
+                                                        ))}
+                                                 </div>
+                                          )}
                                    </div>
                                    <button
                                           onClick={handleMovement}
