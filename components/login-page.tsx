@@ -85,7 +85,7 @@ export function LoginPage() {
 
                                    <form action={action} className="space-y-4">
                                           <div className="space-y-2">
-                                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
+                                                 <label className="text-sm font-bold text-gray-900 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
                                                         Email
                                                  </label>
                                                  <div className="relative">
@@ -105,7 +105,7 @@ export function LoginPage() {
 
                                           <div className="space-y-2">
                                                  <div className="flex items-center justify-between">
-                                                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
+                                                        <label className="text-sm font-bold text-gray-900 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
                                                                Contraseña
                                                         </label>
                                                         <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-500">
