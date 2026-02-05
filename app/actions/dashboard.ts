@@ -4,6 +4,17 @@ import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
 import { safeSerialize } from "@/lib/utils";
 
+export async function getPublicStoreInfo() {
+       const id = await getStoreId();
+       const store = await prisma.store.findUnique({
+              where: { id },
+              select: { name: true }
+       });
+       return { name: store?.name || "Mi Negocio" };
+}
+
+// ... existing code ...
+
 export async function getDashboardStats() {
        try {
               const storeId = await getStoreId();

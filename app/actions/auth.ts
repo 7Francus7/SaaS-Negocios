@@ -39,6 +39,15 @@ export async function login(prevState: any, formData: FormData) {
                      return { error: "Credenciales inválidas" };
               }
 
+              // Set cookie for simple session management
+              const { cookies } = await import("next/headers");
+              (await cookies()).set("user_email", email, {
+                     httpOnly: true,
+                     secure: process.env.NODE_ENV === "production",
+                     maxAge: 60 * 60 * 24 * 7, // 1 week
+                     path: "/",
+              });
+
               return { success: true };
        } catch (error) {
               console.error("Login error:", error);

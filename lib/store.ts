@@ -1,12 +1,25 @@
-/**
- * Helper to get the current store ID.
- * In the future, this will decode the user session or JWT.
- * For development, we return a fixed ID or fail if none exists.
- */
+import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 
 export async function getStoreId(): Promise<string> {
        try {
+              // 1. Try to get user from cookie
+              const cookieStore = await cookies();
+              const userEmail = cookieStore.get("user_email")?.value;
+
+              if (userEmail) {
+                     const user = await prisma.user.findUnique({
+                            where: { email: userEmail },
+                            include: { store: true }
+                     });
+
+                     if (user && user.storeId) {
+                            return user.storeId;
+                     }
+              }
+
+              // 2. Fallback (Legacy/Dev behavior): Return first store found
+              // Ideally this should be removed in production to enforce login
               const firstStore = await prisma.store.findFirst();
 
               if (firstStore) {
@@ -29,5 +42,18 @@ export async function getStoreId(): Promise<string> {
               const store = await prisma.store.findFirst();
               if (store) return store.id;
               throw new Error("No se pudo identificar o crear una tienda activa.");
+       }
+}
+
+export async function getStoreName(): Promise<string> {
+       try {
+              const id = await getStoreId();
+              const store = await prisma.store.findUnique({
+                     where: { id },
+                     select: { name: true }
+              });
+              return store?.name || "Despensa SaaS";
+       } catch (e) {
+              return "Despensa SaaS";
        }
 }

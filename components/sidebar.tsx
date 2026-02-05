@@ -35,9 +35,15 @@ function SidebarContent() {
        const pathname = usePathname();
        const router = useRouter();
        const searchParams = useSearchParams();
+       const [storeName, setStoreName] = useState("Despensa SaaS");
        const [godMode, setGodMode] = useState(false);
 
        useEffect(() => {
+              // Fetch store name
+              import("@/app/actions/dashboard").then(({ getPublicStoreInfo }) => {
+                     getPublicStoreInfo().then(info => setStoreName(info.name));
+              });
+
               const isGod = searchParams.get('view') === 'god';
               if (isGod) {
                      localStorage.setItem('godMode', 'true');
@@ -78,7 +84,7 @@ function SidebarContent() {
                             ) : (
                                    <>
                                           <Store className="h-6 w-6 text-blue-600 mr-2" />
-                                          <span className="font-bold text-xl tracking-tight text-gray-900">Despensa SaaS</span>
+                                          <span className="font-bold text-xl tracking-tight text-gray-900 truncate">{storeName}</span>
                                    </>
                             )}
                      </div>
