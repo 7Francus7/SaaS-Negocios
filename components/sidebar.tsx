@@ -42,12 +42,16 @@ function SidebarContent() {
               if (isGod) {
                      localStorage.setItem('godMode', 'true');
                      setGodMode(true);
+                     // Redirect to God Mode Dashboard if on main dashboard
+                     if (pathname === '/dashboard') {
+                            router.push('/dashboard/admin');
+                     }
               } else {
                      if (typeof window !== 'undefined' && localStorage.getItem('godMode') === 'true') {
                             setGodMode(true);
                      }
               }
-       }, [searchParams]);
+       }, [searchParams, pathname, router]);
 
        const handleLogout = () => {
               localStorage.removeItem('godMode');

@@ -228,7 +228,7 @@ export function GodModeDashboard() {
                                                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Nombre de la Organización</label>
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-600 [color-scheme:dark]"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500/50 outline-none transition-all text-sm text-white placeholder:text-slate-500 [color-scheme:dark]"
                                                                       placeholder="Ej: MegaKiosco del Este"
                                                                       type="text"
                                                                       value={formData.storeName}
@@ -238,20 +238,20 @@ export function GodModeDashboard() {
                                                         <div>
                                                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Plan de Suscripción</label>
                                                                <select
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500 transition-all text-sm outline-none text-white"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-yellow-500 transition-all text-sm outline-none text-white appearance-none"
                                                                       value={formData.plan}
                                                                       onChange={e => setFormData({ ...formData, plan: e.target.value })}
                                                                >
-                                                                      <option className="bg-[#161618]">SaaS Basic (Limitado)</option>
-                                                                      <option className="bg-[#161618]">SaaS Professional (Recomendado)</option>
-                                                                      <option className="bg-[#161618]">SaaS Enterprise (Ilimitado)</option>
+                                                                      <option className="bg-[#161618] text-white">SaaS Basic (Limitado)</option>
+                                                                      <option className="bg-[#161618] text-white">SaaS Professional (Recomendado)</option>
+                                                                      <option className="bg-[#161618] text-white">SaaS Enterprise (Ilimitado)</option>
                                                                </select>
                                                         </div>
                                                         <div className="space-y-4 pt-4 border-t border-white/5">
                                                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Credenciales del Administrador</label>
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600 [color-scheme:dark]"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-500 [color-scheme:dark]"
                                                                       placeholder="Nombre Completo"
                                                                       type="text"
                                                                       value={formData.ownerName}
@@ -259,7 +259,7 @@ export function GodModeDashboard() {
                                                                />
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600 [color-scheme:dark]"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-500 [color-scheme:dark]"
                                                                       placeholder="email@tenant-admin.com"
                                                                       type="email"
                                                                       value={formData.email}
@@ -267,7 +267,7 @@ export function GodModeDashboard() {
                                                                />
                                                                <input
                                                                       required
-                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-600 [color-scheme:dark]"
+                                                                      className="w-full bg-[#0A0A0B] border border-white/10 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-yellow-500/50 text-white placeholder:text-slate-500 [color-scheme:dark]"
                                                                       placeholder="Contraseña Temporal"
                                                                       type="password"
                                                                       value={formData.password}
