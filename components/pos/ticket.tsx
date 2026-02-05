@@ -98,7 +98,10 @@ export function Ticket({ data }: { data: TicketData | null }) {
 
                             {/* FOOTER */}
                             <div className="text-center mt-4">
-                                   <p className="font-bold text-[11px] uppercase">¡GRACIAS POR SU COMPRA!</p>
+                                   <p className="font-bold text-[11px] uppercase">{data.store?.ticketFooter || "¡GRACIAS POR SU COMPRA!"}</p>
+                                   {data.store?.ticketInstagram && (
+                                          <p className="text-[10px] font-bold mt-1">IG: @{data.store.ticketInstagram}</p>
+                                   )}
                                    <p className="text-[9px] mt-1 text-gray-500 lowercase">sistema: saas-negocios.com</p>
 
                                    {/* FAKE BARCODE */}

@@ -153,10 +153,15 @@ export default function POSPage() {
               return () => clearTimeout(timer);
        }, [query]);
 
+       const [storeSettings, setStoreSettings] = useState<any>(null);
+
        // Initial Data
        useEffect(() => {
               getCustomers().then(setCustomers);
               getOpenSession().then(setSession);
+              import("@/app/actions/settings").then(mod => {
+                     mod.getStoreSettings().then(setStoreSettings);
+              });
        }, []);
 
        // Re-calculate promotions
@@ -264,7 +269,14 @@ export default function POSPage() {
                             total,
                             date: new Date(),
                             paymentMethod,
-                            store: session.store
+                            store: {
+                                   name: storeSettings?.name || session?.store?.name,
+                                   address: storeSettings?.address || session?.store?.address,
+                                   phone: storeSettings?.phone || session?.store?.phone,
+                                   cuit: storeSettings?.cuit || session?.store?.cuit,
+                                   ticketFooter: storeSettings?.ticketFooter,
+                                   ticketInstagram: storeSettings?.ticketInstagram
+                            }
                      });
 
                      setCart([]);

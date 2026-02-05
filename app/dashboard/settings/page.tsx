@@ -1,35 +1,173 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Save, Store, Receipt, MapPin, Phone, Hash } from "lucide-react";
+import { getStoreSettings, updateStoreSettings } from "@/app/actions/settings";
 
 export default function SettingsPage() {
+       const [loading, setLoading] = useState(true);
+       const [saving, setSaving] = useState(false);
+
+       const [formData, setFormData] = useState({
+              name: "",
+              address: "",
+              phone: "",
+              cuit: "",
+              ticketFooter: "",
+              ticketInstagram: ""
+       });
+
+       useEffect(() => {
+              getStoreSettings().then(data => {
+                     setFormData(data);
+                     setLoading(false);
+              });
+       }, []);
+
+       const handleSave = async () => {
+              setSaving(true);
+              try {
+                     await updateStoreSettings(formData);
+                     // Simple visual feedback
+                     alert("¡Configuración guardada con éxito!");
+                     // Force refresh to update sidebar name
+                     window.location.reload();
+              } catch (e) {
+                     alert("Error al guardar");
+              } finally {
+                     setSaving(false);
+              }
+       };
+
+       if (loading) return <div className="p-8">Cargando configuración...</div>;
+
        return (
-              <div className="space-y-6">
-                     <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-
-                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <h2 className="text-lg font-semibold mb-4">Información del Negocio</h2>
-                            <p className="text-sm text-gray-500 mb-6">Estos datos aparecerán en los tickets y reportes.</p>
-
-                            <div className="space-y-4">
-                                   <div>
-                                          <label className="block text-sm font-medium text-gray-700">Nombre de la Tienda</label>
-                                          <input disabled value="Mi Tienda SaaS" className="mt-1 w-full border border-gray-300 rounded-md p-2 bg-gray-50 text-gray-500 cursor-not-allowed" />
-                                          <p className="text-xs text-gray-400 mt-1">Contacte a soporte para cambiar el nombre legal.</p>
-                                   </div>
-                            </div>
+              <div className="space-y-6 max-w-4xl mx-auto pb-20">
+                     <div className="flex items-center justify-between">
+                            <h1 className="text-2xl font-bold text-gray-900">Personalización del Negocio</h1>
+                            <button
+                                   onClick={handleSave}
+                                   disabled={saving}
+                                   className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
+                            >
+                                   <Save className="h-5 w-5" />
+                                   {saving ? "Guardando..." : "Guardar Cambios"}
+                            </button>
                      </div>
 
-                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <h2 className="text-lg font-semibold mb-4 text-red-600">Zona de Peligro</h2>
-                            <div className="flex items-center justify-between">
-                                   <div>
-                                          <p className="font-medium text-gray-900">Reiniciar Base de Datos</p>
-                                          <p className="text-sm text-gray-500">Borra todas las ventas y movimientos de prueba.</p>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* General Info */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+                                   <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+                                          <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                                 <Store className="h-6 w-6" />
+                                          </div>
+                                          <div>
+                                                 <h2 className="text-lg font-bold text-gray-900">Identidad</h2>
+                                                 <p className="text-xs text-gray-500">Datos principales de tu comercio</p>
+                                          </div>
                                    </div>
-                                   <button className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700">
-                                          Resetear Datos
-                                   </button>
+
+                                   <div className="space-y-4">
+                                          <div>
+                                                 <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del Negocio</label>
+                                                 <input
+                                                        value={formData.name}
+                                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                                        className="w-full border-2 border-gray-100 rounded-xl p-3 focus:border-blue-500 outline-none font-medium"
+                                                        placeholder="Ej: Kiosco Lo De Fran"
+                                                 />
+                                          </div>
+
+                                          <div>
+                                                 <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                                                        <Hash className="h-4 w-4 text-gray-400" /> CUIT / DNI
+                                                 </label>
+                                                 <input
+                                                        value={formData.cuit}
+                                                        onChange={e => setFormData({ ...formData, cuit: e.target.value })}
+                                                        className="w-full border-2 border-gray-100 rounded-xl p-3 focus:border-blue-500 outline-none"
+                                                        placeholder="20-12345678-9"
+                                                 />
+                                          </div>
+
+                                          <div className="grid grid-cols-2 gap-4">
+                                                 <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                                                               <Phone className="h-4 w-4 text-gray-400" /> Teléfono
+                                                        </label>
+                                                        <input
+                                                               value={formData.phone}
+                                                               onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                                               className="w-full border-2 border-gray-100 rounded-xl p-3 focus:border-blue-500 outline-none"
+                                                               placeholder="Ej: 11 1234 5678"
+                                                        />
+                                                 </div>
+                                                 <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                                                               <MapPin className="h-4 w-4 text-gray-400" /> Dirección
+                                                        </label>
+                                                        <input
+                                                               value={formData.address}
+                                                               onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                                               className="w-full border-2 border-gray-100 rounded-xl p-3 focus:border-blue-500 outline-none"
+                                                               placeholder="Av. Siempre Viva 123"
+                                                        />
+                                                 </div>
+                                          </div>
+                                   </div>
+                            </div>
+
+                            {/* Ticket Branding */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+                                   <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+                                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                                 <Receipt className="h-6 w-6" />
+                                          </div>
+                                          <div>
+                                                 <h2 className="text-lg font-bold text-gray-900">Personalización Ticket</h2>
+                                                 <p className="text-xs text-gray-500">Cómo te ven tus clientes</p>
+                                          </div>
+                                   </div>
+
+                                   <div className="space-y-4">
+                                          <div>
+                                                 <label className="block text-sm font-bold text-gray-700 mb-1">Mensaje al Pie</label>
+                                                 <input
+                                                        value={formData.ticketFooter}
+                                                        onChange={e => setFormData({ ...formData, ticketFooter: e.target.value })}
+                                                        className="w-full border-2 border-gray-100 rounded-xl p-3 focus:border-purple-500 outline-none"
+                                                        placeholder="Ej: ¡Gracias por su visita!"
+                                                 />
+                                                 <p className="text-xs text-gray-400 mt-1">Aparece al final del ticket impreso.</p>
+                                          </div>
+
+                                          <div>
+                                                 <label className="block text-sm font-bold text-gray-700 mb-1">Usuario Instagram</label>
+                                                 <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
+                                                        <input
+                                                               value={formData.ticketInstagram}
+                                                               onChange={e => setFormData({ ...formData, ticketInstagram: e.target.value })}
+                                                               className="w-full border-2 border-gray-100 rounded-xl p-3 pl-8 focus:border-purple-500 outline-none"
+                                                               placeholder="kiosco.fran"
+                                                        />
+                                                 </div>
+                                          </div>
+
+                                          <div className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Vista Previa Mini</h3>
+                                                 <div className="bg-white p-4 shadow-sm w-48 mx-auto font-mono text-[10px] text-center border-t-4 border-gray-800">
+                                                        <p className="font-bold text-lg mb-1">{formData.name || "NOMBRE NEGOCIO"}</p>
+                                                        <p>{formData.address}</p>
+                                                        <p>----------------</p>
+                                                        <p className="my-2 text-gray-300">[ DETALLE VENTA ]</p>
+                                                        <p>----------------</p>
+                                                        <p className="font-bold mt-2">{formData.ticketFooter || "¡Gracias por su compra!"}</p>
+                                                        {formData.ticketInstagram && <p className="mt-1 font-bold">IG: @{formData.ticketInstagram}</p>}
+                                                 </div>
+                                          </div>
+                                   </div>
                             </div>
                      </div>
               </div>
