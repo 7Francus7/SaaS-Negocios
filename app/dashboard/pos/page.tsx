@@ -9,6 +9,45 @@ import { getOpenSession } from "@/app/actions/cash";
 import { calculatePromotions } from "@/app/actions/promotions";
 import { Modal } from "@/components/ui/modal";
 import { Ticket } from "@/components/pos/ticket";
+import confetti from "canvas-confetti";
+
+// Sounds (Base64 for reliability/speed in demo)
+const BEEP_SOUND = "data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"; // Tiny placeholder, will replace better or use simple osc?
+// Let's use a real beep base64 if possible, or just a simple function. 
+// Actually, simple Oscillator is better for "Beep" without large strings.
+
+const playBeep = () => {
+       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+       const osc = ctx.createOscillator();
+       const gain = ctx.createGain();
+       osc.connect(gain);
+       gain.connect(ctx.destination);
+       osc.frequency.setValueAtTime(1000, ctx.currentTime);
+       osc.type = "sine";
+       gain.gain.setValueAtTime(0.1, ctx.currentTime);
+       osc.start();
+       osc.stop(ctx.currentTime + 0.1);
+};
+
+const playCashSound = () => {
+       // Simple "Cha-Ching" simulation with oscillators or just silent if complex.
+       // Let's try a simple rising arpeggio for "Success"
+       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+       const now = ctx.currentTime;
+
+       [440, 554, 659, 880].forEach((freq, i) => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.frequency.setValueAtTime(freq, now + i * 0.1);
+              osc.type = 'triangle';
+              gain.gain.setValueAtTime(0.1, now + i * 0.1);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.3);
+              osc.start(now + i * 0.1);
+              osc.stop(now + i * 0.1 + 0.3);
+       });
+};
 
 // Types
 interface CartItem {
@@ -176,6 +215,7 @@ export default function POSPage() {
               setQuery("");
               setSearchResults([]);
               searchInputRef.current?.focus();
+              playBeep();
        };
 
        const removeFromCart = (variantId: number) => {
@@ -231,7 +271,15 @@ export default function POSPage() {
                      setShowPayModal(false);
                      setPaymentMethod("EFECTIVO");
                      setSelectedCustomerId(null);
+                     setPaymentMethod("EFECTIVO");
+                     setSelectedCustomerId(null);
                      setShowSuccessModal(true);
+                     playCashSound();
+                     confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 }
+                     });
               } catch (e: any) {
                      alert(e.message || "Error al procesar la venta");
               } finally {
