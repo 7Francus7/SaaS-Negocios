@@ -61,32 +61,40 @@ export async function createTenant(data: {
        password: string;
 }) {
        try {
+              console.log("Creating tenant with data:", { ...data, password: "***" });
+
               // 1. Check if email exists
               const existingUser = await prisma.user.findUnique({
                      where: { email: data.email }
               });
               if (existingUser) return { success: false, error: "El email del dueño ya existe." };
 
-              // 2. Check if slug exists (simple slug generation)
-              const slug = data.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+              // 2. Generate robust slug
+              let slug = data.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+              if (!slug) slug = 'store-' + Math.random().toString(36).substring(7);
+
+              // Check if slug exists and append suffix if needed
               const existingStore = await prisma.store.findUnique({
                      where: { slug }
               });
-              if (existingStore) return { success: false, error: "El nombre del negocio genera un slug duplicado." };
+
+              if (existingStore) {
+                     slug = `${slug}-${Math.random().toString(36).substring(7)}`;
+              }
 
               // 3. Transaction: Create Store + User
               const passwordHash = bcrypt.hashSync(data.password, 10);
 
-              const result = await prisma.$transaction(async (tx) => {
+              await prisma.$transaction(async (tx) => {
                      const store = await tx.store.create({
                             data: {
                                    name: data.storeName,
-                                   slug: slug, // In real app, ensure uniqueness with suffix
+                                   slug: slug,
                                    isActive: true
                             }
                      });
 
-                     const user = await tx.user.create({
+                     await tx.user.create({
                             data: {
                                    name: data.ownerName,
                                    email: data.email,
@@ -95,12 +103,11 @@ export async function createTenant(data: {
                                    storeId: store.id
                             }
                      });
-
-                     return { store, user };
               });
 
               revalidatePath("/dashboard/admin");
-              return { success: true, data: safeSerialize(result) };
+              // Return success true only, no need to pass complex objects back directly
+              return { success: true };
 
        } catch (error: any) {
               console.error("Create Tenant Error:", error);
