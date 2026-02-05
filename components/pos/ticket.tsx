@@ -17,6 +17,8 @@ interface TicketData {
               address?: string | null;
               phone?: string | null;
               cuit?: string | null;
+              ticketFooter?: string;
+              ticketInstagram?: string;
        }
 }
 
