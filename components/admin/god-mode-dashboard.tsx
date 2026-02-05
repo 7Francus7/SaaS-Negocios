@@ -150,7 +150,6 @@ export function GodModeDashboard() {
        );
 
        return (
-       return (
               <div className="min-h-screen bg-gray-50 text-slate-900 font-sans selection:bg-yellow-100">
                      {/* Masthead / Header */}
                      <header className="h-20 border-b border-gray-200 px-8 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-20">
