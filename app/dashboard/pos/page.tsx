@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, MessageSquare, Tag } from "lucide-react";
+import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, MessageSquare, Tag, QrCode } from "lucide-react";
 import { getProducts, findProductByBarcode, type ProductFilter } from "@/app/actions/products";
 import { processSale, type SaleItemInput } from "@/app/actions/sales";
 import { getCustomers } from "@/app/actions/customers";
@@ -400,6 +400,22 @@ export default function POSPage() {
                                                  >
                                                         <CreditCard className="h-6 w-6" />
                                                         Efectivo
+                                                 </button>
+                                                 <button
+                                                        onClick={() => setPaymentMethod("TRANSFERENCIA")}
+                                                        className={`p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2
+                             ${paymentMethod === "TRANSFERENCIA" ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
+                                                 >
+                                                        <QrCode className="h-6 w-6" />
+                                                        Transferencia / QR
+                                                 </button>
+                                                 <button
+                                                        onClick={() => setPaymentMethod("TARJETA")}
+                                                        className={`p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2
+                             ${paymentMethod === "TARJETA" ? "border-orange-600 bg-orange-50 text-orange-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
+                                                 >
+                                                        <CreditCard className="h-6 w-6" />
+                                                        Tarjeta (Créd/Déb)
                                                  </button>
                                                  <button
                                                         onClick={() => setPaymentMethod("CTA_CTE")}
