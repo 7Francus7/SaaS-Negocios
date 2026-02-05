@@ -319,32 +319,58 @@ export default function POSPage() {
                                           <h2 className="font-bold text-gray-700">Resultados</h2>
                                           <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{searchResults.length} encontrados</span>
                                    </div>
-                                   <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                   <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 xl:grid-cols-3 gap-3 content-start">
                                           {searchResults.length === 0 && !loadingSearch && (
                                                  <div className="col-span-full flex flex-col items-center justify-center text-gray-400 py-12">
                                                         <Search className="h-12 w-12 mb-3 opacity-20" />
                                                         <p>Empieza a escribir para buscar productos</p>
                                                  </div>
                                           )}
-                                          {searchResults.map((variant: any) => (
-                                                 <button
-                                                        key={variant.id}
-                                                        onClick={() => addToCart(variant)}
-                                                        disabled={variant.stockQuantity <= 0}
-                                                        className="group p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all text-left flex flex-col justify-between disabled:opacity-50"
-                                                 >
-                                                        <div>
-                                                               <p className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">{variant.product.name}</p>
-                                                               <p className="text-xs text-gray-500 mb-2">{variant.variantName}</p>
-                                                        </div>
-                                                        <div className="flex items-center justify-between mt-2">
-                                                               <span className="text-blue-600 font-bold">${Number(variant.salePrice).toFixed(2)}</span>
-                                                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${variant.stockQuantity <= 5 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                                                                      Stk: {variant.stockQuantity}
-                                                               </span>
-                                                        </div>
-                                                 </button>
-                                          ))}
+                                          {searchResults.map((variant: any) => {
+                                                 // Generate a deterministic color based on the product name length
+                                                 const colors = [
+                                                        "bg-red-100 text-red-600", "bg-orange-100 text-orange-600", "bg-amber-100 text-amber-600",
+                                                        "bg-yellow-100 text-yellow-600", "bg-lime-100 text-lime-600", "bg-green-100 text-green-600",
+                                                        "bg-emerald-100 text-emerald-600", "bg-teal-100 text-teal-600", "bg-cyan-100 text-cyan-600",
+                                                        "bg-sky-100 text-sky-600", "bg-blue-100 text-blue-600", "bg-indigo-100 text-indigo-600",
+                                                        "bg-violet-100 text-violet-600", "bg-purple-100 text-purple-600", "bg-fuchsia-100 text-fuchsia-600",
+                                                        "bg-pink-100 text-pink-600", "bg-rose-100 text-rose-600"
+                                                 ];
+                                                 const colorClass = colors[variant.product.name.length % colors.length];
+                                                 const initials = variant.product.name.slice(0, 2).toUpperCase();
+
+                                                 return (
+                                                        <button
+                                                               key={variant.id}
+                                                               onClick={() => addToCart(variant)}
+                                                               disabled={variant.stockQuantity <= 0}
+                                                               className="group bg-white p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md hover:bg-blue-50/10 transition-all text-left flex items-center gap-3 disabled:opacity-50 disabled:hover:shadow-none disabled:hover:border-gray-200"
+                                                        >
+                                                               {/* Icon / Avatar */}
+                                                               <div className={`h-12 w-12 shrink-0 rounded-lg flex items-center justify-center text-sm font-black tracking-tighter ${colorClass}`}>
+                                                                      {initials}
+                                                               </div>
+
+                                                               {/* Content */}
+                                                               <div className="flex-1 min-w-0">
+                                                                      <p className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors truncate text-sm">
+                                                                             {variant.product.name}
+                                                                      </p>
+                                                                      <p className="text-[10px] text-gray-500 font-medium truncate mb-1">
+                                                                             {variant.variantName}
+                                                                      </p>
+                                                                      <div className="flex items-center gap-2">
+                                                                             <span className="text-blue-600 font-black text-sm">
+                                                                                    ${Number(variant.salePrice).toFixed(2)}
+                                                                             </span>
+                                                                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${variant.stockQuantity <= 5 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
+                                                                                    Stock: {variant.stockQuantity}
+                                                                             </span>
+                                                                      </div>
+                                                               </div>
+                                                        </button>
+                                                 );
+                                          })}
                                    </div>
                             </div>
                      </div>
