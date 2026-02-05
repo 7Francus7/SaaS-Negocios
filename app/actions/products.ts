@@ -23,9 +23,9 @@ export async function getProducts(filter: ProductFilter = {}) {
               ...(searchQuery
                      ? {
                             OR: [
-                                   { product: { name: { contains: searchQuery } } }, // PostgreSQL: mode: 'insensitive' (SQLite doesn't support it natively in Prisma yet easily)
-                                   { variantName: { contains: searchQuery } },
-                                   { barcode: { contains: searchQuery } },
+                                   { product: { name: { contains: searchQuery, mode: 'insensitive' } } }, // PostgreSQL: mode: 'insensitive' (SQLite doesn't support it natively in Prisma yet easily)
+                                   { variantName: { contains: searchQuery, mode: 'insensitive' } },
+                                   { barcode: { contains: searchQuery, mode: 'insensitive' } },
                             ],
                      }
                      : {}),
