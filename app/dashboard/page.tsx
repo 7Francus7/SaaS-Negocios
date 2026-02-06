@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign } from "lucide-react";
+import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign, Zap, CheckCircle2, Settings } from "lucide-react";
 import { getDashboardStats, getDashboardChartData, DashboardStats } from "@/app/actions/dashboard";
 import { checkOnboardingStatus } from "@/app/actions/onboarding";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
@@ -138,6 +138,70 @@ export default function DashboardPage() {
                             </div>
                      </div>
 
+                     {/* Prominent Quick Actions - TOP OF PAGE */}
+                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <a href="/dashboard/pos" className="group bg-gradient-to-br from-blue-600 to-blue-700 p-1 rounded-2xl shadow-lg hover:shadow-blue-200 transition-all hover:-translate-y-1 active:scale-95">
+                                   <div className="bg-white/10 backdrop-blur-sm rounded-[calc(1rem-1px)] p-4 flex items-center justify-between text-white">
+                                          <div className="flex items-center gap-4">
+                                                 <div className="bg-white/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                                                        <ShoppingBag className="h-6 w-6" />
+                                                 </div>
+                                                 <div>
+                                                        <p className="font-bold text-lg leading-tight uppercase tracking-tight">Nueva Venta</p>
+                                                        <p className="text-blue-100 text-[10px] mt-0.5 font-medium uppercase tracking-wider">Cargar Operación</p>
+                                                 </div>
+                                          </div>
+                                          <div className="bg-white/20 h-8 w-8 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                                 <Zap className="h-4 w-4 fill-white animate-pulse" />
+                                          </div>
+                                   </div>
+                            </a>
+
+                            <a href="/dashboard/products" className="group bg-gradient-to-br from-indigo-600 to-indigo-700 p-1 rounded-2xl shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 active:scale-95">
+                                   <div className="bg-white/10 backdrop-blur-sm rounded-[calc(1rem-1px)] p-4 flex items-center justify-between text-white">
+                                          <div className="flex items-center gap-4">
+                                                 <div className="bg-white/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                                                        <Package className="h-6 w-6" />
+                                                 </div>
+                                                 <div>
+                                                        <p className="font-bold text-lg leading-tight uppercase tracking-tight">Añadir Stock</p>
+                                                        <p className="text-indigo-100 text-[10px] mt-0.5 font-medium uppercase tracking-wider">Ingreso de Mercadería</p>
+                                                 </div>
+                                          </div>
+                                          <div className="bg-white/20 h-8 w-8 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                                 <TrendingUp className="h-4 w-4" />
+                                          </div>
+                                   </div>
+                            </a>
+
+                            <a href="/dashboard/cash" className="group bg-gradient-to-br from-emerald-600 to-emerald-700 p-1 rounded-2xl shadow-lg hover:shadow-emerald-200 transition-all hover:-translate-y-1 active:scale-95">
+                                   <div className="bg-white/10 backdrop-blur-sm rounded-[calc(1rem-1px)] p-4 flex items-center justify-between text-white">
+                                          <div className="flex items-center gap-4">
+                                                 <div className="bg-white/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                                                        <DollarSign className="h-6 w-6" />
+                                                 </div>
+                                                 <div>
+                                                        <p className="font-bold text-lg leading-tight uppercase tracking-tight">Caja y Turnos</p>
+                                                        <p className="text-emerald-100 text-[10px] mt-0.5 font-medium uppercase tracking-wider">Control de Dinero</p>
+                                                 </div>
+                                          </div>
+                                          <div className="bg-white/20 h-8 w-8 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                                 <Zap className="h-4 w-4 fill-white" />
+                                          </div>
+                                   </div>
+                            </a>
+
+                            <a href="/dashboard/customers" className="group bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md hover:-translate-y-1 hidden lg:flex items-center gap-4 active:scale-95">
+                                   <div className="bg-blue-50 p-3 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                          <Users className="h-6 w-6" />
+                                   </div>
+                                   <div>
+                                          <p className="font-bold text-gray-900 leading-tight uppercase tracking-tight">Clientes</p>
+                                          <p className="text-gray-500 text-[10px] mt-0.5 font-medium uppercase tracking-wider">Cuenta Corriente</p>
+                                   </div>
+                            </a>
+                     </div>
+
                      {/* KPI Cards */}
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {cards.map((card, idx) => {
@@ -160,47 +224,46 @@ export default function DashboardPage() {
                      {/* Charts Section */}
                      <DashboardCharts data={chartData} title={`Ventas: ${getRangeLabel()}`} />
 
-                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Low Stock Alert List */}
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                   <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                          <AlertTriangle className="h-5 w-5 text-orange-500" />
+                     <div className="grid grid-cols-1 gap-6">
+                            {/* Low Stock Alert List - Full Width */}
+                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+                                   <div className="absolute top-0 right-0 p-8 opacity-5">
+                                          <AlertTriangle className="h-24 w-24 text-orange-600" />
+                                   </div>
+                                   <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2 text-xl">
+                                          <div className="p-2 bg-orange-100 rounded-lg">
+                                                 <AlertTriangle className="h-6 w-6 text-orange-600" />
+                                          </div>
                                           Reponer Urgentemente
                                    </h3>
                                    {stats.criticalStockItems.length === 0 ? (
-                                          <p className="text-sm text-gray-500">¡Todo en orden! No hay stock crítico.</p>
+                                          <div className="flex flex-col items-center justify-center py-10 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
+                                                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                                                        <Package className="h-8 w-8 text-emerald-600" />
+                                                 </div>
+                                                 <p className="font-bold text-gray-900 text-lg">¡Inventario Impecable!</p>
+                                                 <p className="text-sm text-gray-500 max-w-xs mx-auto">No hay productos con stock crítico. Tus estanterías están bien provistas.</p>
+                                          </div>
                                    ) : (
-                                          <ul className="space-y-3">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                  {stats.criticalStockItems.map((item) => (
-                                                        <li key={item.id} className="flex justify-between items-center p-3 bg-orange-50/50 rounded-lg border border-orange-100">
-                                                               <div>
-                                                                      <p className="font-medium text-gray-800">{item.product.name}</p>
-                                                                      <p className="text-xs text-gray-500">{item.variantName}</p>
+                                                        <div key={item.id} className="flex flex-col p-4 bg-orange-50/30 rounded-2xl border border-orange-100 group hover:bg-orange-50 hover:border-orange-200 transition-all shadow-sm">
+                                                               <div className="flex justify-between items-start mb-2">
+                                                                      <span className="text-[10px] font-black uppercase tracking-[0.15em] text-orange-600 bg-orange-100 px-2 py-1 rounded-md">Stock Crítico</span>
+                                                                      <span className="bg-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-black shadow-sm ring-2 ring-red-100">
+                                                                             Queda: {item.stockQuantity}
+                                                                      </span>
                                                                </div>
-                                                               <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">
-                                                                      Queda: {item.stockQuantity}
-                                                               </span>
-                                                        </li>
+                                                               <p className="font-black text-gray-900 uppercase tracking-tight truncate group-hover:text-blue-600 transition-colors text-sm">{item.product.name}</p>
+                                                               <p className="text-xs text-gray-500 font-medium">{item.variantName}</p>
+
+                                                               <a href={`/dashboard/products?search=${item.product.name}`} className="mt-4 text-[10px] font-black uppercase tracking-widest text-center py-2 bg-white text-orange-600 rounded-lg border border-orange-100 hover:bg-orange-600 hover:text-white transition-all">
+                                                                      Reponer Stock
+                                                               </a>
+                                                        </div>
                                                  ))}
-                                          </ul>
+                                          </div>
                                    )}
-                            </div>
-
-                            {/* Quick Actions */}
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-xl shadow-lg text-white">
-                                   <h3 className="font-bold text-lg mb-2">Acciones Rápidas</h3>
-                                   <p className="text-blue-100 text-sm mb-6">Accesos directos para las tareas más comunes.</p>
-
-                                   <div className="grid grid-cols-2 gap-4">
-                                          <a href="/dashboard/pos" className="bg-white/10 hover:bg-white/20 p-4 rounded-lg backdrop-blur-sm transition-colors flex flex-col items-center gap-2 border border-white/10">
-                                                 <ShoppingBag className="h-6 w-6" />
-                                                 <span className="font-medium">Nueva Venta</span>
-                                          </a>
-                                          <a href="/dashboard/products" className="bg-white/10 hover:bg-white/20 p-4 rounded-lg backdrop-blur-sm transition-colors flex flex-col items-center gap-2 border border-white/10">
-                                                 <Package className="h-6 w-6" />
-                                                 <span className="font-medium">Añadir Stock</span>
-                                          </a>
-                                   </div>
                             </div>
                      </div>
               </div>
