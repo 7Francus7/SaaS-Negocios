@@ -10,11 +10,15 @@ export async function getStoreId(): Promise<string> {
               if (userEmail) {
                      const user = await prisma.user.findUnique({
                             where: { email: userEmail },
-                            include: { store: true }
+                            select: { storeId: true }
                      });
 
                      if (user && user.storeId) {
                             return user.storeId;
+                     }
+
+                     if (userEmail !== "admin@saas.com") {
+                            throw new Error("Su cuenta no tiene un negocio asignado por favor contacte a soporte.");
                      }
               }
 

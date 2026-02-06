@@ -13,6 +13,12 @@ export async function completeOnboarding(data: {
 }) {
        const storeId = await getStoreId();
 
+       // SEGURIDAD: Prevenir que se pise el negocio de otro o la tienda demo por accidente
+       const store = await prisma.store.findUnique({ where: { id: storeId } });
+       if (!store) {
+              throw new Error("No se pudo identificar su negocio. Por favor reingrese al sistema.");
+       }
+
        // 1. Actualizar información del negocio
        await prisma.store.update({
               where: { id: storeId },

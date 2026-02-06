@@ -89,6 +89,12 @@ export function AdminUsersClient() {
               setFormLoading(true);
 
               try {
+                     if (formData.role === 'OWNER' && !formData.storeId) {
+                            if (!confirm("⚠️ Estás creando un DUEÑO sin tienda asignada. Esto puede causar que el usuario no vea sus datos correctamente. ¿Deseas continuar?")) {
+                                   setFormLoading(false);
+                                   return;
+                            }
+                     }
                      let res;
                      if (editingUser) {
                             const updateData: any = {
