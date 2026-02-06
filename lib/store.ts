@@ -17,9 +17,8 @@ export async function getStoreId(): Promise<string> {
                             return user.storeId;
                      }
 
-                     if (userEmail !== "admin@saas.com") {
-                            throw new Error("Su cuenta no tiene un negocio asignado por favor contacte a soporte.");
-                     }
+                     // If user exists but no storeId, we'll continue to fallback logic
+                     console.log(`User ${userEmail} has no storeId assigned.`);
               }
 
               // 2. Fallback: Return first store found
@@ -42,10 +41,16 @@ export async function getStoreId(): Promise<string> {
               return newStore.id;
        } catch (error) {
               console.error("Store Helper Error:", error);
-              // Fail-safe: don't throw if possible, or provide a clear error
-              const store = await prisma.store.findFirst();
-              if (store) return store.id;
-              throw new Error("No se pudo identificar una tienda activa. Por favor, contacte a soporte.");
+
+              // Absolute last resort: try to find ANY store without user context
+              try {
+                     const store = await prisma.store.findFirst();
+                     if (store) return store.id;
+              } catch (dbError) {
+                     console.error("Database connection failed during fallback:", dbError);
+              }
+
+              throw new Error("No se pudo identificar una tienda activa. Por favor, contacte a soporte si el problema persiste.");
        }
 }
 

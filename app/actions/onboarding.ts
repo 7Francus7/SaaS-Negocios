@@ -195,18 +195,26 @@ export async function completeOnboarding(data: {
  * Verifica si el usuario completó el onboarding
  */
 export async function checkOnboardingStatus() {
-       const storeId = await getStoreId();
+       try {
+              const storeId = await getStoreId();
 
-       const store = await prisma.store.findUnique({
-              where: { id: storeId },
-              select: {
-                     hasCompletedOnboarding: true,
-                     name: true,
-              },
-       });
+              const store = await prisma.store.findUnique({
+                     where: { id: storeId },
+                     select: {
+                            hasCompletedOnboarding: true,
+                            name: true,
+                     },
+              });
 
-       return {
-              completed: store?.hasCompletedOnboarding ?? false,
-              storeName: store?.name ?? "",
-       };
+              return {
+                     completed: store?.hasCompletedOnboarding ?? false,
+                     storeName: store?.name ?? "",
+              };
+       } catch (error) {
+              console.error("ONBOARDING_STATUS_ERROR:", error);
+              return {
+                     completed: false,
+                     storeName: "",
+              };
+       }
 }
