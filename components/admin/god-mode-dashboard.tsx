@@ -5,7 +5,8 @@ import {
        getSuperAdminStats,
        getTenants,
        createTenant,
-       deleteTenant
+       deleteTenant,
+       impersonateTenant
 } from "@/app/actions/super-admin";
 import {
        Zap,
@@ -33,8 +34,14 @@ import {
        Server,
        LayoutGrid,
        List,
-       Circle
+       Circle,
+       TrendingUp,
+       Layout,
+       Database,
+       Fingerprint,
+       Package
 } from "lucide-react";
+import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
 
 // Types
@@ -120,7 +127,12 @@ export function GodModeDashboard() {
               try {
                      const res = await createTenant(formData);
                      if (res.success) {
-                            alert(`✅ ¡Tenant creado exitosamente!\n\nNegocio: ${formData.storeName}\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl cliente ya puede iniciar sesión.`);
+                            confetti({
+                                   particleCount: 150,
+                                   spread: 70,
+                                   origin: { y: 0.6 },
+                                   colors: ['#EAB308', '#0F172A', '#3B82F6']
+                            });
                             setFormData({ storeName: "", plan: "SaaS Professional (Recomendado)", ownerName: "", email: "", password: "" });
                             await loadData();
                      } else {
@@ -142,6 +154,15 @@ export function GodModeDashboard() {
 
        const formatCurrency = (amount: number) => {
               return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
+       };
+
+       const handleImpersonate = async (slug: string) => {
+              const res = await impersonateTenant(slug);
+              if (res.success) {
+                     window.location.href = "/dashboard";
+              } else {
+                     alert(res.error);
+              }
        };
 
        const filteredTenants = tenants.filter(t =>
@@ -192,25 +213,29 @@ export function GodModeDashboard() {
                                           value={stats.activeStores.toString()}
                                           subtext={`/ ${stats.storesCount} Instancias`}
                                           icon={<Shield className="text-yellow-500 w-6 h-6" />}
+                                          color="yellow"
                                    />
                                    <StatCard
                                           title="MRR Estimado"
                                           value={formatCurrency(stats.mrr)}
                                           subtext="Ingreso Recurrente"
-                                          icon={<CreditCard className="text-emerald-600 w-6 h-6" />}
+                                          icon={<CreditCard className="text-white w-6 h-6" />}
                                           primary
+                                          color="blue"
                                    />
                                    <StatCard
                                           title="Total Usuarios SaaS"
                                           value={stats.usersCount.toString()}
                                           subtext="Usuarios Globales"
-                                          icon={<Users className="text-blue-600 w-6 h-6" />}
+                                          icon={<Users className="text-indigo-600 w-6 h-6" />}
+                                          color="indigo"
                                    />
                                    <StatCard
                                           title="Carga del Sistema"
                                           value="0.2%"
-                                          subtext="Low Usage"
-                                          icon={<Activity className="text-purple-600 w-6 h-6" />}
+                                          subtext="Operatividad Ideal"
+                                          icon={<Activity className="text-emerald-600 w-6 h-6" />}
+                                          color="emerald"
                                    />
                             </div>
 
@@ -345,7 +370,12 @@ export function GodModeDashboard() {
                                           ) : viewMode === 'grid' ? (
                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         {filteredTenants.map(tenant => (
-                                                               <TenantGridCard key={tenant.id} tenant={tenant} onDelete={() => handleDelete(tenant.id)} />
+                                                               <TenantGridCard
+                                                                      key={tenant.id}
+                                                                      tenant={tenant}
+                                                                      onDelete={() => handleDelete(tenant.id)}
+                                                                      onImpersonate={() => handleImpersonate(tenant.slug)}
+                                                               />
                                                         ))}
                                                  </div>
                                           ) : (
@@ -374,66 +404,103 @@ export function GodModeDashboard() {
        );
 }
 
-function StatCard({ title, value, subtext, icon, primary = false }: { title: string, value: string, subtext: string, icon: React.ReactNode, primary?: boolean }) {
+function StatCard({ title, value, subtext, icon, primary = false, color = "gray" }: { title: string, value: string, subtext: string, icon: React.ReactNode, primary?: boolean, color?: string }) {
+       const colors: Record<string, string> = {
+              yellow: "bg-yellow-50 text-yellow-600",
+              blue: "bg-blue-600 text-white shadow-blue-200",
+              indigo: "bg-indigo-50 text-indigo-600",
+              emerald: "bg-emerald-50 text-emerald-600",
+              gray: "bg-gray-50 text-gray-600"
+       };
+
        return (
-              <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-slate-200/40 hover:scale-[1.02] transition-all group">
-                     <div className="flex items-center justify-between mb-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
-                            <div className="group-hover:scale-110 transition-transform p-2 bg-gray-50 rounded-lg">{icon}</div>
+              <div className={cn(
+                     "p-8 rounded-[2.5rem] border transition-all duration-300 group relative overflow-hidden",
+                     primary ? "bg-slate-900 border-slate-800 text-white shadow-2xl shadow-slate-200" : "bg-white border-gray-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:-translate-y-1"
+              )}>
+                     {/* Background Pattern */}
+                     <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
+                            <Layout className="w-32 h-32 rotate-12" />
                      </div>
-                     <div className="flex items-baseline gap-2">
-                            <span className={cn("text-4xl font-black tracking-tight", primary ? "text-emerald-600" : "text-slate-900")}>{value}</span>
-                            <span className="text-xs text-slate-500 font-medium">{subtext}</span>
+
+                     <div className="flex items-center justify-between mb-6 relative z-10">
+                            <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", primary ? "text-slate-400" : "text-slate-400")}>{title}</p>
+                            <div className={cn("p-2.5 rounded-2xl transition-transform group-hover:scale-110", primary ? "bg-white/10 text-yellow-400" : colors[color])}>
+                                   {icon}
+                            </div>
+                     </div>
+                     <div className="flex flex-col relative z-10">
+                            <span className={cn("text-4xl font-black tracking-tighter mb-1", primary ? "text-white" : "text-slate-900")}>
+                                   {value}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                   <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", primary ? "bg-emerald-400" : "bg-emerald-500")}></div>
+                                   <span className={cn("text-xs font-bold", primary ? "text-slate-400" : "text-slate-500")}>{subtext}</span>
+                            </div>
                      </div>
               </div>
        );
 }
 
-function TenantGridCard({ tenant, onDelete }: { tenant: Tenant, onDelete: () => void }) {
+function TenantGridCard({ tenant, onDelete, onImpersonate }: { tenant: Tenant, onDelete: () => void, onImpersonate: () => void }) {
        return (
-              <div className="bg-white p-6 rounded-[2rem] border border-gray-100 hover:border-yellow-400 transition-all group relative overflow-hidden shadow-xl shadow-slate-200/50">
-                     <div className="flex justify-between items-start mb-6">
-                            <div className="flex-1">
-                                   <div className="flex items-center gap-2 mb-1">
-                                          <h4 className="text-xl font-black uppercase tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors uppercase">{tenant.name}</h4>
-                                          <Circle className={cn("w-2 h-2 fill-current", tenant.isActive ? "text-emerald-500" : "text-red-500")} />
+              <div className="bg-white p-2 rounded-[2.5rem] border border-gray-100 hover:border-blue-400/50 transition-all group relative overflow-hidden shadow-xl shadow-slate-200/50">
+                     <div className="p-6">
+                            <div className="flex justify-between items-start mb-6">
+                                   <div className="flex-1">
+                                          <div className="flex items-center gap-3 mb-1">
+                                                 <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                                                        <Building2 className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                                 </div>
+                                                 <div>
+                                                        <h4 className="text-lg font-black uppercase tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors uppercase">{tenant.name}</h4>
+                                                        <div className="flex items-center gap-2">
+                                                               <span className={cn(
+                                                                      "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                                                                      tenant.isActive ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
+                                                               )}>
+                                                                      {tenant.isActive ? 'Activo' : 'Suspendido'}
+                                                               </span>
+                                                               <span className="text-[10px] font-mono text-slate-400">/{tenant.slug}</span>
+                                                        </div>
+                                                 </div>
+                                          </div>
                                    </div>
-                                   <p className="text-[10px] font-mono text-slate-500 bg-gray-100 inline-block px-2 py-0.5 rounded-lg uppercase tracking-tighter border border-gray-200">
-                                          /{tenant.slug}
-                                   </p>
+                                   <div className="flex gap-2">
+                                          <button className="p-2.5 bg-gray-50 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all text-slate-400 border border-transparent hover:border-blue-100">
+                                                 <Edit3 className="w-4 h-4" />
+                                          </button>
+                                          <button onClick={onDelete} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10 border border-transparent hover:border-red-200">
+                                                 <Trash2 className="w-4 h-4" />
+                                          </button>
+                                   </div>
                             </div>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <button className="p-2 bg-gray-100 rounded-xl hover:text-blue-600 transition-colors text-slate-400">
-                                          <Edit3 className="w-4 h-4" />
-                                   </button>
-                                   <button onClick={onDelete} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10">
-                                          <Trash2 className="w-4 h-4" />
-                                   </button>
-                            </div>
-                     </div>
 
-                     <div className="grid grid-cols-3 gap-2 py-4 border-y border-gray-100 mb-4 bg-gray-50/50 rounded-xl px-2">
-                            <div className="text-center">
-                                   <p className="text-xl font-black text-slate-900">{tenant._count.products}</p>
-                                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Stock</p>
+                            <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50/50 rounded-3xl mb-6 border border-gray-100 group-hover:border-blue-100 transition-colors">
+                                   <div className="flex flex-col items-center">
+                                          <Package className="w-3.5 h-3.5 text-slate-400 mb-1" />
+                                          <p className="text-lg font-black text-slate-900 leading-none">{tenant._count.products}</p>
+                                          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Stock</p>
+                                   </div>
+                                   <div className="flex flex-col items-center border-x border-gray-200">
+                                          <Users className="w-3.5 h-3.5 text-slate-400 mb-1" />
+                                          <p className="text-lg font-black text-slate-900 leading-none">{tenant._count.users}</p>
+                                          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Staff</p>
+                                   </div>
+                                   <div className="flex flex-col items-center">
+                                          <TrendingUp className="w-3.5 h-3.5 text-slate-400 mb-1" />
+                                          <p className="text-lg font-black text-slate-900 leading-none">{tenant._count.sales}</p>
+                                          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ventas</p>
+                                   </div>
                             </div>
-                            <div className="text-center">
-                                   <p className="text-xl font-black text-slate-900">{tenant._count.users}</p>
-                                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Admins</p>
-                            </div>
-                            <div className="text-center">
-                                   <p className="text-xl font-black text-slate-900">{tenant._count.sales}</p>
-                                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Ops</p>
-                            </div>
-                     </div>
 
-                     <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5 font-medium">
-                                   <Users className="w-3 h-3 text-slate-400" />
-                                   {tenant.users?.[0]?.email || "sin admin"}
-                            </div>
-                            <button className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors">
-                                   Acceder <ArrowRight className="w-3 h-3" />
+                            <button
+                                   onClick={onImpersonate}
+                                   className="w-full bg-slate-900 hover:bg-blue-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all shadow-xl shadow-slate-200 hover:shadow-blue-200 group/btn"
+                            >
+                                   <Fingerprint className="w-4 h-4 text-blue-400 group-hover/btn:text-white transition-colors" />
+                                   Acceder al Sistema
+                                   <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
                             </button>
                      </div>
               </div>

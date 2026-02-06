@@ -138,3 +138,36 @@ export async function deleteTenant(storeId: string) {
               return { success: false, error: "Error al eliminar tenant" };
        }
 }
+export async function impersonateTenant(storeSlug: string) {
+       try {
+              const store = await prisma.store.findUnique({
+                     where: { slug: storeSlug },
+                     include: {
+                            users: {
+                                   where: { role: 'OWNER' },
+                                   take: 1
+                            }
+                     }
+              });
+
+              if (!store || !store.users[0]) {
+                     return { success: false, error: "No se encontró un administrador para este negocio." };
+              }
+
+              const ownerEmail = store.users[0].email;
+
+              // Set session cookie
+              const { cookies } = await import("next/headers");
+              (await cookies()).set("user_email", ownerEmail, {
+                     httpOnly: true,
+                     secure: process.env.NODE_ENV === "production",
+                     maxAge: 60 * 60 * 2, // 2 hours for impersonation
+                     path: "/",
+              });
+
+              return { success: true };
+       } catch (error) {
+              console.error("Error impersonating:", error);
+              return { success: false, error: "Error al intentar acceder." };
+       }
+}

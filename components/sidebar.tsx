@@ -16,7 +16,12 @@ import {
        Crown,
        Shield,
        Tag,
-       Zap
+       Zap,
+       Activity,
+       Terminal,
+       Monitor,
+       BarChart3,
+       Cpu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +96,7 @@ function SidebarContent() {
                             )}
                      </div>
 
-                     <nav className="flex-1 px-4 py-8 space-y-1">
+                     <nav className="flex-1 px-4 py-8 space-y-1 overflow-y-auto">
                             {/* Standard menu items - ONLY visible if NOT in godMode */}
                             {!godMode && menuItems.map((item) => {
                                    const Icon = item.icon;
@@ -119,20 +124,51 @@ function SidebarContent() {
                             })}
 
                             {godMode && (
-                                   <div>
-                                          <p className="px-4 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Sistema Premium</p>
-                                          <Link
-                                                 href="/dashboard/admin"
-                                                 className={cn(
-                                                        "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group border",
-                                                        pathname === "/dashboard/admin"
-                                                               ? "bg-yellow-50 text-yellow-700 border-yellow-200 shadow-sm font-bold"
-                                                               : "text-slate-600 hover:bg-gray-50 border-transparent"
-                                                 )}
-                                          >
-                                                 <Shield className={cn("h-5 w-5 mr-3 transition-transform group-hover:scale-110", pathname === "/dashboard/admin" ? "text-yellow-600" : "text-slate-400 group-hover:text-yellow-500")} />
-                                                 Panel Global
-                                          </Link>
+                                   <div className="space-y-6">
+                                          <div>
+                                                 <p className="px-4 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Core del Sistema</p>
+                                                 <div className="space-y-1">
+                                                        <Link
+                                                               href="/dashboard/admin"
+                                                               className={cn(
+                                                                      "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group border",
+                                                                      pathname === "/dashboard/admin"
+                                                                             ? "bg-yellow-50 text-yellow-700 border-yellow-200 shadow-sm font-bold"
+                                                                             : "text-slate-600 hover:bg-gray-50 border-transparent"
+                                                               )}
+                                                        >
+                                                               <Shield className={cn("h-5 w-5 mr-3 transition-transform group-hover:scale-110", pathname === "/dashboard/admin" ? "text-yellow-600" : "text-slate-400 group-hover:text-yellow-500")} />
+                                                               Panel Global
+                                                        </Link>
+                                                        <Link
+                                                               href="/dashboard/admin/metrics"
+                                                               className="flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-gray-50 group transition-all"
+                                                        >
+                                                               <Activity className="h-5 w-5 mr-3 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                                               Salud del Core
+                                                        </Link>
+                                                 </div>
+                                          </div>
+
+                                          <div>
+                                                 <p className="px-4 pb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Infraestructura</p>
+                                                 <div className="space-y-1">
+                                                        <Link
+                                                               href="/dashboard/admin/logs"
+                                                               className="flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-gray-50 group transition-all"
+                                                        >
+                                                               <Terminal className="h-5 w-5 mr-3 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                                               Logs Maestros
+                                                        </Link>
+                                                        <Link
+                                                               href="/dashboard/admin/deployment"
+                                                               className="flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-gray-50 group transition-all"
+                                                        >
+                                                               <Cpu className="h-5 w-5 mr-3 text-slate-400 group-hover:text-purple-500 transition-colors" />
+                                                               Servidores edge
+                                                        </Link>
+                                                 </div>
+                                          </div>
                                    </div>
                             )}
                      </nav>
