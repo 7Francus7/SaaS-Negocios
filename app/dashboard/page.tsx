@@ -18,6 +18,14 @@ export default function DashboardPage() {
 
        // Check onboarding status
        useEffect(() => {
+              // Skip onboarding check for God Mode
+              const isGodMode = typeof window !== 'undefined' && (
+                     localStorage.getItem('godMode') === 'true' ||
+                     window.location.search.includes('view=god')
+              );
+
+              if (isGodMode) return;
+
               checkOnboardingStatus().then(({ completed }) => {
                      if (!completed) {
                             router.push("/onboarding");

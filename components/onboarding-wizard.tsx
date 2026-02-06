@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { completeOnboarding } from "@/app/actions/onboarding";
 import { useRouter } from "next/navigation";
-import { Store, Package, Rocket, CheckCircle2, Loader2 } from "lucide-react";
+import { Store, Package, Rocket, CheckCircle2, Loader2, Shield } from "lucide-react";
 
 interface OnboardingWizardProps {
        initialStoreName?: string;
@@ -19,6 +19,15 @@ export function OnboardingWizard({ initialStoreName = "" }: OnboardingWizardProp
               address: "",
               phone: "",
        });
+
+       // Skip onboarding if we are in God Mode
+       const [isGodMode, setIsGodMode] = useState(false);
+
+       useEffect(() => {
+              if (typeof window !== 'undefined' && localStorage.getItem('godMode') === 'true') {
+                     setIsGodMode(true);
+              }
+       }, []);
 
        const handleComplete = async () => {
               setLoading(true);
@@ -47,8 +56,8 @@ export function OnboardingWizard({ initialStoreName = "" }: OnboardingWizardProp
                                                  <div key={s} className="flex items-center flex-1">
                                                         <div
                                                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= s
-                                                                             ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-                                                                             : "bg-gray-200 text-gray-400"
+                                                                      ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                                                                      : "bg-gray-200 text-gray-400"
                                                                       }`}
                                                         >
                                                                {step > s ? <CheckCircle2 className="w-5 h-5" /> : s}
@@ -70,7 +79,16 @@ export function OnboardingWizard({ initialStoreName = "" }: OnboardingWizardProp
                             </div>
 
                             {/* Card */}
-                            <div className="bg-white rounded-[2.5rem] shadow-2xl p-10 border border-gray-100">
+                            <div className="bg-white rounded-[2.5rem] shadow-2xl p-10 border border-gray-100 relative overflow-hidden">
+                                   {isGodMode && (
+                                          <button
+                                                 onClick={() => router.push('/dashboard/admin')}
+                                                 className="absolute top-4 right-4 text-[10px] font-black uppercase tracking-widest text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200 hover:bg-yellow-100 transition-all z-10 flex items-center gap-1.5 shadow-sm"
+                                          >
+                                                 <Shield className="w-3 h-3" />
+                                                 Panel Global
+                                          </button>
+                                   )}
                                    {step === 1 && (
                                           <div className="space-y-6">
                                                  <div className="text-center mb-8">
