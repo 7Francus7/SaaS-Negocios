@@ -61,13 +61,20 @@ export async function createTenant(data: {
        password: string;
 }) {
        try {
-              console.log("Creating tenant with data:", { ...data, password: "***" });
+              console.log("🚀 INICIANDO CREACIÓN DE TENANT:", { ...data, password: "***" });
+
+              if (!data.email || !data.password || !data.storeName) {
+                     return { success: false, error: "Faltan datos obligatorios." };
+              }
 
               // 1. Check if email exists
               const existingUser = await prisma.user.findUnique({
-                     where: { email: data.email }
+                     where: { email: data.email.toLowerCase().trim() }
               });
-              if (existingUser) return { success: false, error: "El email del dueño ya existe." };
+              if (existingUser) {
+                     console.log("❌ Email ya existe:", data.email);
+                     return { success: false, error: "El email del dueño ya existe." };
+              }
 
               // 2. Generate robust slug
               let slug = data.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -79,12 +86,14 @@ export async function createTenant(data: {
               });
 
               if (existingStore) {
+                     console.log("⚠️ Slug colisionado, generando alternativo...");
                      slug = `${slug}-${Math.random().toString(36).substring(7)}`;
               }
 
               // 3. Transaction: Create Store + User
               const passwordHash = bcrypt.hashSync(data.password, 10);
 
+              console.log("📝 Ejecutando transacción...");
               await prisma.$transaction(async (tx) => {
                      const store = await tx.store.create({
                             data: {
@@ -97,7 +106,7 @@ export async function createTenant(data: {
                      await tx.user.create({
                             data: {
                                    name: data.ownerName,
-                                   email: data.email,
+                                   email: data.email.toLowerCase().trim(),
                                    password: passwordHash,
                                    role: "OWNER",
                                    storeId: store.id
@@ -105,13 +114,16 @@ export async function createTenant(data: {
                      });
               });
 
+              console.log("✅ TENANT CREADO CON ÉXITO");
               revalidatePath("/dashboard/admin");
-              // Return success true only, no need to pass complex objects back directly
               return { success: true };
 
        } catch (error: any) {
-              console.error("Create Tenant Error:", error);
-              return { success: false, error: error.message || "Error al crear el tenant." };
+              console.error("❌ ERROR CRÍTICO EN createTenant:", error);
+              return {
+                     success: false,
+                     error: error.message || "Error interno al crear el tenant. Verifique la conexión a la base de datos."
+              };
        }
 }
 

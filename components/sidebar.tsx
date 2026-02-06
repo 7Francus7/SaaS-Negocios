@@ -59,7 +59,9 @@ function SidebarContent() {
               }
        }, [searchParams, pathname, router]);
 
-       const handleLogout = () => {
+       const handleLogout = async () => {
+              const { logout } = await import("@/app/actions/auth");
+              await logout();
               localStorage.removeItem('godMode');
               router.push('/');
        };

@@ -18,20 +18,19 @@ export async function getStoreId(): Promise<string> {
                      }
               }
 
-              // 2. Fallback (Legacy/Dev behavior): Return first store found
-              // Ideally this should be removed in production to enforce login
+              // 2. Fallback: Return first store found
               const firstStore = await prisma.store.findFirst();
 
               if (firstStore) {
                      return firstStore.id;
               }
 
-              // Auto-seed for dev experience
-              // Try to create, if it fails (race condition), find again
+              // 3. Only create if absolutely necessary (first time setup)
+              console.log("No store found, creating default Tienda Demo...");
               const newStore = await prisma.store.create({
                      data: {
                             name: "Tienda Demo",
-                            slug: `demo-${Math.random().toString(36).substring(7)}`, // Unique slug to avoid collisions
+                            slug: `demo-${Math.random().toString(36).substring(7)}`,
                             isActive: true
                      }
               });
@@ -39,9 +38,10 @@ export async function getStoreId(): Promise<string> {
               return newStore.id;
        } catch (error) {
               console.error("Store Helper Error:", error);
+              // Fail-safe: don't throw if possible, or provide a clear error
               const store = await prisma.store.findFirst();
               if (store) return store.id;
-              throw new Error("No se pudo identificar o crear una tienda activa.");
+              throw new Error("No se pudo identificar una tienda activa. Por favor, contacte a soporte.");
        }
 }
 

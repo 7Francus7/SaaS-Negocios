@@ -54,3 +54,8 @@ export async function login(prevState: any, formData: FormData) {
               return { error: "Error al iniciar sesión" };
        }
 }
+
+export async function logout() {
+       const { cookies } = await import("next/headers");
+       (await cookies()).delete("user_email");
+}
