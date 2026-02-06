@@ -5,6 +5,7 @@ import { Plus, Search, Filter, UploadCloud, Download } from "lucide-react";
 import { getProducts, exportProductsToCSV } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
+import { formatCurrency } from "@/lib/utils";
 
 // Minimal button UI
 function Button({ children, onClick, variant = "primary" }: any) {
@@ -137,10 +138,10 @@ export default function ProductsPage() {
                                                                       </span>
                                                                </td>
                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                                                      ${Number(variant.costPrice).toFixed(2)}
+                                                                      {formatCurrency(variant.costPrice)}
                                                                </td>
                                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                                                      ${Number(variant.salePrice).toFixed(2)}
+                                                                      {formatCurrency(variant.salePrice)}
                                                                </td>
                                                                <td className="px-6 py-4 whitespace-nowrap text-center">
                                                                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 

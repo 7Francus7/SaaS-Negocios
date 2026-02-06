@@ -42,7 +42,7 @@ import {
        Package
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency as globalFormatCurrency } from "@/lib/utils";
 
 // Types
 type Tenant = {
@@ -153,7 +153,7 @@ export function GodModeDashboard() {
        };
 
        const formatCurrency = (amount: number) => {
-              return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
+              return globalFormatCurrency(amount);
        };
 
        const handleImpersonate = async (slug: string) => {

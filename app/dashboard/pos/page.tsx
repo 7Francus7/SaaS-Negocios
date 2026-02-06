@@ -10,6 +10,7 @@ import { calculatePromotions } from "@/app/actions/promotions";
 import { Modal } from "@/components/ui/modal";
 import { Ticket } from "@/components/pos/ticket";
 import confetti from "canvas-confetti";
+import { formatCurrency } from "@/lib/utils";
 
 // Sounds (Base64 for reliability/speed in demo)
 const BEEP_SOUND = "data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"; // Tiny placeholder, will replace better or use simple osc?
@@ -373,7 +374,7 @@ export default function POSPage() {
                                                                       </p>
                                                                       <div className="flex items-center gap-2">
                                                                              <span className="text-blue-600 font-black text-sm">
-                                                                                    ${Number(variant.salePrice).toFixed(2)}
+                                                                                    {formatCurrency(variant.salePrice)}
                                                                              </span>
                                                                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${variant.stockQuantity <= 5 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
                                                                                     Stock: {variant.stockQuantity}
@@ -409,7 +410,7 @@ export default function POSPage() {
                                                                       <p className="text-sm font-bold text-gray-900 truncate">{item.productName}</p>
                                                                       <p className="text-[10px] text-gray-500 uppercase font-medium">{item.variantName}</p>
                                                                </div>
-                                                               <p className="text-sm font-bold text-blue-600 ml-2">${(item.price * item.quantity).toFixed(2)}</p>
+                                                               <p className="text-sm font-bold text-blue-600 ml-2">{formatCurrency(item.price * item.quantity)}</p>
                                                         </div>
                                                         <div className="flex items-center justify-between">
                                                                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
@@ -441,14 +442,14 @@ export default function POSPage() {
                                                  ))}
                                                  <div className="flex justify-between text-sm text-emerald-600 font-bold border-t border-emerald-100 pt-1 mt-1">
                                                         <span>Descuento Aplicado</span>
-                                                        <span>-${promotionInfo.totalDiscount.toFixed(2)}</span>
+                                                        <span>-{formatCurrency(promotionInfo.totalDiscount)}</span>
                                                  </div>
                                           </div>
                                    )}
 
                                    <div className="flex justify-between items-center text-2xl font-black text-gray-900">
                                           <span>Total</span>
-                                          <span>${total.toFixed(2)}</span>
+                                          <span>{formatCurrency(total)}</span>
                                    </div>
 
                                    {!session && (
@@ -473,7 +474,7 @@ export default function POSPage() {
                             <div className="space-y-6">
                                    <div className="bg-gray-50 p-6 rounded-2xl text-center border border-gray-100">
                                           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Total a Pagar</p>
-                                          <p className="text-5xl font-black text-gray-900">${total.toFixed(2)}</p>
+                                          <p className="text-5xl font-black text-gray-900">{formatCurrency(total)}</p>
                                    </div>
 
                                    <div className="space-y-3">
@@ -548,7 +549,7 @@ export default function POSPage() {
                                    </div>
                                    <div className="space-y-1">
                                           <p className="text-2xl font-black text-gray-900">Venta Registrada</p>
-                                          <p className="text-sm text-gray-500 font-medium">Monto total: <span className="text-lg font-bold text-gray-900">${lastSale?.total.toFixed(2) || "0.00"}</span></p>
+                                          <p className="text-sm text-gray-500 font-medium">Monto total: <span className="text-lg font-bold text-gray-900">{formatCurrency(lastSale?.total || 0)}</span></p>
                                    </div>
                                    <div className="flex flex-col gap-3 mt-8">
                                           <div className="grid grid-cols-2 gap-3">
@@ -557,7 +558,7 @@ export default function POSPage() {
                                                  </button>
                                                  <button onClick={() => {
                                                         if (!lastSale) return;
-                                                        const text = `📋 *Detalle de Venta*\n\n` + lastSale.items.map(i => `• ${i.productName}: $${i.price.toFixed(2)} x ${i.quantity}`).join('\n') + `\n\n💰 *Total: $${lastSale.total.toFixed(2)}*\n\nGracias por su compra en *${lastSale.store?.name || 'nuestro negocio'}*!`;
+                                                        const text = `📋 *Detalle de Venta*\n\n` + lastSale.items.map(i => `• ${i.productName}: ${formatCurrency(i.price)} x ${i.quantity}`).join('\n') + `\n\n💰 *Total: ${formatCurrency(lastSale.total)}*\n\nGracias por su compra en *${lastSale.store?.name || 'nuestro negocio'}*!`;
                                                         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                                                  }} className="flex items-center justify-center gap-2 px-4 py-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
                                                         <MessageSquare className="h-5 w-5" /> WhatsApp

@@ -28,3 +28,46 @@ export function safeSerialize<T>(data: T): T {
        })) as T;
 }
 
+/**
+ * Formato de moneda para Argentina (ARS)
+ */
+export function formatCurrency(amount: number | string): string {
+       const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+       return new Intl.NumberFormat('es-AR', {
+              style: 'currency',
+              currency: 'ARS',
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+       }).format(value || 0);
+}
+
+/**
+ * Formato de fecha para Argentina (DD/MM/YYYY)
+ */
+export function formatDate(date: Date | string | number): string {
+       const d = new Date(date);
+       return new Intl.DateTimeFormat('es-AR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+       }).format(d);
+}
+
+/**
+ * Formato de hora para Argentina (HH:mm)
+ */
+export function formatTime(date: Date | string | number): string {
+       const d = new Date(date);
+       return new Intl.DateTimeFormat('es-AR', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+       }).format(d);
+}
+
+/**
+ * Formato completo (DD/MM/YYYY HH:mm)
+ */
+export function formatDateTime(date: Date | string | number): string {
+       return `${formatDate(date)} ${formatTime(date)}`;
+}

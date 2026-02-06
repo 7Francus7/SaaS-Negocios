@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { DollarSign, Lock, History, AlertTriangle, ArrowUpCircle, ArrowDownCircle, Plus, Minus, TrendingUp } from "lucide-react";
 import { getOpenSession, openSession, closeSession, getSessionHistory, registerCashMovement } from "@/app/actions/cash";
 import { Modal } from "@/components/ui/modal";
+import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
 export default function CashPage() {
        const [status, setStatus] = useState<"LOADING" | "OPEN" | "CLOSED">("LOADING");
@@ -97,19 +98,19 @@ export default function CashPage() {
                                                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                                         <div className="p-3 bg-gray-50 rounded-lg">
                                                                <p className="text-gray-500 mb-1">Caja Inicial</p>
-                                                               <span className="font-mono font-medium text-lg text-gray-900">${Number(currentSession.initialCash).toFixed(2)}</span>
+                                                               <span className="font-mono font-medium text-lg text-gray-900">{formatCurrency(currentSession.initialCash)}</span>
                                                         </div>
                                                         <div className="p-3 bg-blue-50 rounded-lg">
                                                                <p className="text-blue-500 mb-1">Ventas (Efectivo)</p>
-                                                               <span className="font-mono font-medium text-lg text-blue-700">+${Number(currentSession.currentSales || 0).toFixed(2)}</span>
+                                                               <span className="font-mono font-medium text-lg text-blue-700">+{formatCurrency(currentSession.currentSales || 0)}</span>
                                                         </div>
                                                         <div className="p-3 bg-green-50 rounded-lg">
                                                                <p className="text-green-600 mb-1">Ingresos</p>
-                                                               <span className="font-mono font-medium text-lg text-green-700">+${Number(currentSession.totalIn || 0).toFixed(2)}</span>
+                                                               <span className="font-mono font-medium text-lg text-green-700">+{formatCurrency(currentSession.totalIn || 0)}</span>
                                                         </div>
                                                         <div className="p-3 bg-red-50 rounded-lg">
                                                                <p className="text-red-500 mb-1">Egresos / Gastos</p>
-                                                               <span className="font-mono font-medium text-lg text-red-700">-${Number(currentSession.totalOut || 0).toFixed(2)}</span>
+                                                               <span className="font-mono font-medium text-lg text-red-700">-{formatCurrency(currentSession.totalOut || 0)}</span>
                                                         </div>
                                                  </div>
                                           )}
@@ -118,7 +119,7 @@ export default function CashPage() {
                                                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                                                         <div>
                                                                <p className="text-sm text-gray-500">Saldo Esperado en Caja</p>
-                                                               <p className="text-3xl font-bold text-gray-900">${expectedTotal.toFixed(2)}</p>
+                                                               <p className="text-3xl font-bold text-gray-900">{formatCurrency(expectedTotal)}</p>
                                                         </div>
                                                         <div className="flex gap-2">
                                                                <button
@@ -173,10 +174,10 @@ export default function CashPage() {
                                                                <div className="flex items-center gap-3">
                                                                       {m.type === 'IN' ? <ArrowUpCircle className="w-4 h-4 text-green-500" /> : <ArrowDownCircle className="w-4 h-4 text-red-500" />}
                                                                       <span className="text-gray-900 font-medium">{m.description || 'Sin descripción'}</span>
-                                                                      <span className="text-xs text-gray-400">{new Date(m.timestamp).toLocaleTimeString()}</span>
+                                                                      <span className="text-xs text-gray-400">{formatTime(m.timestamp)}</span>
                                                                </div>
                                                                <span className={`font-mono font-medium ${m.type === 'IN' ? 'text-green-600' : 'text-red-600'}`}>
-                                                                      {m.type === 'IN' ? '+' : '-'}${Number(m.amount).toFixed(2)}
+                                                                      {m.type === 'IN' ? '+' : '-'}{formatCurrency(m.amount)}
                                                                </span>
                                                         </div>
                                                  ))}
@@ -209,12 +210,12 @@ export default function CashPage() {
 
                                                  return (
                                                         <tr key={s.id} className="hover:bg-gray-50">
-                                                               <td className="px-6 py-4">{new Date(s.startTime).toLocaleDateString()} {new Date(s.startTime).toLocaleTimeString()}</td>
-                                                               <td className="px-6 py-4">{s.endTime ? new Date(s.endTime).toLocaleTimeString() : "-"}</td>
-                                                               <td className="px-6 py-4 text-right text-gray-500">${Number(s.initialCash).toFixed(2)}</td>
-                                                               <td className="px-6 py-4 text-right font-medium">${Number(s.finalCashSystem || 0).toFixed(2)}</td>
+                                                               <td className="px-6 py-4">{formatDate(s.startTime)} {formatTime(s.startTime)}</td>
+                                                               <td className="px-6 py-4">{s.endTime ? formatTime(s.endTime) : "-"}</td>
+                                                               <td className="px-6 py-4 text-right text-gray-500">{formatCurrency(s.initialCash)}</td>
+                                                               <td className="px-6 py-4 text-right font-medium">{formatCurrency(s.finalCashSystem || 0)}</td>
                                                                <td className="px-6 py-4 text-right font-bold text-gray-900">
-                                                                      {s.status === 'CLOSED' ? `$${Number(s.finalCashReal).toFixed(2)}` : '-'}
+                                                                      {s.status === 'CLOSED' ? formatCurrency(s.finalCashReal) : '-'}
                                                                </td>
                                                                <td className="px-6 py-4 text-center">
                                                                       {s.status === 'OPEN' ? (
@@ -262,7 +263,7 @@ export default function CashPage() {
                                    <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
                                           <div className="flex justify-between items-center mb-2">
                                                  <span className="text-sm text-yellow-800 font-medium">Saldo Esperado (Sistema)</span>
-                                                 <span className="text-lg font-bold text-yellow-900">${expectedTotal.toFixed(2)}</span>
+                                                 <span className="text-lg font-bold text-yellow-900">{formatCurrency(expectedTotal)}</span>
                                           </div>
                                           <p className="text-xs text-yellow-700">
                                                  Incluye: Inicial + Ventas Efvo + Ingresos - Egresos

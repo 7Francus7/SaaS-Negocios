@@ -6,6 +6,7 @@ import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign } fr
 import { getDashboardStats, getDashboardChartData, DashboardStats } from "@/app/actions/dashboard";
 import { checkOnboardingStatus } from "@/app/actions/onboarding";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { formatCurrency } from "@/lib/utils";
 
 export default function DashboardPage() {
        const router = useRouter();
@@ -78,7 +79,7 @@ export default function DashboardPage() {
        const cards = [
               {
                      title: "Ventas Hoy",
-                     value: `$${stats.salesTodayTotal.toFixed(2)}`,
+                     value: formatCurrency(stats.salesTodayTotal),
                      subtext: `${stats.salesCount} operaciones`,
                      icon: ShoppingBag,
                      color: "text-blue-600",
@@ -86,7 +87,7 @@ export default function DashboardPage() {
               },
               {
                      title: "Ganancia Hoy",
-                     value: `$${stats.profitToday.toFixed(2)}`,
+                     value: formatCurrency(stats.profitToday),
                      subtext: "Neto estimado",
                      icon: TrendingUp,
                      color: "text-emerald-600",

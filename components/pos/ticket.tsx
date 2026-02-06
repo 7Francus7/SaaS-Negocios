@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCurrency } from '@/lib/utils';
 
 interface TicketItem {
        quantity: number;
@@ -72,12 +73,12 @@ export function Ticket({ data }: { data: TicketData | null }) {
                                                  </div>
                                                  <div className="flex justify-between text-[11px] pl-2">
                                                         <div className="flex gap-2">
-                                                               <span>{item.quantity} x ${item.price.toFixed(2)}</span>
+                                                               <span>{item.quantity} x {formatCurrency(item.price)}</span>
                                                                {item.variantName !== "Estándar" && item.variantName !== "Unidad" && (
                                                                       <span className="italic">({item.variantName})</span>
                                                                )}
                                                         </div>
-                                                        <span className="font-bold">${(item.price * item.quantity).toFixed(2)}</span>
+                                                        <span className="font-bold">{formatCurrency(item.price * item.quantity)}</span>
                                                  </div>
                                           </div>
                                    ))}
@@ -88,7 +89,7 @@ export function Ticket({ data }: { data: TicketData | null }) {
                             {/* TOTALS */}
                             <div className="flex justify-between font-bold text-lg my-2">
                                    <span>TOTAL</span>
-                                   <span>${data.total.toFixed(2)}</span>
+                                   <span>{formatCurrency(data.total)}</span>
                             </div>
 
                             {/* PAYMENT INFO */}

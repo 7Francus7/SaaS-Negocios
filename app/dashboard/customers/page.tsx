@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Search, Wallet, History, CreditCard, Shield, MapPin, Hash, DollarSign } from "lucide-react";
 import { getCustomers, registerPayment, createCustomer, getCustomerHistory } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
 interface Customer {
        id: number;
@@ -137,7 +137,7 @@ export default function CustomersPage() {
                                                                "text-2xl font-black",
                                                                Number(customer.currentBalance) > 0 ? 'text-red-500' : 'text-emerald-500'
                                                         )}>
-                                                               ${Number(customer.currentBalance).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                                               {formatCurrency(customer.currentBalance)}
                                                         </p>
                                                  </div>
                                           </div>
@@ -152,7 +152,7 @@ export default function CustomersPage() {
                                                                <Shield className="h-3.5 w-3.5" />
                                                                Límite de Crédito
                                                         </div>
-                                                        <span className="text-sm font-bold text-gray-700">${Number(customer.creditLimit || 0).toLocaleString('es-AR')}</span>
+                                                        <span className="text-sm font-bold text-gray-700">{formatCurrency(customer.creditLimit || 0)}</span>
                                                  </div>
                                           </div>
 
@@ -195,13 +195,13 @@ export default function CustomersPage() {
                                                         <tr key={h.id} className="hover:bg-gray-50 transition-colors">
                                                                <td className="p-4">
                                                                       <div className="flex flex-col">
-                                                                             <span className="font-bold text-gray-900">{new Date(h.timestamp).toLocaleDateString()}</span>
-                                                                             <span className="text-[10px] text-gray-400">{new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                             <span className="font-bold text-gray-900">{formatDate(h.timestamp)}</span>
+                                                                             <span className="text-[10px] text-gray-400">{formatTime(h.timestamp)}</span>
                                                                       </div>
                                                                </td>
                                                                <td className="p-4 font-medium text-gray-700 uppercase text-xs">{h.description}</td>
                                                                <td className={`p-4 text-right font-black text-sm ${h.amount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                                      {h.amount > 0 ? '+' : ''}{Number(h.amount).toFixed(2)}
+                                                                      {h.amount > 0 ? '+' : ''}{formatCurrency(h.amount)}
                                                                </td>
                                                         </tr>
                                                  ))}
@@ -286,7 +286,7 @@ export default function CustomersPage() {
                             <div className="space-y-6">
                                    <div className="bg-red-50 p-6 rounded-[2rem] text-center border border-red-100 flex flex-col gap-2">
                                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Deuda Pendiente</p>
-                                          <p className="text-4xl font-black text-red-700">${selectedCustomer ? Number(selectedCustomer.currentBalance).toFixed(2) : "0.00"}</p>
+                                          <p className="text-4xl font-black text-red-700">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
                                           <button
                                                  onClick={() => selectedCustomer && setPaymentAmount(Number(selectedCustomer.currentBalance).toString())}
                                                  className="mx-auto mt-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1"
