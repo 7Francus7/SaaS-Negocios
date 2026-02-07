@@ -32,6 +32,7 @@ const menuItems = [
        { href: "/dashboard/cash", label: "Caja y Turnos", icon: DollarSign },
        { href: "/dashboard/promotions", label: "Promociones", icon: Tag },
        { href: "/dashboard/customers", label: "Clientes", icon: Users },
+       { href: "/dashboard/reports", label: "Reportes", icon: BarChart3 },
        { href: "/dashboard/suppliers", label: "Proveedores", icon: Truck },
        { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];
