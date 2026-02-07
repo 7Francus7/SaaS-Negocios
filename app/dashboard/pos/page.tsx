@@ -147,8 +147,9 @@ export default function POSPage() {
               const timer = setTimeout(() => {
                      if (query.trim().length > 1) {
                             handleSearch(query);
-                     } else {
-                            setSearchResults([]);
+                     } else if (query.trim().length === 0) {
+                            // Default state: Show all products
+                            handleSearch("");
                      }
               }, 300);
               return () => clearTimeout(timer);
@@ -336,7 +337,11 @@ export default function POSPage() {
                                           {searchResults.length === 0 && !loadingSearch && (
                                                  <div className="col-span-full flex flex-col items-center justify-center text-gray-400 py-12">
                                                         <Search className="h-12 w-12 mb-3 opacity-20" />
-                                                        <p>Empieza a escribir para buscar productos</p>
+                                                        {query ? (
+                                                               <p>No se encontraron productos</p>
+                                                        ) : (
+                                                               <p>Cargando catálogo...</p>
+                                                        )}
                                                  </div>
                                           )}
                                           {searchResults.map((variant: any) => {
