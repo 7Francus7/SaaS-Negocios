@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
+import { customerSchema } from "@/lib/validations";
 
 export async function getCustomers(activeOnly: boolean = true) {
        const storeId = await getStoreId();
@@ -29,16 +30,16 @@ export async function createCustomer(data: {
 }) {
        const storeId = await getStoreId();
 
-       if (!data.name) throw new Error("El nombre es obligatorio.");
+       const parsed = customerSchema.parse(data);
 
        return await prisma.customer.create({
               data: {
                      storeId,
-                     name: data.name,
-                     dni: data.dni,
-                     phone: data.phone,
-                     address: data.address,
-                     creditLimit: data.creditLimit ?? 0,
+                     name: parsed.name,
+                     dni: parsed.dni,
+                     phone: parsed.phone,
+                     address: parsed.address,
+                     creditLimit: parsed.creditLimit ?? 0,
                      currentBalance: 0,
                      active: true,
               },

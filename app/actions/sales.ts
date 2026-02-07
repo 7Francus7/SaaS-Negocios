@@ -8,6 +8,8 @@ export type SaleItemInput = {
        quantity: number;
 };
 
+import { saleSchema } from "@/lib/validations";
+
 export async function processSale(
        items: SaleItemInput[],
        paymentMethod: string = "EFECTIVO",
@@ -16,7 +18,15 @@ export async function processSale(
 ) {
        const storeId = await getStoreId();
 
-       if (items.length === 0) {
+       // Validate input with Zod
+       const parsed = saleSchema.parse({
+              items,
+              paymentMethod,
+              customerId,
+              discountAmount
+       });
+
+       if (parsed.items.length === 0) {
               throw new Error("El carrito está vacío.");
        }
 

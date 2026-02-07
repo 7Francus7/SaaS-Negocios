@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
 import { Prisma } from "@prisma/client";
+import { productSchema, updateVariantSchema } from "@/lib/validations";
 
 export type ProductFilter = {
        searchQuery?: string;
@@ -97,24 +98,22 @@ export async function createProduct(data: {
        stock: number;
        minStock?: number;
 }) {
+       // Validate Zod
+       const parsed = productSchema.parse(data);
+
        const storeId = await getStoreId();
 
-       // Validate inputs
-       if (data.costPrice < 0 || data.salePrice < 0) {
-              throw new Error("El costo y el precio no pueden ser negativos.");
-       }
-
        // Check barcode uniqueness
-       if (data.barcode) {
+       if (parsed.barcode) {
               const existing = await prisma.productVariant.findFirst({
                      where: {
                             storeId,
-                            barcode: data.barcode,
+                            barcode: parsed.barcode,
                             active: true,
                      },
               });
               if (existing) {
-                     throw new Error(`El código '${data.barcode}' ya está en uso.`);
+                     throw new Error(`El código '${parsed.barcode}' ya está en uso.`);
               }
        }
 
@@ -122,9 +121,9 @@ export async function createProduct(data: {
        return await prisma.$transaction(async (tx) => {
               const product = await tx.product.create({
                      data: {
-                            name: data.name,
-                            description: data.description,
-                            categoryId: data.categoryId,
+                            name: parsed.name,
+                            description: parsed.description,
+                            categoryId: parsed.categoryId,
                             storeId,
                             active: true,
                      },
@@ -133,25 +132,25 @@ export async function createProduct(data: {
               const variant = await tx.productVariant.create({
                      data: {
                             productId: product.id,
-                            variantName: data.variantName,
-                            barcode: data.barcode || null,
-                            costPrice: data.costPrice,
-                            salePrice: data.salePrice,
-                            stockQuantity: data.stock,
-                            minStock: data.minStock ?? 5,
+                            variantName: parsed.variantName,
+                            barcode: parsed.barcode || null,
+                            costPrice: parsed.costPrice,
+                            salePrice: parsed.salePrice,
+                            stockQuantity: parsed.stock,
+                            minStock: parsed.minStock ?? 5,
                             storeId,
                             active: true,
                      },
               });
 
-              if (data.stock !== 0) {
+              if (parsed.stock !== 0) {
                      await tx.stockMovement.create({
                             data: {
                                    variantId: variant.id,
                                    movementType: "ADJUSTMENT",
-                                   quantity: data.stock,
+                                   quantity: parsed.stock,
                                    reason: "Stock Inicial",
-                                   balanceSnapshot: data.stock,
+                                   balanceSnapshot: parsed.stock,
                                    timestamp: new Date(),
                             },
                      });
@@ -173,6 +172,8 @@ export async function updateVariant(
 ) {
        const storeId = await getStoreId();
 
+       const parsed = updateVariantSchema.parse(data);
+
        // Validate access
        const variant = await prisma.productVariant.findUnique({
               where: { id: variantId },
@@ -182,23 +183,23 @@ export async function updateVariant(
               throw new Error("Variante no encontrada o sin acceso.");
        }
 
-       if (data.barcode && data.barcode !== variant.barcode) {
+       if (parsed.barcode && parsed.barcode !== variant.barcode) {
               const existing = await prisma.productVariant.findFirst({
                      where: {
                             storeId,
-                            barcode: data.barcode,
+                            barcode: parsed.barcode,
                             NOT: { id: variantId },
                             active: true,
                      },
               });
               if (existing) {
-                     throw new Error(`El código '${data.barcode}' ya está en uso.`);
+                     throw new Error(`El código '${parsed.barcode}' ya está en uso.`);
               }
        }
 
        return await prisma.productVariant.update({
               where: { id: variantId },
-              data
+              data: parsed
        });
 }
 
