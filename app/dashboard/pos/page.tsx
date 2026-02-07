@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/modal";
 import { Ticket } from "@/components/pos/ticket";
 import confetti from "canvas-confetti";
 import { formatCurrency } from "@/lib/utils";
+import { useToast } from "@/components/providers/toast-provider";
 
 // Sounds (Base64 for reliability/speed in demo)
 const BEEP_SOUND = "data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"; // Tiny placeholder, will replace better or use simple osc?
@@ -65,6 +66,27 @@ export default function POSPage() {
        const [searchResults, setSearchResults] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
        const [cart, setCart] = useState<CartItem[]>([]);
        const [loadingSearch, setLoadingSearch] = useState(false);
+       const { toast } = useToast();
+       const [isClient, setIsClient] = useState(false);
+
+       // Persistence
+       useEffect(() => {
+              setIsClient(true);
+              const saved = localStorage.getItem("pos-cart");
+              if (saved) {
+                     try {
+                            setCart(JSON.parse(saved));
+                     } catch (e) {
+                            console.error("Error parsing cart", e);
+                     }
+              }
+       }, []);
+
+       useEffect(() => {
+              if (isClient) {
+                     localStorage.setItem("pos-cart", JSON.stringify(cart));
+              }
+       }, [cart, isClient]);
 
        // Barcode Scanner State
        const lastKeyTime = useRef<number>(0);
@@ -109,7 +131,7 @@ export default function POSPage() {
                             if (product.stockQuantity > 0) {
                                    addToCart(product);
                             } else {
-                                   alert(`Producto sin stock: ${product.product.name}`);
+                                   toast(`Producto sin stock: ${product.product.name}`, "error");
                             }
                      }
               } finally {
@@ -249,7 +271,7 @@ export default function POSPage() {
        const handleCheckout = async () => {
               if (cart.length === 0) return;
               if (!session) {
-                     alert("Debe abrir la caja antes de realizar ventas.");
+                     toast("Debe abrir la caja antes de realizar ventas.", "warning");
                      return;
               }
               setProcessing(true);
@@ -295,7 +317,7 @@ export default function POSPage() {
                             origin: { y: 0.6 }
                      });
               } catch (e: any) {
-                     alert(e.message || "Error al procesar la venta");
+                     toast(e.message || "Error al procesar la venta", "error");
               } finally {
                      setProcessing(false);
               }
