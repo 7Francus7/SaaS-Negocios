@@ -48,8 +48,8 @@ export default function ReportsPage() {
                                                  key={r}
                                                  onClick={() => setRange(r)}
                                                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${range === r
-                                                               ? 'bg-white text-blue-600 shadow-sm'
-                                                               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                                        ? 'bg-white text-blue-600 shadow-sm'
+                                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
                                                         }`}
                                           >
                                                  {r === 'today' ? 'Hoy' : r === '7d' ? '7 Días' : '30 Días'}
@@ -135,7 +135,7 @@ export default function ReportsPage() {
                                                                       dataKey="count"
                                                                >
                                                                       {data.paymentMethods.map((entry, index) => (
-                                                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={4} />
+                                                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                                       ))}
                                                                </Pie>
                                                                <Tooltip wrapperStyle={{ outline: 'none' }} contentStyle={{ borderRadius: '8px' }} />
