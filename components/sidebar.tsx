@@ -13,7 +13,6 @@ import {
        Store,
        DollarSign,
        Truck,
-       Crown,
        Shield,
        Tag,
        Zap,

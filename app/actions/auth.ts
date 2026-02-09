@@ -20,6 +20,13 @@ export async function login(prevState: any, formData: FormData) {
               if (email === "admin@saas.com" && password === "admin123") {
                      // In a real app, set a cookie here.
                      // For now, we return a success flag that the client can use to redirect
+                     const { cookies } = await import("next/headers");
+                     (await cookies()).set("user_email", email, {
+                            httpOnly: true,
+                            secure: process.env.NODE_ENV === "production",
+                            maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+                            path: "/",
+                     });
                      return { success: true, godMode: true };
               }
 
