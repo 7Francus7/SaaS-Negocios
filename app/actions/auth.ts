@@ -44,7 +44,7 @@ export async function login(prevState: any, formData: FormData) {
               (await cookies()).set("user_email", email, {
                      httpOnly: true,
                      secure: process.env.NODE_ENV === "production",
-                     maxAge: 60 * 60 * 24 * 7, // 1 week
+                     maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
                      path: "/",
               });
 

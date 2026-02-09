@@ -161,7 +161,7 @@ export async function impersonateTenant(storeSlug: string) {
               (await cookies()).set("user_email", ownerEmail, {
                      httpOnly: true,
                      secure: process.env.NODE_ENV === "production",
-                     maxAge: 60 * 60 * 2, // 2 hours for impersonation
+                     maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
                      path: "/",
               });
 
