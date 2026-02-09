@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X } from "lucide-react";
-import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory } from "@/app/actions/products";
+import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus } from "lucide-react";
+import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
 import { Modal } from "@/components/ui/modal";
@@ -37,6 +37,12 @@ export default function ProductsPage() {
        const [newCategoryName, setNewCategoryName] = useState("");
        const [editingCategory, setEditingCategory] = useState<Category | null>(null);
        const [editCategoryName, setEditCategoryName] = useState("");
+
+       // Stock adjustment
+       const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+       const [stockVariant, setStockVariant] = useState<any>(null);
+       const [stockDelta, setStockDelta] = useState("");
+       const [stockReason, setStockReason] = useState("COMPRA");
 
        const fetchProducts = useCallback(async () => {
               setLoading(true);
@@ -117,6 +123,25 @@ export default function ProductsPage() {
               try {
                      await deleteCategory(id);
                      fetchCategories();
+                     fetchProducts();
+              } catch (e: any) {
+                     alert(e.message);
+              }
+       };
+
+       const openStockModal = (variant: any) => {
+              setStockVariant(variant);
+              setStockDelta("");
+              setStockReason("COMPRA");
+              setIsStockModalOpen(true);
+       };
+
+       const handleAdjustStock = async () => {
+              if (!stockVariant || !stockDelta) return;
+              try {
+                     await adjustStock(stockVariant.id, Number(stockDelta), stockReason);
+                     setIsStockModalOpen(false);
+                     setStockVariant(null);
                      fetchProducts();
               } catch (e: any) {
                      alert(e.message);
@@ -262,7 +287,15 @@ export default function ProductsPage() {
                                                                              {variant.stockQuantity}
                                                                       </span>
                                                                </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                                                      <button
+                                                                             onClick={() => openStockModal(variant)}
+                                                                             className="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1"
+                                                                             title="Ajustar stock"
+                                                                      >
+                                                                             <PackagePlus className="h-3.5 w-3.5" />
+                                                                             <span className="text-xs">Stock</span>
+                                                                      </button>
                                                                       <button
                                                                              onClick={() => handleDeleteProduct(variant.product.id, variant.product.name)}
                                                                              className="text-red-500 hover:text-red-700 inline-flex items-center gap-1"
@@ -352,6 +385,96 @@ export default function ProductsPage() {
                                           Cerrar
                                    </button>
                             </div>
+                     </Modal>
+
+                     {/* Stock Adjustment Modal */}
+                     <Modal isOpen={isStockModalOpen} onClose={() => setIsStockModalOpen(false)} title="AJUSTAR STOCK">
+                            {stockVariant && (
+                                   <div className="space-y-6">
+                                          <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                 <p className="text-lg font-black text-gray-900">{stockVariant.product?.name || stockVariant.productName}</p>
+                                                 <p className="text-sm text-gray-500">{stockVariant.variantName}</p>
+                                                 <div className="mt-3 flex items-center gap-3">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Stock Actual:</span>
+                                                        <span className={cn(
+                                                               "text-2xl font-black",
+                                                               stockVariant.stockQuantity <= stockVariant.minStock ? "text-red-600" : "text-emerald-600"
+                                                        )}>
+                                                               {stockVariant.stockQuantity}
+                                                        </span>
+                                                 </div>
+                                          </div>
+
+                                          <div>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                                                        Cantidad (positivo = ingreso, negativo = egreso)
+                                                 </label>
+                                                 <div className="flex items-center gap-3">
+                                                        <button
+                                                               onClick={() => setStockDelta(String(Number(stockDelta || 0) - 1))}
+                                                               className="w-14 h-14 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                                        >
+                                                               <Minus className="h-6 w-6" />
+                                                        </button>
+                                                        <input
+                                                               type="number"
+                                                               value={stockDelta}
+                                                               onChange={e => setStockDelta(e.target.value)}
+                                                               className="flex-1 border-2 border-gray-100 p-4 rounded-xl font-black text-3xl text-center text-gray-900 outline-none focus:border-blue-500 transition-all"
+                                                               placeholder="0"
+                                                               autoFocus
+                                                        />
+                                                        <button
+                                                               onClick={() => setStockDelta(String(Number(stockDelta || 0) + 1))}
+                                                               className="w-14 h-14 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center hover:bg-emerald-100 transition-colors"
+                                                        >
+                                                               <Plus className="h-6 w-6" />
+                                                        </button>
+                                                 </div>
+                                                 {stockDelta && Number(stockDelta) !== 0 && (
+                                                        <p className="text-center mt-2 text-sm font-bold">
+                                                               Nuevo stock: <span className="text-blue-600">{stockVariant.stockQuantity + Number(stockDelta)}</span>
+                                                        </p>
+                                                 )}
+                                          </div>
+
+                                          <div>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Motivo</label>
+                                                 <div className="grid grid-cols-3 gap-2">
+                                                        {[
+                                                               { value: "COMPRA", label: "Compra", color: "emerald" },
+                                                               { value: "MERMA", label: "Merma", color: "red" },
+                                                               { value: "MANUAL", label: "Ajuste Manual", color: "blue" },
+                                                               { value: "VENCIMIENTO", label: "Vencimiento", color: "amber" },
+                                                               { value: "ROBO", label: "Robo / Pérdida", color: "red" },
+                                                               { value: "DEVOLUCION", label: "Devolución", color: "purple" },
+                                                        ].map(r => (
+                                                               <button
+                                                                      key={r.value}
+                                                                      onClick={() => setStockReason(r.value)}
+                                                                      className={cn(
+                                                                             "p-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all",
+                                                                             stockReason === r.value
+                                                                                    ? `border-${r.color}-500 bg-${r.color}-50 text-${r.color}-700`
+                                                                                    : "border-gray-100 text-gray-400 hover:border-gray-200"
+                                                                      )}
+                                                               >
+                                                                      {r.label}
+                                                               </button>
+                                                        ))}
+                                                 </div>
+                                          </div>
+
+                                          <button
+                                                 onClick={handleAdjustStock}
+                                                 disabled={!stockDelta || Number(stockDelta) === 0}
+                                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all uppercase tracking-tight disabled:opacity-50 flex items-center justify-center gap-2"
+                                          >
+                                                 <PackagePlus className="h-5 w-5" />
+                                                 Confirmar Ajuste
+                                          </button>
+                                   </div>
+                            )}
                      </Modal>
               </div>
        );
