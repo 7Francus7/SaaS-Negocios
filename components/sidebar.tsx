@@ -29,6 +29,7 @@ const menuItems = [
        { href: "/dashboard/products", label: "Inventario", icon: Package },
        { href: "/dashboard/pos", label: "Punto de Venta", icon: ShoppingCart },
        { href: "/dashboard/cash", label: "Caja y Turnos", icon: DollarSign },
+       { href: "/dashboard/sales", label: "Historial Ventas", icon: Activity },
        { href: "/dashboard/promotions", label: "Promociones", icon: Tag },
        { href: "/dashboard/customers", label: "Clientes", icon: Users },
        { href: "/dashboard/reports", label: "Reportes", icon: BarChart3 },

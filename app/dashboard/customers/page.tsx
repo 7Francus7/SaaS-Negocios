@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { UserPlus, Search, Wallet, History, CreditCard, Shield, MapPin, Hash, DollarSign } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer, getCustomerHistory } from "@/app/actions/customers";
+import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2 } from "lucide-react";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
@@ -25,10 +25,18 @@ export default function CustomersPage() {
        // Modals
        const [isCreateOpen, setIsCreateOpen] = useState(false);
        const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+       const [isEditOpen, setIsEditOpen] = useState(false);
        const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
        // Forms
        const [newCustomer, setNewCustomer] = useState({
+              name: "",
+              dni: "",
+              phone: "",
+              address: "",
+              creditLimit: 0
+       });
+       const [editForm, setEditForm] = useState({
               name: "",
               dni: "",
               phone: "",
@@ -72,6 +80,39 @@ export default function CustomersPage() {
               } catch (e: any) { alert(e.message); }
        };
 
+       const handleEdit = async () => {
+              if (!selectedCustomer) return;
+              try {
+                     await updateCustomer(selectedCustomer.id, {
+                            ...editForm,
+                            creditLimit: Number(editForm.creditLimit)
+                     });
+                     setIsEditOpen(false);
+                     setSelectedCustomer(null);
+                     fetchCustomers();
+              } catch (e: any) { alert(e.message); }
+       };
+
+       const handleDelete = async (customer: Customer) => {
+              if (!confirm(`¿Estás seguro de eliminar a "${customer.name}"? Sus movimientos de cuenta se conservarán.`)) return;
+              try {
+                     await deleteCustomer(customer.id);
+                     fetchCustomers();
+              } catch (e: any) { alert(e.message); }
+       };
+
+       const openEdit = (customer: Customer) => {
+              setSelectedCustomer(customer);
+              setEditForm({
+                     name: customer.name,
+                     dni: customer.dni || "",
+                     phone: customer.phone || "",
+                     address: customer.address || "",
+                     creditLimit: customer.creditLimit
+              });
+              setIsEditOpen(true);
+       };
+
        const [history, setHistory] = useState<any[]>([]);
        const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
@@ -89,7 +130,11 @@ export default function CustomersPage() {
               }
        };
 
-       const filtered = customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+       const filtered = customers.filter(c =>
+              c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (c.dni && c.dni.includes(searchQuery)) ||
+              (c.phone && c.phone.includes(searchQuery))
+       );
 
        return (
               <div className="space-y-6">
@@ -110,18 +155,43 @@ export default function CustomersPage() {
                      <div className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center gap-3 shadow-sm">
                             <Search className="text-gray-400 h-5 w-5" />
                             <input
-                                   placeholder="Buscar por nombre o DNI..."
+                                   placeholder="Buscar por nombre, DNI o teléfono..."
                                    className="flex-1 outline-none text-gray-700 font-medium"
                                    value={searchQuery}
                                    onChange={e => setSearchQuery(e.target.value)}
                             />
+                            {searchQuery && (
+                                   <span className="text-xs text-gray-400 font-bold">{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
+                            )}
                      </div>
 
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {loading ? (
                                    <div className="col-span-full py-20 text-center text-gray-400 font-medium">Cargando clientes...</div>
+                            ) : filtered.length === 0 ? (
+                                   <div className="col-span-full py-20 text-center text-gray-400 font-medium">
+                                          {searchQuery ? "No se encontraron clientes con esa búsqueda." : "No hay clientes registrados."}
+                                   </div>
                             ) : filtered.map(customer => (
                                    <div key={customer.id} className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group">
+                                          {/* Edit & Delete buttons */}
+                                          <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                 <button
+                                                        onClick={() => openEdit(customer)}
+                                                        className="p-2 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                                                        title="Editar cliente"
+                                                 >
+                                                        <Pencil className="h-4 w-4" />
+                                                 </button>
+                                                 <button
+                                                        onClick={() => handleDelete(customer)}
+                                                        className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                                                        title="Eliminar cliente"
+                                                 >
+                                                        <Trash2 className="h-4 w-4" />
+                                                 </button>
+                                          </div>
+
                                           <div className="flex justify-between items-start mb-6">
                                                  <div className="space-y-1">
                                                         <h3 className="font-black text-xl text-gray-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{customer.name}</h3>
@@ -277,6 +347,64 @@ export default function CustomersPage() {
                                           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all uppercase tracking-tight"
                                    >
                                           Confirmar y Crear Cuenta
+                                   </button>
+                            </div>
+                     </Modal>
+
+                     {/* Edit Customer Modal */}
+                     <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title={`EDITAR: ${selectedCustomer?.name || ''}`}>
+                            <div className="space-y-6">
+                                   <div className="grid grid-cols-2 gap-4">
+                                          <div className="col-span-2">
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Nombre Completo *</label>
+                                                 <input
+                                                        className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold placeholder:font-normal focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                                        value={editForm.name}
+                                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                 />
+                                          </div>
+                                          <div>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">DNI / ID</label>
+                                                 <input
+                                                        className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
+                                                        value={editForm.dni}
+                                                        onChange={e => setEditForm({ ...editForm, dni: e.target.value })}
+                                                 />
+                                          </div>
+                                          <div>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Teléfono</label>
+                                                 <input
+                                                        className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
+                                                        value={editForm.phone}
+                                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                                 />
+                                          </div>
+                                          <div className="col-span-2">
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Dirección</label>
+                                                 <input
+                                                        className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
+                                                        value={editForm.address}
+                                                        onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                                 />
+                                          </div>
+                                          <div className="col-span-2">
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Límite de Crédito ($)</label>
+                                                 <div className="relative">
+                                                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                        <input
+                                                               type="number"
+                                                               className="w-full bg-blue-50 border border-blue-100 pl-10 p-4 rounded-xl text-xl font-black text-blue-700 outline-none"
+                                                               value={editForm.creditLimit}
+                                                               onChange={e => setEditForm({ ...editForm, creditLimit: Number(e.target.value) })}
+                                                        />
+                                                 </div>
+                                          </div>
+                                   </div>
+                                   <button
+                                          onClick={handleEdit}
+                                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all uppercase tracking-tight"
+                                   >
+                                          Guardar Cambios
                                    </button>
                             </div>
                      </Modal>

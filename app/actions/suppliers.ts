@@ -45,3 +45,24 @@ export async function deleteSupplier(id: number) {
        });
        revalidatePath("/dashboard/suppliers");
 }
+
+export async function updateSupplier(id: number, data: {
+       name: string;
+       contact?: string;
+       phone?: string;
+       email?: string;
+       address?: string;
+       notes?: string;
+}) {
+       const storeId = await getStoreId();
+
+       const supplier = await prisma.supplier.findUnique({ where: { id } });
+       if (!supplier || supplier.storeId !== storeId) throw new Error("Proveedor no encontrado.");
+
+       await prisma.supplier.update({
+              where: { id },
+              data
+       });
+
+       revalidatePath("/dashboard/suppliers");
+}

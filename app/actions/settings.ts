@@ -74,3 +74,29 @@ export async function updateStoreSettings(data: {
        revalidatePath("/dashboard");
        return { success: true };
 }
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+       const { cookies } = await import("next/headers");
+       const email = (await cookies()).get("user_email")?.value;
+       if (!email) throw new Error("No autenticado.");
+
+       const bcrypt = await import("bcryptjs");
+
+       const user = await prisma.user.findUnique({ where: { email } });
+       if (!user || !user.password) throw new Error("Usuario no encontrado.");
+
+       // Verify current password
+       const isMatch = bcrypt.compareSync(currentPassword, user.password) || user.password === currentPassword;
+       if (!isMatch) throw new Error("La contraseña actual es incorrecta.");
+
+       if (newPassword.length < 6) throw new Error("La nueva contraseña debe tener al menos 6 caracteres.");
+
+       const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+       await prisma.user.update({
+              where: { email },
+              data: { password: hashedPassword }
+       });
+
+       return { success: true };
+}

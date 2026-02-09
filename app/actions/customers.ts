@@ -131,3 +131,44 @@ export async function getCustomerHistory(customerId: number) {
               amount: Number(h.amount)
        }));
 }
+
+export async function updateCustomer(customerId: number, data: {
+       name: string;
+       dni?: string;
+       phone?: string;
+       address?: string;
+       creditLimit?: number;
+}) {
+       const storeId = await getStoreId();
+
+       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+       if (!customer || customer.storeId !== storeId) throw new Error("Cliente no encontrado.");
+
+       const parsed = customerSchema.parse(data);
+
+       return await prisma.customer.update({
+              where: { id: customerId },
+              data: {
+                     name: parsed.name,
+                     dni: parsed.dni,
+                     phone: parsed.phone,
+                     address: parsed.address,
+                     creditLimit: parsed.creditLimit ?? customer.creditLimit,
+              },
+       });
+}
+
+export async function deleteCustomer(customerId: number) {
+       const storeId = await getStoreId();
+
+       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+       if (!customer || customer.storeId !== storeId) throw new Error("Cliente no encontrado.");
+
+       // Soft delete
+       await prisma.customer.update({
+              where: { id: customerId },
+              data: { active: false },
+       });
+
+       return { success: true };
+}

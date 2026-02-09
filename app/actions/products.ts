@@ -275,3 +275,64 @@ export async function exportProductsToCSV() {
 
        return header + rows;
 }
+
+export async function deleteProduct(productId: number) {
+       const storeId = await getStoreId();
+
+       const product = await prisma.product.findUnique({
+              where: { id: productId },
+              include: { variants: true }
+       });
+       if (!product || product.storeId !== storeId) throw new Error("Producto no encontrado.");
+
+       // Soft delete product and all its variants
+       await prisma.$transaction([
+              prisma.productVariant.updateMany({
+                     where: { productId },
+                     data: { active: false }
+              }),
+              prisma.product.update({
+                     where: { id: productId },
+                     data: { active: false }
+              })
+       ]);
+
+       return { success: true };
+}
+
+export async function createCategory(name: string) {
+       const storeId = await getStoreId();
+
+       return await prisma.category.create({
+              data: { name, storeId }
+       });
+}
+
+export async function updateCategory(id: number, name: string) {
+       const storeId = await getStoreId();
+
+       const cat = await prisma.category.findUnique({ where: { id } });
+       if (!cat || cat.storeId !== storeId) throw new Error("Categoría no encontrada.");
+
+       return await prisma.category.update({
+              where: { id },
+              data: { name }
+       });
+}
+
+export async function deleteCategory(id: number) {
+       const storeId = await getStoreId();
+
+       const cat = await prisma.category.findUnique({ where: { id } });
+       if (!cat || cat.storeId !== storeId) throw new Error("Categoría no encontrada.");
+
+       // Move products to uncategorized (null) before deleting
+       await prisma.product.updateMany({
+              where: { categoryId: id, storeId },
+              data: { categoryId: null }
+       });
+
+       await prisma.category.delete({ where: { id } });
+
+       return { success: true };
+}
