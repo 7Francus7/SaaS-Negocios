@@ -14,13 +14,16 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
        if (!isOpen) return null;
 
        return (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in">
+              <div
+                     className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in overflow-y-auto"
+                     onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+              >
                      <div
-                            className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200"
+                            className="bg-white rounded-xl shadow-xl w-full max-w-lg my-auto animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
                             role="dialog"
                             aria-modal="true"
                      >
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
                                    <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
                                    <button
                                           onClick={onClose}
@@ -29,7 +32,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                                           <X className="h-5 w-5" />
                                    </button>
                             </div>
-                            <div className="p-6">
+                            <div className="p-6 overflow-y-auto">
                                    {children}
                             </div>
                      </div>
