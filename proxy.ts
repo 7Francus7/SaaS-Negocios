@@ -1,8 +1,7 @@
-
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
        const currentUser = request.cookies.get('user_email')?.value
 
        // Routes that require authentication
