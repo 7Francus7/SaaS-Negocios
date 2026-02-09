@@ -35,6 +35,7 @@ const menuItems = [
        { href: "/dashboard/reports", label: "Reportes", icon: BarChart3 },
        { href: "/dashboard/suppliers", label: "Proveedores", icon: Truck },
        { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+       { href: "/dashboard/subscription", label: "Suscripción", icon: Crown },
 ];
 
 function SidebarContent() {
