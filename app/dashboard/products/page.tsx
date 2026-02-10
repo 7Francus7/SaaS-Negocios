@@ -391,8 +391,19 @@ export default function ProductsPage() {
                      <Modal isOpen={isStockModalOpen} onClose={() => setIsStockModalOpen(false)} title="AJUSTAR STOCK">
                             {stockVariant && (
                                    <div className="space-y-6">
+                                          <style jsx>{`
+                                                 input::-webkit-outer-spin-button,
+                                                 input::-webkit-inner-spin-button {
+                                                        -webkit-appearance: none;
+                                                        margin: 0;
+                                                 }
+                                                 input[type=number] {
+                                                        -moz-appearance: textfield;
+                                                 }
+                                          `}</style>
+
                                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                                 <p className="text-lg font-black text-gray-900">{stockVariant.product?.name || stockVariant.productName}</p>
+                                                 <p className="text-lg font-black text-gray-900 leading-tight">{stockVariant.product?.name || stockVariant.productName}</p>
                                                  <p className="text-sm text-gray-500">{stockVariant.variantName}</p>
                                                  <div className="mt-3 flex items-center gap-3">
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Stock Actual:</span>
@@ -407,12 +418,12 @@ export default function ProductsPage() {
 
                                           <div>
                                                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
-                                                        Cantidad (positivo = ingreso, negativo = egreso)
+                                                        Cantidad (+/-)
                                                  </label>
-                                                 <div className="flex items-center gap-3">
+                                                 <div className="flex items-center gap-2">
                                                         <button
                                                                onClick={() => setStockDelta(String(Number(stockDelta || 0) - 1))}
-                                                               className="w-14 h-14 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                                               className="w-12 h-14 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all"
                                                         >
                                                                <Minus className="h-6 w-6" />
                                                         </button>
@@ -420,43 +431,43 @@ export default function ProductsPage() {
                                                                type="number"
                                                                value={stockDelta}
                                                                onChange={e => setStockDelta(e.target.value)}
-                                                               className="flex-1 border-2 border-gray-100 p-4 rounded-xl font-black text-3xl text-center text-gray-900 outline-none focus:border-blue-500 transition-all"
+                                                               className="flex-1 w-full border-2 border-gray-100 p-4 rounded-xl font-black text-3xl text-center text-gray-900 outline-none focus:border-blue-500 transition-all min-w-0"
                                                                placeholder="0"
                                                                autoFocus
                                                         />
                                                         <button
                                                                onClick={() => setStockDelta(String(Number(stockDelta || 0) + 1))}
-                                                               className="w-14 h-14 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center hover:bg-emerald-100 transition-colors"
+                                                               className="w-12 h-14 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center hover:bg-emerald-100 active:scale-95 transition-all"
                                                         >
                                                                <Plus className="h-6 w-6" />
                                                         </button>
                                                  </div>
                                                  {stockDelta && Number(stockDelta) !== 0 && (
                                                         <p className="text-center mt-2 text-sm font-bold">
-                                                               Nuevo stock: <span className="text-blue-600">{stockVariant.stockQuantity + Number(stockDelta)}</span>
+                                                               Nuevo stock esperado: <span className="text-blue-600">{stockVariant.stockQuantity + Number(stockDelta)}</span>
                                                         </p>
                                                  )}
                                           </div>
 
                                           <div>
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Motivo</label>
-                                                 <div className="grid grid-cols-3 gap-2">
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Motivo del Ajuste</label>
+                                                 <div className="grid grid-cols-2 gap-2">
                                                         {[
-                                                               { value: "COMPRA", label: "Compra", color: "emerald" },
-                                                               { value: "MERMA", label: "Merma", color: "red" },
-                                                               { value: "MANUAL", label: "Ajuste Manual", color: "blue" },
-                                                               { value: "VENCIMIENTO", label: "Vencimiento", color: "amber" },
-                                                               { value: "ROBO", label: "Robo / Pérdida", color: "red" },
-                                                               { value: "DEVOLUCION", label: "Devolución", color: "purple" },
+                                                               { value: "COMPRA", label: "📦 Compra", color: "emerald" },
+                                                               { value: "MERMA", label: "🗑️ Merma", color: "red" },
+                                                               { value: "MANUAL", label: "✏️ Ajuste Manual", color: "blue" },
+                                                               { value: "VENCIMIENTO", label: "🗓️ Vencimiento", color: "amber" },
+                                                               { value: "ROBO", label: "🚨 Robo / Pérdida", color: "red" },
+                                                               { value: "DEVOLUCION", label: "🔄 Devolución", color: "purple" },
                                                         ].map(r => (
                                                                <button
                                                                       key={r.value}
                                                                       onClick={() => setStockReason(r.value)}
                                                                       className={cn(
-                                                                             "p-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all",
+                                                                             "p-3 rounded-xl text-[10px] font-black tracking-tight uppercase border-2 transition-all text-left",
                                                                              stockReason === r.value
-                                                                                    ? `border-${r.color}-500 bg-${r.color}-50 text-${r.color}-700`
-                                                                                    : "border-gray-100 text-gray-400 hover:border-gray-200"
+                                                                                    ? `border-blue-500 bg-blue-50 text-blue-700`
+                                                                                    : "border-gray-50 text-gray-400 hover:border-gray-200"
                                                                       )}
                                                                >
                                                                       {r.label}
@@ -465,14 +476,16 @@ export default function ProductsPage() {
                                                  </div>
                                           </div>
 
-                                          <button
-                                                 onClick={handleAdjustStock}
-                                                 disabled={!stockDelta || Number(stockDelta) === 0}
-                                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all uppercase tracking-tight disabled:opacity-50 flex items-center justify-center gap-2"
-                                          >
-                                                 <PackagePlus className="h-5 w-5" />
-                                                 Confirmar Ajuste
-                                          </button>
+                                          <div className="pt-2">
+                                                 <button
+                                                        onClick={handleAdjustStock}
+                                                        disabled={!stockDelta || Number(stockDelta) === 0}
+                                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 transition-all uppercase tracking-tight disabled:opacity-50 flex items-center justify-center gap-2"
+                                                 >
+                                                        <PackagePlus className="h-5 w-5" />
+                                                        Confirmar Ajuste
+                                                 </button>
+                                          </div>
                                    </div>
                             )}
                      </Modal>
