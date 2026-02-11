@@ -41,7 +41,7 @@ function SidebarContent() {
        const pathname = usePathname();
        const router = useRouter();
        const searchParams = useSearchParams();
-       const [storeName, setStoreName] = useState("Despensa SaaS");
+       const [storeName, setStoreName] = useState("Gestión de Despensas");
        const [godMode, setGodMode] = useState(false);
 
        useEffect(() => {

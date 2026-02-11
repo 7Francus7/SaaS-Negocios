@@ -46,7 +46,7 @@ export function LoginPage() {
                             <div className="relative z-10 w-full max-w-lg space-y-8">
                                    <div className="space-y-2">
                                           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
-                                                 Despensa SaaS
+                                                 Gestión de Despensas
                                           </h1>
                                           <p className="max-w-[600px] text-gray-300 md:text-xl">
                                                  La evolución de tu sistema de gestión. Potencia tu negocio con nuestra plataforma en la nube.
@@ -150,7 +150,7 @@ export function LoginPage() {
                             </div>
 
                             <div className="absolute bottom-4 text-xs text-gray-400">
-                                   © 2024 Despensa SaaS. Todos los derechos reservados.
+                                   © 2024 Gestión de Despensas. Todos los derechos reservados.
                             </div>
                      </div>
               </div>

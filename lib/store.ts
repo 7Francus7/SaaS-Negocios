@@ -60,8 +60,8 @@ export async function getStoreName(): Promise<string> {
                      where: { id },
                      select: { name: true }
               });
-              return store?.name || "Despensa SaaS";
+              return store?.name || "Gestión de Despensas";
        } catch (e) {
-              return "Despensa SaaS";
+              return "Gestión de Despensas";
        }
 }
