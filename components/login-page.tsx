@@ -141,15 +141,17 @@ export function LoginPage() {
                                           </Button>
                                    </form>
 
-                                   ¿No tienes una cuenta?{" "}
-                                   <a
-                                          href="https://wa.me/5493435456247?text=Hola,%20me%20interesa%20contratar%20el%20sistema%20de%20Gestión%20de%20Despensas"
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="font-medium text-blue-600 hover:text-blue-500"
-                                   >
-                                          Contactar Ventas
-                                   </a>
+                                   <div className="text-center text-sm text-gray-900 font-medium">
+                                          ¿No tienes una cuenta?{" "}
+                                          <a
+                                                 href="https://wa.me/5493524421497?text=Hola,%20me%20interesa%20contratar%20el%20sistema%20de%20Gestión%20de%20Despensas"
+                                                 target="_blank"
+                                                 rel="noopener noreferrer"
+                                                 className="font-bold text-blue-700 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 transition-colors"
+                                          >
+                                                 Contactar Ventas
+                                          </a>
+                                   </div>
                             </div>
 
                             <div className="absolute bottom-4 text-xs text-gray-400">
