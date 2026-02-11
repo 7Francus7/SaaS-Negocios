@@ -46,11 +46,20 @@ export default function CustomersPage() {
        const [paymentAmount, setPaymentAmount] = useState("");
        const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("EFECTIVO");
 
+       const [error, setError] = useState("");
+
        const fetchCustomers = useCallback(async () => {
               setLoading(true);
-              const data = await getCustomers();
-              setCustomers(data as any);
-              setLoading(false);
+              setError("");
+              try {
+                     const data = await getCustomers();
+                     setCustomers(data as any);
+              } catch (err) {
+                     console.error("Error fetching customers:", err);
+                     setError("No se pudieron cargar los clientes. Por favor, intente nuevamente.");
+              } finally {
+                     setLoading(false);
+              }
        }, []);
 
        // Initial load
@@ -168,6 +177,12 @@ export default function CustomersPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {loading ? (
                                    <div className="col-span-full py-20 text-center text-gray-400 font-medium">Cargando clientes...</div>
+                            ) : error ? (
+                                   <div className="col-span-full py-20 text-center text-red-500 font-medium flex flex-col items-center gap-2">
+                                          <Shield className="h-8 w-8" />
+                                          <p>{error}</p>
+                                          <button onClick={fetchCustomers} className="text-blue-600 underline text-sm">Reintentar</button>
+                                   </div>
                             ) : filtered.length === 0 ? (
                                    <div className="col-span-full py-20 text-center text-gray-400 font-medium">
                                           {searchQuery ? "No se encontraron clientes con esa búsqueda." : "No hay clientes registrados."}
