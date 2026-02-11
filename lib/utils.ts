@@ -30,15 +30,25 @@ export function safeSerialize<T>(data: T): T {
 
 /**
  * Formato de moneda para Argentina (ARS)
+ * Maneja null, undefined, strings vacíos y errores de conversión de forma segura.
  */
-export function formatCurrency(amount: number | string): string {
-       const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+export function formatCurrency(amount: number | string | null | undefined): string {
+       if (amount === null || amount === undefined || amount === "") {
+              return "$ 0,00";
+       }
+
+       const value = typeof amount === 'string' ? parseFloat(amount.replace(',', '.')) : amount;
+
+       if (isNaN(value)) {
+              return "$ 0,00";
+       }
+
        return new Intl.NumberFormat('es-AR', {
               style: 'currency',
               currency: 'ARS',
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
-       }).format(value || 0);
+       }).format(value);
 }
 
 /**

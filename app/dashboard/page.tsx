@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign, Zap, CheckCircle2, Settings } from "lucide-react";
 import { getDashboardStats, getDashboardChartData, DashboardStats } from "@/app/actions/dashboard";
 import { checkOnboardingStatus } from "@/app/actions/onboarding";
@@ -140,7 +141,7 @@ export default function DashboardPage() {
 
                      {/* Prominent Quick Actions - TOP OF PAGE */}
                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <a href="/dashboard/pos" className="group bg-gradient-to-br from-blue-600 to-blue-700 p-1 rounded-2xl shadow-lg hover:shadow-blue-200 transition-all hover:-translate-y-1 active:scale-95">
+                            <Link href="/dashboard/pos" className="group bg-gradient-to-br from-blue-600 to-blue-700 p-1 rounded-2xl shadow-lg hover:shadow-blue-200 transition-all hover:-translate-y-1 active:scale-95">
                                    <div className="bg-white/10 backdrop-blur-sm rounded-[calc(1rem-1px)] p-4 flex items-center justify-between text-white">
                                           <div className="flex items-center gap-4">
                                                  <div className="bg-white/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
@@ -155,9 +156,9 @@ export default function DashboardPage() {
                                                  <Zap className="h-4 w-4 fill-white animate-pulse" />
                                           </div>
                                    </div>
-                            </a>
+                            </Link>
 
-                            <a href="/dashboard/products" className="group bg-gradient-to-br from-indigo-600 to-indigo-700 p-1 rounded-2xl shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 active:scale-95">
+                            <Link href="/dashboard/products" className="group bg-gradient-to-br from-indigo-600 to-indigo-700 p-1 rounded-2xl shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 active:scale-95">
                                    <div className="bg-white/10 backdrop-blur-sm rounded-[calc(1rem-1px)] p-4 flex items-center justify-between text-white">
                                           <div className="flex items-center gap-4">
                                                  <div className="bg-white/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
@@ -172,9 +173,9 @@ export default function DashboardPage() {
                                                  <TrendingUp className="h-4 w-4" />
                                           </div>
                                    </div>
-                            </a>
+                            </Link>
 
-                            <a href="/dashboard/cash" className="group bg-gradient-to-br from-emerald-600 to-emerald-700 p-1 rounded-2xl shadow-lg hover:shadow-emerald-200 transition-all hover:-translate-y-1 active:scale-95">
+                            <Link href="/dashboard/cash" className="group bg-gradient-to-br from-emerald-600 to-emerald-700 p-1 rounded-2xl shadow-lg hover:shadow-emerald-200 transition-all hover:-translate-y-1 active:scale-95">
                                    <div className="bg-white/10 backdrop-blur-sm rounded-[calc(1rem-1px)] p-4 flex items-center justify-between text-white">
                                           <div className="flex items-center gap-4">
                                                  <div className="bg-white/20 p-3 rounded-xl group-hover:scale-110 transition-transform">
@@ -189,9 +190,9 @@ export default function DashboardPage() {
                                                  <Zap className="h-4 w-4 fill-white" />
                                           </div>
                                    </div>
-                            </a>
+                            </Link>
 
-                            <a href="/dashboard/customers" className="group bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md hover:-translate-y-1 hidden lg:flex items-center gap-4 active:scale-95">
+                            <Link href="/dashboard/customers" className="group bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md hover:-translate-y-1 hidden lg:flex items-center gap-4 active:scale-95">
                                    <div className="bg-blue-50 p-3 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
                                           <Users className="h-6 w-6" />
                                    </div>
@@ -199,7 +200,7 @@ export default function DashboardPage() {
                                           <p className="font-bold text-gray-900 leading-tight uppercase tracking-tight">Clientes</p>
                                           <p className="text-gray-500 text-[10px] mt-0.5 font-medium uppercase tracking-wider">Cuenta Corriente</p>
                                    </div>
-                            </a>
+                            </Link>
                      </div>
 
                      {/* KPI Cards */}
@@ -257,9 +258,9 @@ export default function DashboardPage() {
                                                                <p className="font-black text-gray-900 uppercase tracking-tight truncate group-hover:text-blue-600 transition-colors text-sm">{item.product.name}</p>
                                                                <p className="text-xs text-gray-500 font-medium">{item.variantName}</p>
 
-                                                               <a href={`/dashboard/products?search=${item.product.name}`} className="mt-4 text-[10px] font-black uppercase tracking-widest text-center py-2 bg-white text-orange-600 rounded-lg border border-orange-100 hover:bg-orange-600 hover:text-white transition-all">
+                                                               <Link href={`/dashboard/products?search=${item.product.name}`} className="mt-4 text-[10px] font-black uppercase tracking-widest text-center py-2 bg-white text-orange-600 rounded-lg border border-orange-100 hover:bg-orange-600 hover:text-white transition-all">
                                                                       Reponer Stock
-                                                               </a>
+                                                               </Link>
                                                         </div>
                                                  ))}
                                           </div>

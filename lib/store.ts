@@ -10,47 +10,46 @@ export async function getStoreId(): Promise<string> {
               if (userEmail) {
                      const user = await prisma.user.findUnique({
                             where: { email: userEmail },
-                            select: { storeId: true }
+                            select: { id: true, storeId: true, name: true }
                      });
 
-                     if (user && user.storeId) {
-                            return user.storeId;
-                     }
+                     if (user) {
+                            // If user is assigned to a store, return it
+                            if (user.storeId) {
+                                   return user.storeId;
+                            }
 
-                     // If user exists but no storeId, we'll continue to fallback logic
-                     console.log(`User ${userEmail} has no storeId assigned.`);
+                            // 2. AUTO-PROVISIONING: If user exists but has no store, create one for them.
+                            console.log(`Usuario ${userEmail} sin tienda. Creando nueva tienda...`);
+
+                            // Generate a simple unique slug
+                            const randomSlug = Math.random().toString(36).substring(2, 8);
+                            const slug = `store-${randomSlug}-${Date.now()}`;
+
+                            // Create the store and associate it with the user
+                            const newStore = await prisma.store.create({
+                                   data: {
+                                          name: user.name ? `Negocio de ${user.name}` : "Mi Nuevo Negocio",
+                                          slug: slug,
+                                          isActive: true,
+                                          users: {
+                                                 connect: { id: user.id }
+                                          }
+                                   }
+                            });
+
+                            return newStore.id;
+                     }
               }
 
-              // 2. Fallback: Return first store found
-              const firstStore = await prisma.store.findFirst();
+              // 3. IF NO USER FOUND -> SECURITY ERROR
+              // The middleware should have caught this, but this is a second layer of defense.
+              throw new Error("❌ SEGURIDAD: Usuario no autenticado.");
 
-              if (firstStore) {
-                     return firstStore.id;
-              }
-
-              // 3. Only create if absolutely necessary (first time setup)
-              console.log("No store found, creating default Tienda Demo...");
-              const newStore = await prisma.store.create({
-                     data: {
-                            name: "Tienda Demo",
-                            slug: `demo-${Math.random().toString(36).substring(7)}`,
-                            isActive: true
-                     }
-              });
-
-              return newStore.id;
        } catch (error) {
-              console.error("Store Helper Error:", error);
-
-              // Absolute last resort: try to find ANY store without user context
-              try {
-                     const store = await prisma.store.findFirst();
-                     if (store) return store.id;
-              } catch (dbError) {
-                     console.error("Database connection failed during fallback:", dbError);
-              }
-
-              throw new Error("No se pudo identificar una tienda activa. Por favor, contacte a soporte si el problema persiste.");
+              console.error("Store Security Error:", error);
+              // Do not return any data if we can't identify the user's store
+              throw new Error("Acceso Denegado: No se pudo verificar la identidad de la tienda.");
        }
 }
 

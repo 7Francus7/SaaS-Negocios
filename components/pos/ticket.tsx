@@ -36,12 +36,14 @@ export function Ticket({ data }: { data: TicketData | null }) {
 
        return (
               <div id="printable-ticket" className="hidden">
-                     {/* Container for 58mm/80mm Paper */}
-                     <div className="w-full bg-white text-black font-mono text-[12px] leading-tight select-none p-1">
+                     {/* Container for 80mm Paper (approx 72-76mm printable area) 
+                         Using fixed 76mm width ensures it doesn't stretch if print dialog defaults to A4 
+                     */}
+                     <div className="bg-white text-black font-mono text-[11px] leading-tight select-none p-1" style={{ width: '76mm' }}>
 
                             {/* HEADER */}
-                            <div className="text-center lowercase mb-2">
-                                   <div className="font-bold text-sm uppercase mb-1">{data.store?.name || "DESPENSA DEMO"}</div>
+                            <div className="text-center mb-3">
+                                   <div className="font-black text-base uppercase mb-1">{data.store?.name || "DESPENSA"}</div>
                                    {data.store?.address && <p>{data.store.address}</p>}
                                    {data.store?.phone && <p>Tel: {data.store.phone}</p>}
                                    {data.store?.cuit && <p>CUIT: {data.store.cuit}</p>}
@@ -58,24 +60,26 @@ export function Ticket({ data }: { data: TicketData | null }) {
                             <div className="border-b border-black border-dashed my-2"></div>
 
                             {/* ITEMS HEADERS */}
-                            <div className="flex text-[10px] font-bold mb-1">
-                                   <span className="w-8">CANT</span>
-                                   <span className="flex-1">DESCRIPCION</span>
-                                   <span className="w-12 text-right">TOTAL</span>
+                            {/* Simplified headers since we use a 2-line layout for items */}
+                            <div className="flex justify-between text-[10px] font-bold mb-1">
+                                   <span>DESCRIPCION</span>
+                                   <span>IMPORTE</span>
                             </div>
 
                             {/* ITEMS LIST */}
-                            <div className="flex flex-col gap-1 mb-2">
+                            <div className="flex flex-col gap-2 mb-2">
                                    {data.items.map((item, i) => (
                                           <div key={i} className="flex flex-col">
-                                                 <div className="flex justify-between font-bold">
-                                                        <span>{item.productName}</span>
+                                                 {/* Line 1: Product Name */}
+                                                 <div className="font-bold text-[11px] mb-0.5">
+                                                        {item.productName}
                                                  </div>
-                                                 <div className="flex justify-between text-[11px] pl-2">
-                                                        <div className="flex gap-2">
+                                                 {/* Line 2: Qty x Unit Price | Total */}
+                                                 <div className="flex justify-between pl-2 text-[11px]">
+                                                        <div className="flex gap-1 text-gray-800">
                                                                <span>{item.quantity} x {formatCurrency(item.price)}</span>
                                                                {item.variantName !== "Estándar" && item.variantName !== "Unidad" && (
-                                                                      <span className="italic">({item.variantName})</span>
+                                                                      <span className="italic text-[10px] self-center">({item.variantName})</span>
                                                                )}
                                                         </div>
                                                         <span className="font-bold">{formatCurrency(item.price * item.quantity)}</span>
@@ -87,7 +91,7 @@ export function Ticket({ data }: { data: TicketData | null }) {
                             <div className="border-b border-black border-dashed my-2"></div>
 
                             {/* TOTALS */}
-                            <div className="flex justify-between font-bold text-lg my-2">
+                            <div className="flex justify-between font-black text-xl my-3">
                                    <span>TOTAL</span>
                                    <span>{formatCurrency(data.total)}</span>
                             </div>
@@ -95,21 +99,19 @@ export function Ticket({ data }: { data: TicketData | null }) {
                             {/* PAYMENT INFO */}
                             <div className="text-right text-[11px] mb-4">
                                    <p>FORMA DE PAGO: <span className="font-bold uppercase">{data.paymentMethod || "EFECTIVO"}</span></p>
-                                   {/* Placeholder for change calculation if we had it */}
-                                   {/* <p>SU VUELTO: $0.00</p> */}
                             </div>
 
                             {/* FOOTER */}
-                            <div className="text-center mt-4">
+                            <div className="text-center mt-4 space-y-1">
                                    <p className="font-bold text-[11px] uppercase">{data.store?.ticketFooter || "¡GRACIAS POR SU COMPRA!"}</p>
                                    {data.store?.ticketInstagram && (
-                                          <p className="text-[10px] font-bold mt-1">IG: @{data.store.ticketInstagram}</p>
+                                          <p className="text-[10px] font-bold">IG: @{data.store.ticketInstagram}</p>
                                    )}
-                                   <p className="text-[9px] mt-1 text-gray-500 lowercase">sistema: saas-negocios.com</p>
+                                   <p className="text-[9px] text-gray-500 lowercase pt-2">sistema: saas-negocios.com</p>
 
                                    {/* FAKE BARCODE */}
                                    <div className="mt-2 h-8 bg-black w-2/3 mx-auto opacity-80" style={{ maskImage: "repeating-linear-gradient(90deg, black, transparent 2px)" }}></div>
-                                   <p className="text-[9px] mt-1">982374982374</p>
+                                   <p className="text-[9px]">982374982374</p>
                             </div>
                      </div>
               </div>
