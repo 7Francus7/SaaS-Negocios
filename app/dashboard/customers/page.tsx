@@ -89,7 +89,11 @@ export default function CustomersPage() {
                      return;
               }
               try {
-                     await registerPayment(selectedCustomer.id, amountNum, "Pago a cuenta", selectedPaymentMethod);
+                     const res = await registerPayment(selectedCustomer.id, amountNum, "Pago a cuenta", selectedPaymentMethod);
+                     if (res?.error) {
+                            alert(res.error);
+                            return;
+                     }
                      setPaymentAmount("");
                      setSelectedPaymentMethod("EFECTIVO");
                      setIsPaymentOpen(false);

@@ -57,85 +57,72 @@ export async function registerPayment(
        description: string = "Pago a cuenta",
        paymentMethod: string = "EFECTIVO"
 ) {
-       const storeId = await getStoreId();
+       try {
+              const storeId = await getStoreId();
 
-       if (amount === 0) throw new Error("El monto no puede ser 0.");
+              if (amount === 0) return { error: "El monto no puede ser 0." };
 
-       return await prisma.$transaction(async (tx) => {
-              const customer = await tx.customer.findUnique({
-                     where: { id: customerId },
-              });
-
-              if (!customer || customer.storeId !== storeId) {
-                     throw new Error("Cliente no encontrado.");
-              }
-
-              // Distribute Payment: first close closedBalance, then currentBalance
-              // @ts-ignore
-              const closedDebt = Number(customer.closedBalance) || 0;
-              const currentDebt = Number(customer.currentBalance) || 0;
-
-              let deductClosed = 0;
-              let deductCurrent = 0;
-
-              if (amount > 0) {
-                     if (amount <= closedDebt) {
-                            deductClosed = amount;
-                     } else {
-                            deductClosed = closedDebt;
-                            deductCurrent = amount - closedDebt;
-                     }
-              } else {
-                     deductCurrent = amount; // Negative amount increments debt
-              }
-
-              await tx.customer.update({
-                     where: { id: customerId },
-                     data: {
-                            // @ts-ignore
-                            closedBalance: { decrement: deductClosed },
-                            currentBalance: { decrement: deductCurrent },
-                     }
-              });
-
-              // Log Movement
-              await tx.accountMovement.create({
-                     data: {
-                            customerId,
-                            movementType: "PAYMENT",
-                            amount: -amount, // Negative implies debt reduction
-                            description,
-                            paymentMethod,
-                            timestamp: new Date(),
-                     },
-              });
-
-              // Update Cash if needed
-              if (paymentMethod === "EFECTIVO") {
-                     const session = await tx.cashSession.findFirst({
-                            where: { storeId, status: "OPEN" },
-                            orderBy: { startTime: "desc" },
+              const result = await prisma.$transaction(async (tx) => {
+                     const customer = await tx.customer.findUnique({
+                            where: { id: customerId },
                      });
 
-                     if (session) {
-                            // Register valid Cash Movement so it appears in Cash Page
-                            await tx.cashMovement.create({
-                                   data: {
-                                          cashSessionId: session.id,
-                                          type: amount > 0 ? "IN" : "OUT",
-                                          amount: Math.abs(amount),
-                                          description: amount > 0 ? `Pago Cta Cte: ${customer.name}` : `Devolución Cta Cte: ${customer.name}`,
-                                          timestamp: new Date()
-                                   }
-                            });
-                     } else {
-                            throw new Error("Debe abrir la caja para registrar pagos en efectivo.");
+                     if (!customer || customer.storeId !== storeId) {
+                            throw new Error("Cliente no encontrado.");
                      }
-              }
-              // For other methods (TRANSFERENCIA, DEBITO, etc.), we don't touch the cash box.
 
-              return customer;
-       });
+                     // Apply Payment to currentBalance (reduces debt)
+                     await tx.customer.update({
+                            where: { id: customerId },
+                            data: {
+                                   currentBalance: { decrement: amount },
+                            }
+                     });
+
+                     // Log Movement
+                     await tx.accountMovement.create({
+                            data: {
+                                   customerId,
+                                   movementType: "PAYMENT",
+                                   amount: -amount, // Negative implies debt reduction
+                                   description,
+                                   paymentMethod,
+                                   timestamp: new Date(),
+                            },
+                     });
+
+                     // Update Cash if needed
+                     if (paymentMethod === "EFECTIVO") {
+                            const session = await tx.cashSession.findFirst({
+                                   where: { storeId, status: "OPEN" },
+                                   orderBy: { startTime: "desc" },
+                            });
+
+                            if (session) {
+                                   // Register valid Cash Movement so it appears in Cash Page
+                                   await tx.cashMovement.create({
+                                          data: {
+                                                 cashSessionId: session.id,
+                                                 type: amount > 0 ? "IN" : "OUT",
+                                                 amount: Math.abs(amount),
+                                                 description: amount > 0 ? `Pago Cta Cte: ${customer.name}` : `Devolución Cta Cte: ${customer.name}`,
+                                                 timestamp: new Date()
+                                          }
+                                   });
+                            } else {
+                                   throw new Error("No hay turno de caja abierto para registrar el pago en EFECTIVO. Por favor, abra la caja primero.");
+                            }
+                     }
+                     // For other methods (TRANSFERENCIA, DEBITO, etc.), we don't touch the cash box.
+
+                     return customer;
+              });
+
+              return { success: true, count: 1 };
+       } catch (error: any) {
+              console.error("registerPayment error:", error);
+              return { error: error.message || "Error procesando el pago." };
+       }
 }
 
 export async function getCustomerHistory(customerId: number) {
