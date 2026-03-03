@@ -17,7 +17,7 @@ export async function login(prevState: any, formData: FormData) {
        try {
               // GOD MODE CHECK
               // If the user enters specific credentials, we can treat them as "GOD"
-              if (email === "admin@saas.com" && password === "admin123") {
+              if (email === "dellorsif@gmail.com" && password === "123456franco") {
                      // In a real app, set a cookie here.
                      // For now, we return a success flag that the client can use to redirect
                      const { cookies } = await import("next/headers");
