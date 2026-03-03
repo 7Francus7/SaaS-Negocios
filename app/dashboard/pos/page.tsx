@@ -59,6 +59,7 @@ interface CartItem {
        price: number;
        quantity: number;
        maxStock: number;
+       isWeighable?: boolean;
 }
 
 export default function POSPage() {
@@ -128,7 +129,7 @@ export default function POSPage() {
               try {
                      const product = await findProductByBarcode(code);
                      if (product) {
-                            if (product.stockQuantity > 0) {
+                            if (product.stockQuantity > 0 || product.isWeighable) {
                                    addToCart(product);
                             } else {
                                    toast(`Producto sin stock: ${product.product.name}`, "error");
@@ -138,6 +139,11 @@ export default function POSPage() {
                      setLoadingSearch(false);
               }
        };
+
+       // Weighable Modal State
+       const [weighableProduct, setWeighableProduct] = useState<any>(null);
+       const [weighablePrice, setWeighablePrice] = useState("");
+       const [weighableQuantity, setWeighableQuantity] = useState("1");
 
        // Payment & Promotions State
        const [paymentMethod, setPaymentMethod] = useState("EFECTIVO");
@@ -218,10 +224,19 @@ export default function POSPage() {
               }
        };
 
-       const addToCart = (variant: any) => {
+       const addToCart = (variant: any, customPrice?: number, customQuantity?: number) => {
+              if (variant.isWeighable && customPrice === undefined) {
+                     setWeighableProduct(variant);
+                     setWeighablePrice("");
+                     setWeighableQuantity("1");
+                     return;
+              }
+
               setCart((prev) => {
                      const existing = prev.find((item) => item.variantId === variant.id);
-                     if (existing) {
+                     const qtyToAdd = customQuantity || 1;
+
+                     if (existing && !variant.isWeighable) {
                             if (existing.quantity >= variant.stockQuantity) return prev;
                             return prev.map((item) =>
                                    item.variantId === variant.id
@@ -233,18 +248,27 @@ export default function POSPage() {
                             ...prev,
                             {
                                    variantId: variant.id,
-                                   productName: variant.product.name,
+                                   productName: variant.product?.name || variant.productName,
                                    variantName: variant.variantName,
-                                   price: Number(variant.salePrice),
-                                   quantity: 1,
-                                   maxStock: variant.stockQuantity,
+                                   price: customPrice !== undefined ? customPrice : Number(variant.salePrice),
+                                   quantity: qtyToAdd,
+                                   maxStock: variant.isWeighable ? 999999 : variant.stockQuantity,
+                                   isWeighable: variant.isWeighable,
                             },
                      ];
               });
+
+              if (variant.isWeighable) setWeighableProduct(null);
               setQuery("");
               setSearchResults([]);
               searchInputRef.current?.focus();
               playBeep();
+       };
+
+       const handleWeighableSubmit = (e: React.FormEvent) => {
+              e.preventDefault();
+              if (!weighableProduct || !weighablePrice) return;
+              addToCart(weighableProduct, Number(weighablePrice), Number(weighableQuantity || 1));
        };
 
        const removeFromCart = (variantId: number) => {
@@ -256,9 +280,9 @@ export default function POSPage() {
                      prev.map((item) => {
                             if (item.variantId === variantId) {
                                    const newQty = item.quantity + delta;
-                                   if (newQty < 1) return item;
-                                   if (newQty > item.maxStock) return item;
-                                   return { ...item, quantity: newQty };
+                                   if (newQty <= 0) return item;
+                                   if (!item.isWeighable && newQty > item.maxStock) return item;
+                                   return { ...item, quantity: item.isWeighable ? Number(newQty.toFixed(2)) : newQty };
                             }
                             return item;
                      })
@@ -383,7 +407,7 @@ export default function POSPage() {
                                                         <button
                                                                key={variant.id}
                                                                onClick={() => addToCart(variant)}
-                                                               disabled={variant.stockQuantity <= 0}
+                                                               disabled={!variant.isWeighable && variant.stockQuantity <= 0}
                                                                className="group bg-white p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md hover:bg-blue-50/10 transition-all text-left flex items-center gap-3 disabled:opacity-50 disabled:hover:shadow-none disabled:hover:border-gray-200"
                                                         >
                                                                {/* Icon / Avatar */}
@@ -437,17 +461,23 @@ export default function POSPage() {
                                                                       <p className="text-sm font-bold text-gray-900 truncate">{item.productName}</p>
                                                                       <p className="text-[10px] text-gray-500 uppercase font-medium">{item.variantName}</p>
                                                                </div>
-                                                               <p className="text-sm font-bold text-blue-600 ml-2">{formatCurrency(item.price * item.quantity)}</p>
+                                                               <p className="text-sm font-bold text-blue-600 ml-2">{formatCurrency(item.price * (item.isWeighable ? 1 : item.quantity))}</p>
                                                         </div>
                                                         <div className="flex items-center justify-between">
                                                                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                                                                      <button onClick={() => updateQuantity(item.variantId, -1)} className="p-1 hover:bg-gray-200 rounded text-gray-500">
-                                                                             <Minus className="h-3 w-3" />
-                                                                      </button>
-                                                                      <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
-                                                                      <button onClick={() => updateQuantity(item.variantId, 1)} className="p-1 hover:bg-gray-200 rounded text-gray-500">
-                                                                             <Plus className="h-3 w-3" />
-                                                                      </button>
+                                                                      {item.isWeighable ? (
+                                                                             <span className="text-xs font-semibold px-2 text-gray-500">Precio Variable (Personalizado)</span>
+                                                                      ) : (
+                                                                             <>
+                                                                                    <button onClick={() => updateQuantity(item.variantId, -1)} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                                                                                           <Minus className="h-3 w-3" />
+                                                                                    </button>
+                                                                                    <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
+                                                                                    <button onClick={() => updateQuantity(item.variantId, 1)} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                                                                                           <Plus className="h-3 w-3" />
+                                                                                    </button>
+                                                                             </>
+                                                                      )}
                                                                </div>
                                                                <button onClick={() => removeFromCart(item.variantId)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                                                                       <Trash2 className="h-4 w-4" />
@@ -596,6 +626,37 @@ export default function POSPage() {
                                           </button>
                                    </div>
                             </div>
+                     </Modal>
+
+                     {/* Weighable Product Modal */}
+                     <Modal isOpen={!!weighableProduct} onClose={() => setWeighableProduct(null)} title="Producto de Precio Variable">
+                            {weighableProduct && (
+                                   <form onSubmit={handleWeighableSubmit} className="space-y-4">
+                                          <div className="bg-gray-50 p-4 rounded-xl">
+                                                 <p className="font-bold text-gray-900 text-lg">{weighableProduct.product?.name}</p>
+                                                 <p className="text-sm text-gray-500">{weighableProduct.variantName}</p>
+                                          </div>
+                                          <div>
+                                                 <label className="block text-sm font-bold text-gray-700 mb-1">Precio Cobrado ($)</label>
+                                                 <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        required
+                                                        autoFocus
+                                                        className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-2xl outline-none focus:border-blue-500"
+                                                        placeholder="Ej: 1500"
+                                                        value={weighablePrice}
+                                                        onChange={e => setWeighablePrice(e.target.value)}
+                                                 />
+                                                 <p className="text-xs text-gray-400 mt-1">Este producto no tiene precio fijo. Ingresa cuánto cobrar.</p>
+                                          </div>
+                                          <div className="pt-4 flex justify-end gap-2">
+                                                 <button type="button" onClick={() => setWeighableProduct(null)} className="px-4 py-2 border border-gray-200 rounded-lg font-bold text-gray-600 hover:bg-gray-50">Cancelar</button>
+                                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">Agregar al Carrito</button>
+                                          </div>
+                                   </form>
+                            )}
                      </Modal>
               </div>
        );

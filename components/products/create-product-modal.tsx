@@ -25,10 +25,12 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
               salePrice: "",
               stock: "0",
               minStock: "5",
+              isWeighable: false,
        });
 
        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-              setFormData({ ...formData, [e.target.name]: e.target.value });
+              const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+              setFormData({ ...formData, [e.target.name]: value });
        };
 
        const handleBarcodeSearch = async () => {
@@ -67,6 +69,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             salePrice: Number(formData.salePrice),
                             stock: Number(formData.stock),
                             minStock: Number(formData.minStock),
+                            isWeighable: formData.isWeighable,
                             // For now categoryId is undefined until we have a category selector
                      });
 
@@ -79,6 +82,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             salePrice: "",
                             stock: "0",
                             minStock: "5",
+                            isWeighable: false,
                      });
                      onSuccess();
                      onClose();
@@ -211,6 +215,19 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                                                         onChange={handleChange}
                                                  />
                                           </div>
+                                   </div>
+                                   <div className="flex items-center gap-2 mt-2">
+                                          <input
+                                                 type="checkbox"
+                                                 id="isWeighable"
+                                                 name="isWeighable"
+                                                 checked={formData.isWeighable}
+                                                 onChange={handleChange}
+                                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                          />
+                                          <label htmlFor="isWeighable" className="text-sm font-medium text-gray-700">
+                                                 Se vende por peso (Precio variable en Caja)
+                                          </label>
                                    </div>
                             </div>
                             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">

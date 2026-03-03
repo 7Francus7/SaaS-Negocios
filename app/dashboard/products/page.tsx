@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus } from "lucide-react";
-import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock } from "@/app/actions/products";
+import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp } from "lucide-react";
+import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
 import { Modal } from "@/components/ui/modal";
@@ -43,6 +43,12 @@ export default function ProductsPage() {
        const [stockVariant, setStockVariant] = useState<any>(null);
        const [stockDelta, setStockDelta] = useState("");
        const [stockReason, setStockReason] = useState("COMPRA");
+
+       // Bulk Price Update
+       const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
+       const [bulkPricePercentage, setBulkPricePercentage] = useState("");
+       const [bulkPriceCategoryId, setBulkPriceCategoryId] = useState<string>("all");
+       const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
 
        const fetchProducts = useCallback(async () => {
               setLoading(true);
@@ -148,6 +154,25 @@ export default function ProductsPage() {
               }
        };
 
+       const handleBulkUpdatePrices = async () => {
+              if (!bulkPricePercentage || isNaN(Number(bulkPricePercentage))) return;
+              if (!confirm(`¿Estás seguro de actualizar los precios un ${bulkPricePercentage}%? Esta acción no se puede deshacer de forma automática.`)) return;
+
+              setIsUpdatingPrices(true);
+              try {
+                     const catId = bulkPriceCategoryId === "all" ? undefined : (bulkPriceCategoryId === "none" ? null : Number(bulkPriceCategoryId));
+                     await bulkUpdatePrices({ categoryId: catId, percentage: Number(bulkPricePercentage) });
+                     setIsBulkPriceModalOpen(false);
+                     setBulkPricePercentage("");
+                     fetchProducts();
+                     alert("Precios actualizados correctamente");
+              } catch (error: any) {
+                     alert(error.message || "Error al actualizar precios");
+              } finally {
+                     setIsUpdatingPrices(false);
+              }
+       };
+
        // Filter products
        const filtered = products.filter((v: any) => {
               const matchesSearch = searchQuery === "" ||
@@ -178,7 +203,11 @@ export default function ProductsPage() {
                                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Inventario</h1>
                                    <p className="text-sm text-gray-500 mt-1">Gestiona tus productos y stock.</p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap justify-end">
+                                   <Button variant="secondary" onClick={() => setIsBulkPriceModalOpen(true)}>
+                                          <TrendingUp className="h-4 w-4 mr-2" />
+                                          Actualizar Precios
+                                   </Button>
                                    <Button variant="secondary" onClick={() => setIsCategoryModalOpen(true)}>
                                           <Tag className="h-4 w-4 mr-2" />
                                           Categorías
@@ -488,6 +517,53 @@ export default function ProductsPage() {
                                           </div>
                                    </div>
                             )}
+                     </Modal>
+
+                     {/* Bulk Price Update Modal */}
+                     <Modal isOpen={isBulkPriceModalOpen} onClose={() => setIsBulkPriceModalOpen(false)} title="ACTUALIZAR PRECIOS EN MASA">
+                            <div className="space-y-4">
+                                   <p className="text-sm text-gray-500">
+                                          Aumenta o descuenta los precios de venta por un porcentaje.
+                                   </p>
+                                   <div>
+                                          <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                                          <select
+                                                 value={bulkPriceCategoryId}
+                                                 onChange={e => setBulkPriceCategoryId(e.target.value)}
+                                                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                          >
+                                                 <option value="all">Todas las categorías (Todo el inventario)</option>
+                                                 <option value="none">Sin categoría</option>
+                                                 {categories.map(cat => (
+                                                        <option key={cat.id} value={cat.id.toString()}>{cat.name}</option>
+                                                 ))}
+                                          </select>
+                                   </div>
+                                   <div>
+                                          <label className="block text-sm font-medium text-gray-700 mb-1">Porcentaje (+ aumento / - descuento)</label>
+                                          <div className="relative">
+                                                 <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        placeholder="Ej: 15 para aumentar un 15%"
+                                                        value={bulkPricePercentage}
+                                                        onChange={e => setBulkPricePercentage(e.target.value)}
+                                                        className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                 />
+                                                 <span className="absolute right-3 top-2 text-gray-500 font-bold">%</span>
+                                          </div>
+                                          <p className="text-xs text-gray-400 mt-1">Ej: 10 aumenta 10%, -5 descuenta 5%.</p>
+                                   </div>
+                                   <div className="pt-4 flex justify-end gap-2">
+                                          <Button variant="secondary" onClick={() => setIsBulkPriceModalOpen(false)}>Cancelar</Button>
+                                          <Button
+                                                 onClick={handleBulkUpdatePrices}
+                                                 disabled={isUpdatingPrices || !bulkPricePercentage}
+                                          >
+                                                 {isUpdatingPrices ? 'Actualizando...' : 'Aplicar Actualización'}
+                                          </Button>
+                                   </div>
+                            </div>
                      </Modal>
               </div>
        );

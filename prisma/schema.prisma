@@ -87,10 +87,11 @@ model ProductVariant {
   barcode        String?
   costPrice      Decimal         @default(0.00)
   salePrice      Decimal         @default(0.00)
-  stockQuantity  Int             @default(0)
-  minStock       Int             @default(5)
+  stockQuantity  Float           @default(0)
+  minStock       Float           @default(5)
   active         Boolean         @default(true)
   storeId        String
+  isWeighable    Boolean         @default(false)
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
   promotionItems PromotionItem[]
@@ -140,7 +141,7 @@ model SaleItem {
   saleId              Int
   variantId           Int
   productNameSnapshot String
-  quantity            Int            @default(1)
+  quantity            Float          @default(1.0)
   unitPrice           Decimal
   unitCost            Decimal        @default(0.00)
   subtotal            Decimal
@@ -170,10 +171,10 @@ model StockMovement {
   userId          String?
   timestamp       DateTime       @default(now())
   movementType    String
-  quantity        Int
+  quantity        Float
   reason          String?
   referenceId     String?
-  balanceSnapshot Int?
+  balanceSnapshot Float?
   variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@map("stock_movements")
@@ -254,7 +255,7 @@ model PurchaseItem {
   id         Int            @id @default(autoincrement())
   purchaseId Int
   variantId  Int
-  quantity   Int
+  quantity   Float
   unitCost   Decimal
   subtotal   Decimal
   purchase   Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)

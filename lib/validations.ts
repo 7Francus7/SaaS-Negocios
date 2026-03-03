@@ -9,8 +9,9 @@ export const productSchema = z.object({
        barcode: z.string().optional().or(z.literal('')),
        costPrice: z.number().min(0, "El costo no puede ser negativo."),
        salePrice: z.number().min(0, "El precio de venta no puede ser negativo."),
-       stock: z.number().int("El stock debe ser un número entero."),
-       minStock: z.number().int().min(0).optional(),
+       stock: z.number(), // removed int requirement for weighables
+       minStock: z.number().min(0).optional(),
+       isWeighable: z.boolean().optional().default(false),
 });
 
 export const updateVariantSchema = z.object({
@@ -18,14 +19,16 @@ export const updateVariantSchema = z.object({
        barcode: z.string().optional(),
        costPrice: z.number().min(0).optional(),
        salePrice: z.number().min(0).optional(),
-       stock: z.number().int().optional(),
-       minStock: z.number().int().min(0).optional(),
+       stock: z.number().optional(),
+       minStock: z.number().min(0).optional(),
+       isWeighable: z.boolean().optional(),
 });
 
 // --- Sales ---
 export const saleItemSchema = z.object({
        variantId: z.number().int().positive(),
-       quantity: z.number().int().positive("La cantidad debe ser mayor a 0."),
+       quantity: z.number().positive("La cantidad debe ser mayor a 0."),
+       customPrice: z.number().min(0).optional(),
 });
 
 export const saleSchema = z.object({

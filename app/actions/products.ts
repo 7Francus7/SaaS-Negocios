@@ -83,6 +83,7 @@ export async function findProductByBarcode(barcode: string) {
               costPrice: Number(variant.costPrice),
               salePrice: Number(variant.salePrice),
               stockQuantity: variant.stockQuantity,
+              isWeighable: variant.isWeighable,
               product: variant.product
        };
 }
@@ -97,6 +98,7 @@ export async function createProduct(data: {
        salePrice: number;
        stock: number;
        minStock?: number;
+       isWeighable?: boolean;
 }) {
        // Validate Zod
        const parsed = productSchema.parse(data);
@@ -138,6 +140,7 @@ export async function createProduct(data: {
                             salePrice: parsed.salePrice,
                             stockQuantity: parsed.stock,
                             minStock: parsed.minStock ?? 5,
+                            isWeighable: parsed.isWeighable ?? false,
                             storeId,
                             active: true,
                      },
@@ -168,6 +171,7 @@ export async function updateVariant(
               costPrice: number;
               salePrice: number;
               minStock: number;
+              isWeighable: boolean;
        }>
 ) {
        const storeId = await getStoreId();
@@ -201,6 +205,38 @@ export async function updateVariant(
               where: { id: variantId },
               data: parsed
        });
+}
+
+// --- NEW: Bulk Update Prices ---
+export async function bulkUpdatePrices(data: {
+       categoryId?: number | null; // null if all categories, undefined if ignoring
+       percentage: number;
+}) {
+       const storeId = await getStoreId();
+
+       const whereClause: Prisma.ProductVariantWhereInput = {
+              storeId,
+              active: true,
+              ...(data.categoryId
+                     ? { product: { categoryId: data.categoryId } }
+                     : data.categoryId === null
+                            ? { product: { categoryId: null } }
+                            : {})
+       };
+
+       const variants = await prisma.productVariant.findMany({ where: whereClause });
+
+       // Using a simple loop and transaction to update each variant based on its old salePrice
+       const updates = variants.map(variant => {
+              const oldPrice = Number(variant.salePrice);
+              const newPrice = Number((oldPrice + (oldPrice * data.percentage) / 100).toFixed(2));
+              return prisma.productVariant.update({
+                     where: { id: variant.id },
+                     data: { salePrice: newPrice }
+              });
+       });
+
+       return await prisma.$transaction(updates);
 }
 
 export async function adjustStock(
