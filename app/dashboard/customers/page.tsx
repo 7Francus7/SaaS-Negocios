@@ -344,110 +344,118 @@ export default function CustomersPage() {
                      </div>
 
                      {/* History Modal */}
-                     <Modal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} title={`Cuenta Corriente: ${selectedCustomer?.name}`}>
-                            <div className="max-h-[60vh] overflow-y-auto">
-                                   <table className="w-full text-sm text-left">
-                                          <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                                                 <tr>
-                                                        <th className="p-4">Fecha</th>
-                                                        <th className="p-4">Descripción / Concepto</th>
-                                                        <th className="p-4 text-right">Monto</th>
-                                                 </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-gray-100">
-                                                 {history.map((h: any) => (
-                                                        <React.Fragment key={h.id}>
-                                                               <tr
-                                                                      onClick={() => handleExpandMovement(h)}
-                                                                      className={`hover:bg-gray-50 transition-colors ${h.description?.includes('Venta #') ? 'cursor-pointer' : ''}`}
-                                                               >
-                                                                      <td className="p-4">
-                                                                             <div className="flex flex-col">
-                                                                                    <span className="font-bold text-gray-900">{formatDate(h.timestamp)}</span>
-                                                                                    <span className="text-[10px] text-gray-400">{formatTime(h.timestamp)}</span>
-                                                                             </div>
-                                                                      </td>
-                                                                      <td className="p-4 font-medium text-gray-700 uppercase text-xs">
-                                                                             <div className="flex items-center gap-2">
-                                                                                    {h.description}
-                                                                                    {h.description?.includes('Venta #') && (
-                                                                                           <span className="text-gray-400">
-                                                                                                  {expandedMovementId === h.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                                                                           </span>
-                                                                                    )}
-                                                                             </div>
-                                                                      </td>
-                                                                      <td className={`p-4 text-right font-black text-sm ${h.amount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                                             {h.amount > 0 ? '+' : ''}{formatCurrency(h.amount)}
-                                                                      </td>
-                                                               </tr>
-                                                               {expandedMovementId === h.id && movementSaleDetails && (
-                                                                      <tr>
-                                                                             <td colSpan={3} className="px-4 py-3 bg-blue-50/50 border-y border-blue-100">
-                                                                                    <div className="text-[10px] font-black uppercase text-gray-500 mb-2">Productos de la Venta</div>
-                                                                                    <div className="space-y-2">
-                                                                                           {movementSaleDetails.items.map((item: any) => (
-                                                                                                  <div key={item.id} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-gray-100 shadow-sm">
-                                                                                                         <div className="flex items-center gap-2">
-                                                                                                                <span className="font-bold">{item.productNameSnapshot}</span>
-                                                                                                                <span className="text-gray-400">x{item.quantity}</span>
-                                                                                                         </div>
-                                                                                                         <div className="flex items-center gap-4">
-                                                                                                                <span className="font-bold text-gray-700">{formatCurrency(item.subtotal)}</span>
-                                                                                                                <button
-                                                                                                                       onClick={(e) => { e.stopPropagation(); handleRemoveItem(h.id, movementSaleDetails.id, item.id, item.productNameSnapshot); }}
-                                                                                                                       className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
-                                                                                                                       title="Eliminar este producto de la cuenta"
-                                                                                                                >
-                                                                                                                       <PackageMinus className="w-4 h-4" />
-                                                                                                                </button>
-                                                                                                         </div>
-                                                                                                  </div>
-                                                                                           ))}
-                                                                                           {movementSaleDetails.items.length === 0 && (
-                                                                                                  <div className="text-xs text-center text-gray-400 py-2">Sin productos (venta anulada completamente)</div>
+                     <Modal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} title={`Cuenta Corriente: ${selectedCustomer?.name}`} className="sm:max-w-4xl">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                                   <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center">
+                                          <span className="text-[10px] uppercase font-black tracking-widest text-gray-400">Meses Anteriores</span>
+                                          <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(selectedCustomer?.closedBalance || 0)}</p>
+                                   </div>
+                                   <div className="bg-red-50 border border-red-100 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center">
+                                          <span className="text-[10px] uppercase font-black tracking-widest text-red-500">Deuda Actual</span>
+                                          <p className="text-2xl font-black text-red-600 mt-1">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
+                                   </div>
+                                   <div className="flex items-stretch">
+                                          <button
+                                                 onClick={downloadHistoryCSV}
+                                                 className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30 transition-all"
+                                          >
+                                                 <Download className="h-5 w-5" /> Exportar a CSV
+                                          </button>
+                                   </div>
+                            </div>
+
+                            <div className="border border-gray-100 rounded-2xl shadow-sm overflow-hidden bg-white mb-6">
+                                   <div className="overflow-x-auto">
+                                          <table className="w-full text-sm text-left">
+                                                 <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                                        <tr>
+                                                               <th className="p-4">Fecha</th>
+                                                               <th className="p-4">Descripción / Concepto</th>
+                                                               <th className="p-4 text-right">Monto</th>
+                                                        </tr>
+                                                 </thead>
+                                                 <tbody className="divide-y divide-gray-100">
+                                                        {history.map((h: any) => (
+                                                               <React.Fragment key={h.id}>
+                                                                      <tr
+                                                                             onClick={() => handleExpandMovement(h)}
+                                                                             className={`hover:bg-gray-50 transition-colors ${h.description?.includes('Venta #') ? 'cursor-pointer' : ''}`}
+                                                                      >
+                                                                             <td className="p-4">
+                                                                                    <div className="flex flex-col">
+                                                                                           <span className="font-bold text-gray-900">{formatDate(h.timestamp)}</span>
+                                                                                           <span className="text-[10px] text-gray-400">{formatTime(h.timestamp)}</span>
+                                                                                    </div>
+                                                                             </td>
+                                                                             <td className="p-4 font-medium text-gray-700 uppercase text-xs">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                           {h.description}
+                                                                                           {h.description?.includes('Venta #') && (
+                                                                                                  <span className="text-gray-400">
+                                                                                                         {expandedMovementId === h.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                                                                  </span>
                                                                                            )}
                                                                                     </div>
                                                                              </td>
-                                                                      </tr>
-                                                               )}
-                                                               {expandedMovementId === h.id && h.description?.includes('Venta #') && !movementSaleDetails && (
-                                                                      <tr>
-                                                                             <td colSpan={3} className="px-4 py-3 bg-gray-50 text-center text-xs text-gray-400">
-                                                                                    Cargando detalles...
+                                                                             <td className={`p-4 text-right font-black text-sm ${h.amount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                                                    {h.amount > 0 ? '+' : ''}{formatCurrency(h.amount)}
                                                                              </td>
                                                                       </tr>
-                                                               )}
-                                                        </React.Fragment>
-                                                 ))}
-                                                 {history.length === 0 && (
-                                                        <tr>
-                                                               <td colSpan={3} className="p-10 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Sin movimientos registrados</td>
-                                                        </tr>
-                                                 )}
-                                          </tbody>
-                                   </table>
-                            </div>
-                            <div className="mb-4 bg-gray-50 border border-gray-100 p-4 rounded-xl flex items-center justify-between">
-                                   <div className="flex gap-6">
-                                          <div>
-                                                 <span className="text-[10px] uppercase font-bold text-gray-400">Deuda Meses Anteriores</span>
-                                                 <p className="text-xl font-black text-gray-900">{formatCurrency(selectedCustomer?.closedBalance || 0)}</p>
-                                          </div>
-                                          <div>
-                                                 <span className="text-[10px] uppercase font-bold text-gray-400">Deuda Mes Actual</span>
-                                                 <p className="text-xl font-black text-gray-900">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
-                                          </div>
+                                                                      {expandedMovementId === h.id && movementSaleDetails && (
+                                                                             <tr>
+                                                                                    <td colSpan={3} className="px-4 py-3 bg-blue-50/50 border-y border-blue-100">
+                                                                                           <div className="text-[10px] font-black uppercase text-gray-500 mb-2">Productos de la Venta</div>
+                                                                                           <div className="space-y-2">
+                                                                                                  {movementSaleDetails.items.map((item: any) => (
+                                                                                                         <div key={item.id} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                                                                                                <div className="flex items-center gap-2">
+                                                                                                                       <span className="font-bold">{item.productNameSnapshot}</span>
+                                                                                                                       <span className="text-gray-400">x{item.quantity}</span>
+                                                                                                                </div>
+                                                                                                                <div className="flex items-center gap-4">
+                                                                                                                       <span className="font-bold text-gray-700">{formatCurrency(item.subtotal)}</span>
+                                                                                                                       <button
+                                                                                                                              onClick={(e) => { e.stopPropagation(); handleRemoveItem(h.id, movementSaleDetails.id, item.id, item.productNameSnapshot); }}
+                                                                                                                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
+                                                                                                                              title="Eliminar este producto de la cuenta"
+                                                                                                                       >
+                                                                                                                              <PackageMinus className="w-4 h-4" />
+                                                                                                                       </button>
+                                                                                                                </div>
+                                                                                                         </div>
+                                                                                                  ))}
+                                                                                                  {movementSaleDetails.items.length === 0 && (
+                                                                                                         <div className="text-xs text-center text-gray-400 py-2">Sin productos (venta anulada completamente)</div>
+                                                                                                  )}
+                                                                                           </div>
+                                                                                    </td>
+                                                                             </tr>
+                                                                      )}
+                                                                      {expandedMovementId === h.id && h.description?.includes('Venta #') && !movementSaleDetails && (
+                                                                             <tr>
+                                                                                    <td colSpan={3} className="px-4 py-3 bg-gray-50 text-center text-xs text-gray-400">
+                                                                                           Cargando detalles...
+                                                                                    </td>
+                                                                             </tr>
+                                                                      )}
+                                                               </React.Fragment>
+                                                        ))}
+                                                        {history.length === 0 && (
+                                                               <tr>
+                                                                      <td colSpan={3} className="p-10 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Sin movimientos registrados</td>
+                                                               </tr>
+                                                        )}
+                                                 </tbody>
+                                          </table>
                                    </div>
-                                   <button
-                                          onClick={downloadHistoryCSV}
-                                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase"
-                                   >
-                                          <Download className="h-4 w-4" /> Exportar .CSV
-                                   </button>
                             </div>
-                            <div className="mt-4 pt-4 border-t flex justify-end">
-                                   <button onClick={() => setIsHistoryOpen(false)} className="px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 uppercase text-xs">Cerrar</button>
+                            <div className="pt-4 border-t border-gray-100 flex justify-end">
+                                   <button
+                                          onClick={() => setIsHistoryOpen(false)}
+                                          className="px-8 py-3 bg-gray-900 text-white font-black rounded-xl hover:bg-gray-800 uppercase text-xs tracking-widest transition-colors"
+                                   >
+                                          Cerrar Historial
+                                   </button>
                             </div>
                      </Modal>
 
