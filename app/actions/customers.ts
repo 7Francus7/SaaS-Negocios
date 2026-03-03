@@ -17,6 +17,8 @@ export async function getCustomers(activeOnly: boolean = true) {
        return customers.map(c => ({
               ...c,
               currentBalance: Number(c.currentBalance),
+              // @ts-ignore
+              closedBalance: Number(c.closedBalance || 0),
               creditLimit: Number(c.creditLimit)
        }));
 }
@@ -41,6 +43,8 @@ export async function createCustomer(data: {
                      address: parsed.address,
                      creditLimit: parsed.creditLimit ?? 0,
                      currentBalance: 0,
+                     // @ts-ignore
+                     closedBalance: 0,
                      active: true,
               },
        });
@@ -65,12 +69,29 @@ export async function registerPayment(
                      throw new Error("Cliente no encontrado.");
               }
 
-              // Update Balance
+              // Distribute Payment: first close closedBalance, then currentBalance
+              // @ts-ignore
+              const closedDebt = Number(customer.closedBalance) || 0;
+              const currentDebt = Number(customer.currentBalance) || 0;
+
+              let leftToPay = amount;
+              let deductClosed = 0;
+              let deductCurrent = 0;
+
+              if (leftToPay <= closedDebt) {
+                     deductClosed = leftToPay;
+              } else {
+                     deductClosed = closedDebt;
+                     deductCurrent = leftToPay - closedDebt;
+              }
+
               await tx.customer.update({
                      where: { id: customerId },
                      data: {
-                            currentBalance: { decrement: amount },
-                     },
+                            // @ts-ignore
+                            closedBalance: { decrement: deductClosed },
+                            currentBalance: { decrement: deductCurrent },
+                     }
               });
 
               // Log Movement
@@ -171,4 +192,46 @@ export async function deleteCustomer(customerId: number) {
        });
 
        return { success: true };
+}
+
+
+export async function closeCustomerMonth(customerId: number) {
+       const storeId = await getStoreId();
+
+       return await prisma.$transaction(async (tx) => {
+              const customer = await tx.customer.findUnique({
+                     where: { id: customerId }
+              });
+
+              if (!customer || customer.storeId !== storeId) {
+                     throw new Error("Cliente no encontrado.");
+              }
+
+              if (Number(customer.currentBalance) <= 0) {
+                     throw new Error("El cliente no tiene deuda actual para cerrar el mes.");
+              }
+
+              const amountToMove = customer.currentBalance;
+
+              await tx.customer.update({
+                     where: { id: customerId },
+                     data: {
+                            currentBalance: 0,
+                            // @ts-ignore
+                            closedBalance: { increment: amountToMove }
+                     }
+              });
+
+              await tx.accountMovement.create({
+                     data: {
+                            customerId,
+                            movementType: "MONTH_CLOSE",
+                            amount: amountToMove, // Not negative, it's just a refactoring of debt
+                            description: "Separación de Cuenta / Cierre de Mes",
+                            timestamp: new Date()
+                     }
+              });
+
+              return true;
+       });
 }

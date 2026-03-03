@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
-import { createProduct } from "@/app/actions/products";
+import { updateProductDetails } from "@/app/actions/products";
 import { searchProductByBarcode } from "@/app/actions/external-products";
 import { Search } from "lucide-react";
 
-interface CreateProductModalProps {
+interface EditProductModalProps {
+       variant: any;
+       categories: any[];
        isOpen: boolean;
        onClose: () => void;
        onSuccess: () => void;
 }
 
-export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProductModalProps) {
+export function EditProductModal({ isOpen, onClose, onSuccess, variant, categories }: EditProductModalProps) {
+       const [hasInit, setHasInit] = useState(false);
        const [loading, setLoading] = useState(false);
        const [searching, setSearching] = useState(false);
        const [error, setError] = useState("");
@@ -26,7 +29,26 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
               stock: "0",
               minStock: "5",
               isWeighable: false,
+              categoryId: ""
        });
+
+       if (isOpen && variant && !hasInit) {
+              setFormData({
+                     name: variant.product.name,
+                     variantName: variant.variantName,
+                     barcode: variant.barcode || "",
+                     costPrice: String(variant.costPrice || 0),
+                     salePrice: String(variant.salePrice || 0),
+                     stock: String(variant.stockQuantity || 0),
+                     minStock: String(variant.minStock || 5),
+                     isWeighable: variant.isWeighable || false,
+                     categoryId: variant.product.categoryId ? String(variant.product.categoryId) : ""
+              });
+              setHasInit(true);
+       }
+       if (!isOpen && hasInit) {
+              setHasInit(false);
+       }
 
        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
@@ -61,16 +83,16 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
               setError("");
 
               try {
-                     await createProduct({
-                            name: formData.name,
+                     await updateProductDetails(variant.id, {
+                            productName: formData.name,
+                            categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
                             variantName: formData.variantName,
                             barcode: formData.barcode || undefined,
                             costPrice: Number(formData.costPrice) || 0,
                             salePrice: Number(formData.salePrice) || 0,
-                            stock: Number(formData.stock),
                             minStock: Number(formData.minStock),
                             isWeighable: formData.isWeighable,
-                            // For now categoryId is undefined until we have a category selector
+
                      });
 
                      // Clear form & close
@@ -83,18 +105,19 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             stock: "0",
                             minStock: "5",
                             isWeighable: false,
+                            categoryId: ""
                      });
                      onSuccess();
                      onClose();
               } catch (err: any) {
-                     setError(err.message || "Error al crear el producto.");
+                     setError(err.message || "Error al actualizar el producto.");
               } finally {
                      setLoading(false);
               }
        };
 
        return (
-              <Modal isOpen={isOpen} onClose={onClose} title="Nuevo Producto">
+              <Modal isOpen={isOpen} onClose={onClose} title="Editar Producto">
                      <form onSubmit={handleSubmit} className="space-y-4">
                             {error && (
                                    <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
@@ -141,6 +164,21 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                                                  onChange={handleChange}
                                           />
                                    </div>
+                                   <div>
+                                          <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                                          <select
+                                                 name="categoryId"
+                                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                 value={formData.categoryId}
+                                                 onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                                          >
+                                                 <option value="">General (Sin categoría)</option>
+                                                 {categories?.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                 ))}
+                                          </select>
+                                   </div>
+
                                    <div className="grid grid-cols-2 gap-4">
                                           <div>
                                                  <label className="block text-sm font-medium text-gray-700 mb-1">Variedad</label>
@@ -194,11 +232,11 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
 
                                    <div className="grid grid-cols-2 gap-4">
                                           <div>
-                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
+                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
                                                  <input
                                                         name="stock"
                                                         type="number"
-                                                        required
+                                                        disabled
                                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                         value={formData.stock}
                                                         onChange={handleChange}
@@ -244,7 +282,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                                           disabled={loading}
                                           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
                                    >
-                                          {loading ? "Guardando..." : "Guardar Producto"}
+                                          {loading ? "Guardando..." : "Actualizar Producto"}
                                    </button>
                             </div>
                      </form>

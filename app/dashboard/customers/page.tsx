@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2 } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer } from "@/app/actions/customers";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth } from "@/app/actions/customers";
+import { Download, CalendarCheck } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ interface Customer {
        phone?: string | null;
        address?: string | null;
        currentBalance: number;
+       closedBalance: number;
        creditLimit: number;
        active: boolean;
 }
@@ -125,6 +127,44 @@ export default function CustomersPage() {
        const [history, setHistory] = useState<any[]>([]);
        const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+       const handleCloseMonth = async (customer: Customer) => {
+              if (Number(customer.currentBalance) <= 0) {
+                     alert("El cliente no tiene deuda actual para cerrar.");
+                     return;
+              }
+              if (!confirm(`¿Cerrar el mes para ${customer.name}? Esto separará la deuda actual y comenzará un nuevo mes en 0.`)) return;
+
+              try {
+                     await closeCustomerMonth(customer.id);
+                     fetchCustomers();
+                     alert("Mes cerrado correctamente.");
+              } catch (e: any) {
+                     alert(e.message);
+              }
+       };
+
+       const downloadHistoryCSV = () => {
+              if (!history.length || !selectedCustomer) return;
+              const headers = ["Fecha", "Concepto", "Monto"];
+              const rows = history.map((h: any) => [
+                     `"${formatDate(h.timestamp)} ${formatTime(h.timestamp)}"`,
+                     `"${h.description}"`,
+                     h.amount.toString()
+              ]);
+
+              const csvContent = "data:text/csv;charset=utf-8," +
+                     headers.join(",") + "\\n" +
+                     rows.map(e => e.join(",")).join("\\n");
+
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement("a");
+              link.setAttribute("href", encodedUri);
+              link.setAttribute("download", `${selectedCustomer.name.replace(/\s+/g, '_')}_historial.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+       };
+
        const handleViewHistory = async (customer: Customer) => {
               setSelectedCustomer(customer);
               setLoading(true);
@@ -217,7 +257,14 @@ export default function CustomersPage() {
                                                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{customer.phone || "Sin teléfono"}</p>
                                                  </div>
                                                  <div className="text-right">
-                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Saldo Deudor</p>
+                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Deuda Anterior</p>
+                                                        <p className={cn(
+                                                               "text-sm font-bold",
+                                                               Number(customer.closedBalance) > 0 ? 'text-red-400' : 'text-emerald-400'
+                                                        )}>
+                                                               {formatCurrency(customer.closedBalance)}
+                                                        </p>
+                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mt-2 mb-1">Deuda Actual</p>
                                                         <p className={cn(
                                                                "text-2xl font-black",
                                                                Number(customer.currentBalance) > 0 ? 'text-red-500' : 'text-emerald-500'
@@ -297,6 +344,24 @@ export default function CustomersPage() {
                                                  )}
                                           </tbody>
                                    </table>
+                            </div>
+                            <div className="mb-4 bg-gray-50 border border-gray-100 p-4 rounded-xl flex items-center justify-between">
+                                   <div className="flex gap-6">
+                                          <div>
+                                                 <span className="text-[10px] uppercase font-bold text-gray-400">Deuda Meses Anteriores</span>
+                                                 <p className="text-xl font-black text-gray-900">{formatCurrency(selectedCustomer?.closedBalance || 0)}</p>
+                                          </div>
+                                          <div>
+                                                 <span className="text-[10px] uppercase font-bold text-gray-400">Deuda Mes Actual</span>
+                                                 <p className="text-xl font-black text-gray-900">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
+                                          </div>
+                                   </div>
+                                   <button
+                                          onClick={downloadHistoryCSV}
+                                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase"
+                                   >
+                                          <Download className="h-4 w-4" /> Exportar .CSV
+                                   </button>
                             </div>
                             <div className="mt-4 pt-4 border-t flex justify-end">
                                    <button onClick={() => setIsHistoryOpen(false)} className="px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 uppercase text-xs">Cerrar</button>

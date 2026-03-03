@@ -147,6 +147,7 @@ export default function POSPage() {
 
        // Payment & Promotions State
        const [paymentMethod, setPaymentMethod] = useState("EFECTIVO");
+       const [tenderedAmount, setTenderedAmount] = useState("");
        const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
        const [promotionInfo, setPromotionInfo] = useState<{ totalDiscount: number, appliedPromos: string[] }>({
               totalDiscount: 0,
@@ -510,13 +511,13 @@ export default function POSPage() {
                                    </div>
 
                                    {!session && (
-                                          <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-xs text-center font-bold uppercase tracking-tight">
-                                                 ⚠️ La caja está cerrada
-                                          </div>
-                                   )}
+                                           <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-xs text-center font-bold uppercase tracking-tight">
+                                                  ⚠️ La caja está cerrada
+                                           </div>
+                                    )}
 
-                                   <button
-                                          disabled={cart.length === 0 || !session}
+                                    <button
+                                           disabled={cart.length === 0 || !session}
                                           onClick={() => setShowPayModal(true)}
                                           className="w-full py-4 text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
                                    >
@@ -586,11 +587,40 @@ export default function POSPage() {
                                                         ))}
                                                  </select>
                                           </div>
-                                   )}
+                                    )}
 
-                                   <button
+                                    {paymentMethod === "EFECTIVO" && (
+                                           <div className="space-y-2 animate-in fade-in slide-in-from-top-2 bg-blue-50 p-4 border border-blue-100 rounded-xl">
+                                                  <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">Monto Recibido</label>
+                                                  <div className="relative">
+                                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
+                                                         <input
+                                                                type="number"
+                                                                style={{ fontSize: '1.5rem' }}
+                                                                className="w-full pl-8 py-3 pr-4 border-2 border-white rounded-xl focus:border-blue-500 outline-none transition-all font-black text-gray-900 shadow-sm"
+                                                                value={tenderedAmount}
+                                                                onChange={(e) => setTenderedAmount(e.target.value)}
+                                                                placeholder="0.00"
+                                                         />
+                                                  </div>
+                                                  {(() => {
+                                                         const received = Number(tenderedAmount);
+                                                         if (tenderedAmount && received > 0) {
+                                                                const change = received - total;
+                                                                if (change < 0) {
+                                                                       return <p className="text-red-500 font-bold text-sm uppercase tracking-widest mt-1">Falta: {formatCurrency(Math.abs(change))}</p>;
+                                                                } else {
+                                                                       return <p className="text-emerald-600 font-black text-xl uppercase tracking-widest mt-1">Vuelto: {formatCurrency(change)}</p>;
+                                                                }
+                                                         }
+                                                         return null;
+                                                  })()}
+                                           </div>
+                                    )}
+
+                                    <button
                                           onClick={handleCheckout}
-                                          disabled={processing || (paymentMethod === "CTA_CTE" && !selectedCustomerId)}
+                                          disabled={processing || (paymentMethod === "CTA_CTE" && !selectedCustomerId) || (paymentMethod === "EFECTIVO" && Number(tenderedAmount) > 0 && Number(tenderedAmount) < total)}
                                           className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none transition-all"
                                    >
                                           {processing ? "Procesando..." : "CONFIRMAR VENTA"}

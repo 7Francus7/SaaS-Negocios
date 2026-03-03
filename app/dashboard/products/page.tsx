@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp } from "lucide-react";
 import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
+import { EditProductModal } from "@/components/products/edit-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
 import { Modal } from "@/components/ui/modal";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -27,6 +28,8 @@ export default function ProductsPage() {
        const [products, setProducts] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
        const [loading, setLoading] = useState(true);
        const [isModalOpen, setIsModalOpen] = useState(false);
+       const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+       const [editingVariant, setEditingVariant] = useState<any>(null);
        const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
        const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
        const [searchQuery, setSearchQuery] = useState("");
@@ -186,6 +189,15 @@ export default function ProductsPage() {
 
        return (
               <div className="space-y-6">
+                     {isEditModalOpen && (
+                            <EditProductModal
+                                   isOpen={isEditModalOpen}
+                                   onClose={() => { setIsEditModalOpen(false); setEditingVariant(null); }}
+                                   onSuccess={fetchProducts}
+                                   variant={editingVariant}
+                                   categories={categories}
+                            />
+                     )}
                      <CreateProductModal
                             isOpen={isModalOpen}
                             onClose={() => setIsModalOpen(false)}
@@ -324,6 +336,14 @@ export default function ProductsPage() {
                                                                       >
                                                                              <PackagePlus className="h-3.5 w-3.5" />
                                                                              <span className="text-xs">Stock</span>
+                                                                      </button>
+                                                                      <button
+                                                                             onClick={() => { setEditingVariant(variant); setIsEditModalOpen(true); }}
+                                                                             className="text-blue-500 hover:text-blue-700 inline-flex items-center gap-1"
+                                                                             title="Editar producto"
+                                                                      >
+                                                                             <Pencil className="h-3.5 w-3.5" />
+                                                                             <span className="text-xs">Editar</span>
                                                                       </button>
                                                                       <button
                                                                              onClick={() => handleDeleteProduct(variant.product.id, variant.product.name)}

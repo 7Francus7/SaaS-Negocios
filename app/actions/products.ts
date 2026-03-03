@@ -373,3 +373,66 @@ export async function deleteCategory(id: number) {
        return { success: true };
 }
 
+
+export async function updateProductDetails(
+    variantId: number,
+    data: {
+        productName: string;
+        variantName: string;
+        barcode?: string;
+        costPrice: number;
+        salePrice: number;
+        minStock: number;
+        isWeighable: boolean;
+        categoryId?: number;
+    }
+) {
+    const storeId = await getStoreId();
+
+    const variant = await prisma.productVariant.findUnique({
+        where: { id: variantId },
+        include: { product: true },
+    });
+
+    if (!variant || variant.storeId !== storeId) {
+        throw new Error("Variante no encontrada o sin acceso.");
+    }
+
+    if (data.barcode && data.barcode !== variant.barcode) {
+        const existing = await prisma.productVariant.findFirst({
+            where: {
+                storeId,
+                barcode: data.barcode,
+                NOT: { id: variantId },
+                active: true,
+            },
+        });
+        if (existing) {
+            throw new Error(`El código '${data.barcode}' ya está en uso.`);
+        }
+    }
+
+    return await prisma.$transaction(async (tx) => {
+        // Update product
+        await tx.product.update({
+            where: { id: variant.productId },
+            data: {
+                name: data.productName,
+                categoryId: data.categoryId,
+            },
+        });
+
+        // Update variant
+        return await tx.productVariant.update({
+            where: { id: variantId },
+            data: {
+                variantName: data.variantName,
+                barcode: data.barcode || null,
+                costPrice: data.costPrice,
+                salePrice: data.salePrice,
+                minStock: data.minStock,
+                isWeighable: data.isWeighable,
+            },
+        });
+    });
+}
