@@ -1,9 +1,11 @@
 "use client";
 
+import React from "react";
+
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2 } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth } from "@/app/actions/customers";
-import { Download, CalendarCheck } from "lucide-react";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale } from "@/app/actions/customers";
+import { Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
@@ -127,7 +129,38 @@ export default function CustomersPage() {
        const [history, setHistory] = useState<any[]>([]);
        const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-       const handleCloseMonth = async (customer: Customer) => {
+       const [expandedMovementId, setExpandedMovementId] = useState<number | null>(null);
+       const [movementSaleDetails, setMovementSaleDetails] = useState<any>(null);
+
+       const handleExpandMovement = async (h: any) => {
+              if (expandedMovementId === h.id) {
+                     setExpandedMovementId(null);
+                     setMovementSaleDetails(null);
+                     return;
+              }
+              setExpandedMovementId(h.id);
+              setMovementSaleDetails(null);
+              const match = h.description?.match(/Venta #(\d+)/);
+              if (match) {
+                     const saleId = parseInt(match[1]);
+                     const details = await getSaleDetailsForMovement(saleId);
+                     setMovementSaleDetails(details);
+              }
+       };
+
+       const handleRemoveItem = async (movementId: number, saleId: number, itemId: number, itemName: string) => {
+              if (!confirm(`¿Seguro que deseas eliminar/devolver el producto ${itemName} de esta cuenta?`)) return;
+              try {
+                     await removeProductFromAccountSale(movementId, saleId, itemId);
+                     if (selectedCustomer) {
+                            handleViewHistory(selectedCustomer);
+                     }
+                     fetchCustomers();
+                     setExpandedMovementId(null);
+              } catch (e: any) {
+                     alert(e.message);
+              }
+       }; const handleCloseMonth = async (customer: Customer) => {
               if (Number(customer.currentBalance) <= 0) {
                      alert("El cliente no tiene deuda actual para cerrar.");
                      return;
@@ -323,18 +356,69 @@ export default function CustomersPage() {
                                           </thead>
                                           <tbody className="divide-y divide-gray-100">
                                                  {history.map((h: any) => (
-                                                        <tr key={h.id} className="hover:bg-gray-50 transition-colors">
-                                                               <td className="p-4">
-                                                                      <div className="flex flex-col">
-                                                                             <span className="font-bold text-gray-900">{formatDate(h.timestamp)}</span>
-                                                                             <span className="text-[10px] text-gray-400">{formatTime(h.timestamp)}</span>
-                                                                      </div>
-                                                               </td>
-                                                               <td className="p-4 font-medium text-gray-700 uppercase text-xs">{h.description}</td>
-                                                               <td className={`p-4 text-right font-black text-sm ${h.amount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                                      {h.amount > 0 ? '+' : ''}{formatCurrency(h.amount)}
-                                                               </td>
-                                                        </tr>
+                                                        <React.Fragment key={h.id}>
+                                                               <tr
+                                                                      onClick={() => handleExpandMovement(h)}
+                                                                      className={`hover:bg-gray-50 transition-colors ${h.description?.includes('Venta #') ? 'cursor-pointer' : ''}`}
+                                                               >
+                                                                      <td className="p-4">
+                                                                             <div className="flex flex-col">
+                                                                                    <span className="font-bold text-gray-900">{formatDate(h.timestamp)}</span>
+                                                                                    <span className="text-[10px] text-gray-400">{formatTime(h.timestamp)}</span>
+                                                                             </div>
+                                                                      </td>
+                                                                      <td className="p-4 font-medium text-gray-700 uppercase text-xs">
+                                                                             <div className="flex items-center gap-2">
+                                                                                    {h.description}
+                                                                                    {h.description?.includes('Venta #') && (
+                                                                                           <span className="text-gray-400">
+                                                                                                  {expandedMovementId === h.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                                                           </span>
+                                                                                    )}
+                                                                             </div>
+                                                                      </td>
+                                                                      <td className={`p-4 text-right font-black text-sm ${h.amount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                                             {h.amount > 0 ? '+' : ''}{formatCurrency(h.amount)}
+                                                                      </td>
+                                                               </tr>
+                                                               {expandedMovementId === h.id && movementSaleDetails && (
+                                                                      <tr>
+                                                                             <td colSpan={3} className="px-4 py-3 bg-blue-50/50 border-y border-blue-100">
+                                                                                    <div className="text-[10px] font-black uppercase text-gray-500 mb-2">Productos de la Venta</div>
+                                                                                    <div className="space-y-2">
+                                                                                           {movementSaleDetails.items.map((item: any) => (
+                                                                                                  <div key={item.id} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                                                                                         <div className="flex items-center gap-2">
+                                                                                                                <span className="font-bold">{item.productNameSnapshot}</span>
+                                                                                                                <span className="text-gray-400">x{item.quantity}</span>
+                                                                                                         </div>
+                                                                                                         <div className="flex items-center gap-4">
+                                                                                                                <span className="font-bold text-gray-700">{formatCurrency(item.subtotal)}</span>
+                                                                                                                <button
+                                                                                                                       onClick={(e) => { e.stopPropagation(); handleRemoveItem(h.id, movementSaleDetails.id, item.id, item.productNameSnapshot); }}
+                                                                                                                       className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
+                                                                                                                       title="Eliminar este producto de la cuenta"
+                                                                                                                >
+                                                                                                                       <PackageMinus className="w-4 h-4" />
+                                                                                                                </button>
+                                                                                                         </div>
+                                                                                                  </div>
+                                                                                           ))}
+                                                                                           {movementSaleDetails.items.length === 0 && (
+                                                                                                  <div className="text-xs text-center text-gray-400 py-2">Sin productos (venta anulada completamente)</div>
+                                                                                           )}
+                                                                                    </div>
+                                                                             </td>
+                                                                      </tr>
+                                                               )}
+                                                               {expandedMovementId === h.id && h.description?.includes('Venta #') && !movementSaleDetails && (
+                                                                      <tr>
+                                                                             <td colSpan={3} className="px-4 py-3 bg-gray-50 text-center text-xs text-gray-400">
+                                                                                    Cargando detalles...
+                                                                             </td>
+                                                                      </tr>
+                                                               )}
+                                                        </React.Fragment>
                                                  ))}
                                                  {history.length === 0 && (
                                                         <tr>

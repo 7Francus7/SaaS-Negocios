@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
 import { customerSchema } from "@/lib/validations";
+import { safeSerialize } from "@/lib/utils";
 
 export async function getCustomers(activeOnly: boolean = true) {
        const storeId = await getStoreId();
@@ -235,3 +236,101 @@ export async function closeCustomerMonth(customerId: number) {
               return true;
        });
 }
+
+
+export async function removeProductFromAccountSale(movementId: number, saleId: number, saleItemId: number) {
+       const storeId = await getStoreId();
+
+       return await prisma.$transaction(async (tx) => {
+              // 1. Get the sale and verify it belongs to store
+              const sale = await tx.sale.findUnique({
+                     where: { id: saleId },
+                     include: { items: true, customer: true }
+              });
+
+              if (!sale || sale.storeId !== storeId || !sale.customerId) {
+                     throw new Error("Venta no encontrada o no pertenece a cuenta corriente.");
+              }
+
+              // 2. Get the specific item
+              const item = sale.items.find(i => i.id === saleItemId);
+              if (!item) {
+                     throw new Error("Producto no encontrado en esta venta.");
+              }
+
+              // 3. Restore stock
+              await tx.productVariant.update({
+                     where: { id: item.variantId },
+                     data: { stockQuantity: { increment: item.quantity } }
+              });
+
+              // Stock movement log
+              await tx.stockMovement.create({
+                     data: {
+                            variantId: item.variantId,
+                            movementType: "VOID",
+                            quantity: item.quantity,
+                            reason: `Devolución de ${item.productNameSnapshot} (Venta #${saleId})`
+                     }
+              });
+
+              // 4. Update Sale Totals
+              const newSubtotal = Number(sale.subtotal) - Number(item.subtotal);
+              // Simple proportional discount logic or just keep discount fixed? 
+              // Usually we just reduce totalAmount by item.subtotal to keep it simple and fair.
+              const amountToDeduct = Number(item.subtotal);
+
+              const newTotalAmount = Math.max(0, Number(sale.totalAmount) - amountToDeduct);
+
+              await tx.sale.update({
+                     where: { id: saleId },
+                     data: {
+                            subtotal: newSubtotal,
+                            totalAmount: newTotalAmount
+                     }
+              });
+
+              // 5. Delete or mark the SaleItem
+              await tx.saleItem.delete({
+                     where: { id: saleItemId }
+              });
+
+              // 6. Adjust Customer Balance - deduct the item subtotal
+              // First reduce closed balance if needed, but since it's an annulment, 
+              // it's a credit in their favor.
+              const customer = sale.customer;
+              if (customer) {
+                     let amountToCredit = amountToDeduct;
+                     // We just create an AccountMovement that acts as a payment/credit
+                     // But ideally we just reduce currentBalance
+                     await tx.customer.update({
+                            where: { id: customer.id },
+                            data: {
+                                   currentBalance: { decrement: amountToCredit }
+                            }
+                     });
+
+                     await tx.accountMovement.create({
+                            data: {
+                                   customerId: customer.id,
+                                   movementType: "VOID_ITEM",
+                                   amount: -amountToCredit,
+                                   description: `Devolución: ${item.productNameSnapshot} (Venta #${saleId})`,
+                                   timestamp: new Date()
+                            }
+                     });
+              }
+
+              return { success: true };
+       });
+}
+
+export async function getSaleDetailsForMovement(saleId: number) {
+       const storeId = await getStoreId();
+       const sale = await prisma.sale.findUnique({
+              where: { id: saleId, storeId },
+              include: { items: true }
+       });
+       return safeSerialize(sale);
+}
+
