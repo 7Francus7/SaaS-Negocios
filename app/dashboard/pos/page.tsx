@@ -262,7 +262,6 @@ export default function POSPage() {
 
               if (variant.isWeighable) setWeighableProduct(null);
               setQuery("");
-              setSearchResults([]);
               searchInputRef.current?.focus();
               playBeep();
        };
