@@ -5,7 +5,7 @@ import {
        BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
-import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon } from "lucide-react";
+import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon, Printer, Download } from "lucide-react";
 import { getAdvancedReports, type AdvancedReportData, type ReportRange } from "@/app/actions/reports";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -30,6 +30,52 @@ export default function ReportsPage() {
               fetch();
        }, [range]);
 
+       const downloadCSV = () => {
+              if (!data) return;
+
+              const rangeLabels: Record<string, string> = {
+                     today: 'Hoy', yesterday: 'Ayer', '7d': 'Ultimos_7_Dias', '30d': 'Ultimos_30_Dias',
+                     this_month: 'Este_Mes', last_month: 'Mes_Pasado', this_year: 'Este_Ano', all: 'Historico'
+              };
+
+              // Build CSV Content
+              let csvContent = "";
+
+              // 1. Métodos de Pago
+              csvContent += "--- METODOS DE PAGO ---\n";
+              csvContent += "Metodo,Cantidad Ventas,Total Facturado\n";
+              data.paymentMethods.forEach(pm => {
+                     csvContent += `${pm.method},${pm.count},${pm.total}\n`;
+              });
+              csvContent += "\n";
+
+              // 2. Top Productos
+              csvContent += "--- TOP PRODUCTOS VENDIDOS ---\n";
+              csvContent += "Producto,Unidades Vendidas\n";
+              data.topProducts.forEach(tp => {
+                     csvContent += `"${tp.name}",${tp.value}\n`;
+              });
+              csvContent += "\n";
+
+              // 3. Top Clientes
+              csvContent += "--- MEJORES CLIENTES ---\n";
+              csvContent += "Cliente,Total Gastado\n";
+              data.topCustomers.forEach(tc => {
+                     csvContent += `"${tc.name}",${tc.value}\n`;
+              });
+
+              // Generate CSV file
+              const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.setAttribute("href", url);
+              link.setAttribute("download", `Reporte_Contable_${rangeLabels[range] || range}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+       };
+
        if (loading) return <div className="p-12 text-center text-gray-500 animate-pulse">Generando reportes de inteligencia...</div>;
        if (!data) return <div className="p-12 text-center text-red-500">Error al cargar reportes.</div>;
 
@@ -42,7 +88,7 @@ export default function ReportsPage() {
                                    <p className="text-gray-500 font-medium mt-1">Análisis profundo del rendimiento de tu negocio.</p>
                             </div>
 
-                            <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl self-start md:self-auto gap-1">
+                            <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl self-start md:self-auto gap-1 print:hidden">
                                    {(['today', 'yesterday', '7d', '30d', 'this_month', 'last_month', 'this_year', 'all'] as ReportRange[]).map((r) => (
                                           <button
                                                  key={r}
@@ -63,9 +109,23 @@ export default function ReportsPage() {
                                           </button>
                                    ))}
                             </div>
+                            <div className="flex items-center gap-2 mt-4 md:mt-0 print:hidden self-start md:self-auto">
+                                   <button
+                                          onClick={downloadCSV}
+                                          className="flex items-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 font-bold rounded-xl hover:bg-green-100 transition-colors shadow-sm text-sm border border-green-200"
+                                   >
+                                          <Download className="h-4 w-4" /> CSV / Excel
+                                   </button>
+                                   <button
+                                          onClick={() => window.print()}
+                                          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-sm text-sm"
+                                   >
+                                          <Printer className="h-4 w-4" /> PDF
+                                   </button>
+                            </div>
                      </div>
 
-                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:block print:space-y-8">
 
                             {/* Sales by Hour Chart */}
                             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
@@ -232,6 +292,6 @@ export default function ReportsPage() {
                                    </div>
                             </div>
                      </div>
-              </div>
+              </div >
        );
 }

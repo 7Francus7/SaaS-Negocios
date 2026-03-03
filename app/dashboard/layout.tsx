@@ -53,7 +53,7 @@ export default function DashboardLayout({
               <div className="min-h-screen bg-gray-50 flex font-[family-name:var(--font-geist-sans)]">
                      <Sidebar />
                      <main className={cn(
-                            "flex-1 ml-72 transition-all duration-500",
+                            "flex-1 ml-72 transition-all duration-500 print:ml-0 print:p-0",
                             isAdminPage ? "p-0" : "p-8"
                      )}>
                             {isChecking ? (

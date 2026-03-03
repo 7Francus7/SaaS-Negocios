@@ -49,10 +49,10 @@ function SidebarContent() {
               // Fetch store name
               import("@/app/actions/dashboard").then(({ getPublicStoreInfo }) => {
                      getPublicStoreInfo().then(info => setStoreName(info.name));
-                      import("@/app/actions/dashboard").then(m => m.getUserRole().then(r => setUserRole(r)));
-                      import("@/app/actions/dashboard").then(({ getDashboardStats }) => {
-                             // We need userRole. Better to create a quick fetch inside sidebar or pass it through. 
-                      });
+                     import("@/app/actions/dashboard").then(m => m.getUserRole().then(r => setUserRole(r)));
+                     import("@/app/actions/dashboard").then(({ getDashboardStats }) => {
+                            // We need userRole. Better to create a quick fetch inside sidebar or pass it through. 
+                     });
               });
 
               const isGod = searchParams.get('view') === 'god';
@@ -79,7 +79,7 @@ function SidebarContent() {
 
        return (
               <aside className={cn(
-                     "w-72 border-r flex flex-col h-full fixed left-0 top-0 transition-all duration-500 z-50",
+                     "w-72 border-r flex flex-col h-full fixed left-0 top-0 transition-all duration-500 z-50 print:hidden",
                      godMode ? "bg-white border-yellow-400/30" : "bg-white border-gray-200"
               )}>
                      <div className={cn(
