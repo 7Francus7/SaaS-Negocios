@@ -59,7 +59,7 @@ export async function registerPayment(
 ) {
        const storeId = await getStoreId();
 
-       if (amount <= 0) throw new Error("El monto debe ser mayor a 0.");
+       if (amount === 0) throw new Error("El monto no puede ser 0.");
 
        return await prisma.$transaction(async (tx) => {
               const customer = await tx.customer.findUnique({
@@ -75,15 +75,18 @@ export async function registerPayment(
               const closedDebt = Number(customer.closedBalance) || 0;
               const currentDebt = Number(customer.currentBalance) || 0;
 
-              let leftToPay = amount;
               let deductClosed = 0;
               let deductCurrent = 0;
 
-              if (leftToPay <= closedDebt) {
-                     deductClosed = leftToPay;
+              if (amount > 0) {
+                     if (amount <= closedDebt) {
+                            deductClosed = amount;
+                     } else {
+                            deductClosed = closedDebt;
+                            deductCurrent = amount - closedDebt;
+                     }
               } else {
-                     deductClosed = closedDebt;
-                     deductCurrent = leftToPay - closedDebt;
+                     deductCurrent = amount; // Negative amount increments debt
               }
 
               await tx.customer.update({
@@ -119,14 +122,14 @@ export async function registerPayment(
                             await tx.cashMovement.create({
                                    data: {
                                           cashSessionId: session.id,
-                                          type: "IN",
-                                          amount: amount,
-                                          description: `Pago Cta Cte: ${customer.name}`,
+                                          type: amount > 0 ? "IN" : "OUT",
+                                          amount: Math.abs(amount),
+                                          description: amount > 0 ? `Pago Cta Cte: ${customer.name}` : `Devolución Cta Cte: ${customer.name}`,
                                           timestamp: new Date()
                                    }
                             });
                      } else {
-                            throw new Error("Debe abrir la caja para recibir pagos en efectivo.");
+                            throw new Error("Debe abrir la caja para registrar pagos en efectivo.");
                      }
               }
               // For other methods (TRANSFERENCIA, DEBITO, etc.), we don't touch the cash box.

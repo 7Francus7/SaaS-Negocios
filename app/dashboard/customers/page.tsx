@@ -83,8 +83,13 @@ export default function CustomersPage() {
 
        const handlePayment = async () => {
               if (!selectedCustomer) return;
+              const amountNum = Number(paymentAmount);
+              if (isNaN(amountNum) || amountNum === 0) {
+                     alert("Ingrese un monto válido a abonar (distinto de 0).");
+                     return;
+              }
               try {
-                     await registerPayment(selectedCustomer.id, Number(paymentAmount), "Pago a cuenta", selectedPaymentMethod);
+                     await registerPayment(selectedCustomer.id, amountNum, "Pago a cuenta", selectedPaymentMethod);
                      setPaymentAmount("");
                      setSelectedPaymentMethod("EFECTIVO");
                      setIsPaymentOpen(false);
