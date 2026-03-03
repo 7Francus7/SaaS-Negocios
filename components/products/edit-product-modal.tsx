@@ -26,6 +26,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
               barcode: "",
               costPrice: "",
               salePrice: "",
+              marginPercentage: "",
               stock: "0",
               minStock: "5",
               isWeighable: false,
@@ -39,6 +40,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                      barcode: variant.barcode || "",
                      costPrice: String(variant.costPrice || 0),
                      salePrice: String(variant.salePrice || 0),
+                     marginPercentage: "",
                      stock: String(variant.stockQuantity || 0),
                      minStock: String(variant.minStock || 5),
                      isWeighable: variant.isWeighable || false,
@@ -52,7 +54,26 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
 
        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
-              setFormData({ ...formData, [e.target.name]: value });
+              const { name } = e.target;
+
+              if (name === "costPrice" || name === "marginPercentage") {
+                     const newCost = name === "costPrice" ? value : formData.costPrice;
+                     const newMargin = name === "marginPercentage" ? value : formData.marginPercentage;
+
+                     let newSalePrice = formData.salePrice;
+                     if (newCost && newMargin) {
+                            const costNum = Number(newCost);
+                            const marginNum = Number(newMargin);
+                            if (!isNaN(costNum) && !isNaN(marginNum)) {
+                                   newSalePrice = String(Math.ceil(costNum + (costNum * marginNum / 100)));
+                            }
+                     }
+                     setFormData({ ...formData, [name]: value, salePrice: newSalePrice });
+              } else if (name === "salePrice") {
+                     setFormData({ ...formData, salePrice: String(value), marginPercentage: "" });
+              } else {
+                     setFormData({ ...formData, [name]: value });
+              }
        };
 
        const handleBarcodeSearch = async () => {
@@ -102,6 +123,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                             barcode: "",
                             costPrice: "",
                             salePrice: "",
+                            marginPercentage: "",
                             stock: "0",
                             minStock: "5",
                             isWeighable: false,
@@ -195,9 +217,9 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                                           </div>
                                    </div>
 
-                                   <div className="grid grid-cols-2 gap-4">
+                                   <div className="grid grid-cols-3 gap-4">
                                           <div>
-                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio Costo</label>
+                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Costo</label>
                                                  <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
                                                         <input
@@ -213,7 +235,22 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                                                  </div>
                                           </div>
                                           <div>
-                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio Venta</label>
+                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Ganancia %</label>
+                                                 <div className="relative">
+                                                        <span className="absolute left-3 top-2 text-gray-500">%</span>
+                                                        <input
+                                                               name="marginPercentage"
+                                                               type="number"
+                                                               step="0.01"
+                                                               className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                               placeholder="0"
+                                                               value={formData.marginPercentage}
+                                                               onChange={handleChange}
+                                                        />
+                                                 </div>
+                                          </div>
+                                          <div>
+                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio Final</label>
                                                  <div className="relative">
                                                         <span className="absolute left-3 top-2 text-gray-500">$</span>
                                                         <input
