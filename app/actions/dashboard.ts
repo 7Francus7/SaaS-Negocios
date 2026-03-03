@@ -157,3 +157,5 @@ export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') 
               return [];
        }
 }
+
+export async function getUserRole() { const user = await import("@/lib/store").then(m => m.getCurrentUser()); return user?.role || "ADMIN"; }

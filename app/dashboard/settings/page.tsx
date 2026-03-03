@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Store, Receipt, MapPin, Phone, Hash, Lock, Eye, EyeOff } from "lucide-react";
+import { Save, Store, Receipt, MapPin, Phone, Hash, Lock, Eye, EyeOff, Users } from "lucide-react";
 import { getStoreSettings, updateStoreSettings, changePassword } from "@/app/actions/settings";
 
 export default function SettingsPage() {
@@ -68,15 +68,17 @@ export default function SettingsPage() {
        return (
               <div className="space-y-6 max-w-4xl mx-auto pb-20">
                      <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-bold text-gray-900">Personalización del Negocio</h1>
-                            <button
-                                   onClick={handleSave}
-                                   disabled={saving}
-                                   className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
-                            >
-                                   <Save className="h-5 w-5" />
-                                   {saving ? "Guardando..." : "Guardar Cambios"}
-                            </button>
+                            <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
+                            <div className="flex gap-2"><a href="/dashboard/settings/employees" className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"><Users className="w-5 h-5" /> Empleados</a>
+                                   <button
+                                          onClick={handleSave}
+                                          disabled={saving}
+                                          className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
+                                   >
+                                          <Save className="h-5 w-5" />
+                                          {saving ? "Guardando..." : "Guardar Cambios"}
+                                   </button>
+                            </div>
                      </div>
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

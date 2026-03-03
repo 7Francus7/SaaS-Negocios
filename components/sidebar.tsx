@@ -42,12 +42,17 @@ function SidebarContent() {
        const router = useRouter();
        const searchParams = useSearchParams();
        const [storeName, setStoreName] = useState("Gestión de Despensas");
+       const [userRole, setUserRole] = useState("ADMIN");
        const [godMode, setGodMode] = useState(false);
 
        useEffect(() => {
               // Fetch store name
               import("@/app/actions/dashboard").then(({ getPublicStoreInfo }) => {
                      getPublicStoreInfo().then(info => setStoreName(info.name));
+                      import("@/app/actions/dashboard").then(m => m.getUserRole().then(r => setUserRole(r)));
+                      import("@/app/actions/dashboard").then(({ getDashboardStats }) => {
+                             // We need userRole. Better to create a quick fetch inside sidebar or pass it through. 
+                      });
               });
 
               const isGod = searchParams.get('view') === 'god';
@@ -99,7 +104,12 @@ function SidebarContent() {
 
                      <nav className="flex-1 px-4 py-8 space-y-1 overflow-y-auto">
                             {/* Standard menu items - ONLY visible if NOT in godMode */}
-                            {!godMode && menuItems.map((item) => {
+                            {!godMode && menuItems.filter(i => {
+                                   if (userRole === "CASHIER") {
+                                          return ["Inicio", "Punto de Venta", "Caja y Turnos", "Historial Ventas", "Clientes"].includes(i.label);
+                                   }
+                                   return true;
+                            }).map((item) => {
                                    const Icon = item.icon;
                                    const isActive = pathname === item.href;
 

@@ -65,3 +65,19 @@ export async function getStoreName(): Promise<string> {
               return "Gestión de Despensas";
        }
 }
+
+export async function getCurrentUser() {
+    try {
+        const cookieStore = await cookies();
+        const userEmail = cookieStore.get("user_email")?.value;
+        if (!userEmail) return null;
+        
+        const user = await prisma.user.findUnique({
+            where: { email: userEmail },
+            select: { id: true, email: true, name: true, role: true, storeId: true }
+        });
+        return user;
+    } catch(e) {
+        return null;
+    }
+}
