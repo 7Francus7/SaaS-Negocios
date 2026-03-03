@@ -261,27 +261,28 @@ export default function CustomersPage() {
                                    </div>
                             ) : filtered.map(customer => (
                                    <div key={customer.id} className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group">
-                                          {/* Edit & Delete buttons */}
-                                          <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                 <button
-                                                        onClick={() => openEdit(customer)}
-                                                        className="p-2 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                                                        title="Editar cliente"
-                                                 >
-                                                        <Pencil className="h-4 w-4" />
-                                                 </button>
-                                                 <button
-                                                        onClick={() => handleDelete(customer)}
-                                                        className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-                                                        title="Eliminar cliente"
-                                                 >
-                                                        <Trash2 className="h-4 w-4" />
-                                                 </button>
-                                          </div>
-
                                           <div className="flex justify-between items-start mb-6">
                                                  <div className="space-y-1">
-                                                        <h3 className="font-black text-xl text-gray-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{customer.name}</h3>
+                                                        <div className="flex items-center gap-3">
+                                                               <h3 className="font-black text-xl text-gray-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{customer.name}</h3>
+                                                               {/* Edit & Delete buttons */}
+                                                               <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                                      <button
+                                                                             onClick={() => openEdit(customer)}
+                                                                             className="p-1.5 rounded-lg bg-blue-50/50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                                                             title="Editar cliente"
+                                                                      >
+                                                                             <Pencil className="h-4 w-4" />
+                                                                      </button>
+                                                                      <button
+                                                                             onClick={() => handleDelete(customer)}
+                                                                             className="p-1.5 rounded-lg bg-red-50/50 text-red-600 hover:bg-red-100 transition-colors"
+                                                                             title="Eliminar cliente"
+                                                                      >
+                                                                             <Trash2 className="h-4 w-4" />
+                                                                      </button>
+                                                               </div>
+                                                        </div>
                                                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
                                                                <Hash className="h-3 w-3" />
                                                                <span>DNI: {customer.dni || "---"}</span>
