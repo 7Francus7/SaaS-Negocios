@@ -3,7 +3,7 @@
 import React from "react";
 
 import { useState, useEffect, useCallback } from "react";
-import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2 } from "lucide-react";
+import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare } from "lucide-react";
 import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale } from "@/app/actions/customers";
 import { Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
@@ -330,23 +330,39 @@ export default function CustomersPage() {
                                                  </div>
                                           </div>
 
-                                          <div className="flex gap-2 pt-4 border-t border-gray-50">
+                                          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-50">
                                                  <button
                                                         onClick={() => {
                                                                setSelectedCustomer(customer);
                                                                setIsPaymentOpen(true);
                                                         }}
-                                                        className="flex-1 bg-emerald-50 text-emerald-700 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2"
+                                                        className="flex-[1_1_30%] bg-emerald-50 text-emerald-700 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5"
                                                  >
                                                         <Wallet className="h-4 w-4" />
                                                         COBRAR
                                                  </button>
                                                  <button
                                                         onClick={() => handleViewHistory(customer)}
-                                                        className="flex-1 bg-blue-50 text-blue-700 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                                                        className="flex-[1_1_30%] bg-blue-50 text-blue-700 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5"
                                                  >
                                                         <History className="h-4 w-4" />
                                                         HISTORIAL
+                                                 </button>
+                                                 <button
+                                                        onClick={() => {
+                                                               const totalDeuda = Number(customer.currentBalance) + Number(customer.closedBalance);
+                                                               const text = `Hola *${customer.name}*,\n\nTe enviamos el resumen de tu cuenta corriente.\n\nDeuda Anterior: ${formatCurrency(customer.closedBalance)}\nDeuda Actual: ${formatCurrency(customer.currentBalance)}\n💰 *Total a pagar:* ${formatCurrency(totalDeuda)}\n\nPor favor, acércate por el local para saldar el pago.\n\n¡Muchas gracias!`;
+                                                               let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                                                               if (customer.phone) {
+                                                                      const cleanPhone = customer.phone.replace(/[^0-9]/g, '');
+                                                                      if (cleanPhone) url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+                                                               }
+                                                               window.open(url, '_blank');
+                                                        }}
+                                                        className="flex-[1_1_30%] bg-[#25D366]/10 text-[#25D366] py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-[#25D366]/20 transition-colors flex items-center justify-center gap-1.5"
+                                                 >
+                                                        <MessageSquare className="h-4 w-4" />
+                                                        WhatsApp
                                                  </button>
                                           </div>
                                    </div>

@@ -639,23 +639,9 @@ export default function POSPage() {
                                           <p className="text-sm text-gray-500 font-medium">Monto total: <span className="text-lg font-bold text-gray-900">{formatCurrency(lastSale?.total || 0)}</span></p>
                                    </div>
                                    <div className="flex flex-col gap-3 mt-8">
-                                          <div className="grid grid-cols-2 gap-3">
-                                                 <button onClick={handlePrint} className="flex items-center justify-center gap-2 px-4 py-4 bg-white border-2 border-gray-100 text-gray-700 font-bold rounded-xl hover:border-gray-200 transition-all">
-                                                        <Printer className="h-5 w-5" /> Imprimir
-                                                 </button>
-                                                 <button onClick={() => {
-                                                        if (!lastSale) return;
-                                                        const text = `📋 *Detalle de Venta*\n\n` + lastSale.items.map(i => `• ${i.productName}: ${formatCurrency(i.price)} x ${i.quantity}`).join('\n') + `\n\n💰 *Total: ${formatCurrency(lastSale.total)}*\n\nGracias por su compra en *${lastSale.store?.name || 'nuestro negocio'}*!`;
-                                                        let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-                                                        if (lastSale?.customer?.phone) {
-                                                               const cleanPhone = lastSale.customer.phone.replace(/[^0-9]/g, '');
-                                                               if (cleanPhone) url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
-                                                        }
-                                                        window.open(url, '_blank');
-                                                 }} className="flex items-center justify-center gap-2 px-4 py-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
-                                                        <MessageSquare className="h-5 w-5" /> {lastSale?.customer?.phone ? "Enviar al Cliente" : "WhatsApp"}
-                                                 </button>
-                                          </div>
+                                          <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-white border-2 border-gray-100 text-gray-700 font-bold rounded-xl hover:border-gray-200 transition-all">
+                                                 <Printer className="h-5 w-5" /> Imprimir Comprobante
+                                          </button>
                                           <button onClick={handleNewSale} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
                                                  Nueva Venta <ArrowRight className="h-5 w-5" />
                                           </button>
