@@ -4,6 +4,15 @@ import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
 import { safeSerialize } from "@/lib/utils";
 
+export async function checkHasOpenSession() {
+       const storeId = await getStoreId();
+       const session = await prisma.cashSession.findFirst({
+              where: { storeId, status: "OPEN" },
+              select: { id: true }
+       });
+       return !!session;
+}
+
 export async function getOpenSession() {
        const storeId = await getStoreId();
        const session = await prisma.cashSession.findFirst({
