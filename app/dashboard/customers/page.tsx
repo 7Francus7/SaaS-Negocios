@@ -351,7 +351,7 @@ export default function CustomersPage() {
                                                  <button
                                                         onClick={() => {
                                                                const totalDeuda = Number(customer.currentBalance) + Number(customer.closedBalance);
-                                                               const text = `Hola *${customer.name}*,\n\nTe enviamos el resumen de tu cuenta corriente.\n\nDeuda Anterior: ${formatCurrency(customer.closedBalance)}\nDeuda Actual: ${formatCurrency(customer.currentBalance)}\n💰 *Total a pagar:* ${formatCurrency(totalDeuda)}\n\nPor favor, acércate por el local para saldar el pago.\n\n¡Muchas gracias!`;
+                                                               const text = `🧾 *RESUMEN DE CUENTA*\n👤 Cliente: ${customer.name}\n\nDeuda Anterior: ${formatCurrency(customer.closedBalance)}\nDeuda Actual: ${formatCurrency(customer.currentBalance)}\n\n💰 *Total a pagar: ${formatCurrency(totalDeuda)}*`;
                                                                let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
                                                                if (customer.phone) {
                                                                       const cleanPhone = customer.phone.replace(/[^0-9]/g, '');
