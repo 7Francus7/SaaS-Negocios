@@ -27,7 +27,7 @@ export default function DashboardLayout({
               }
 
               let isMounted = true;
-              setHasOpenCash(null); // re-trigger check on nav
+              // Background check without blocking UI
 
               import("@/app/actions/dashboard").then(m => m.getUserRole().then(r => setUserRole(r)));
               checkHasOpenSession().then((isOpen) => {
