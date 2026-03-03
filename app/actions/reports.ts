@@ -25,28 +25,55 @@ export type AdvancedReportData = {
        paymentMethods: { method: string; total: number; count: number }[];
 };
 
-export async function getAdvancedReports(range: 'today' | '7d' | '30d' = 'today'): Promise<AdvancedReportData> {
+export type ReportRange = 'today' | 'yesterday' | '7d' | '30d' | 'this_month' | 'last_month' | 'this_year' | 'all';
+
+export async function getAdvancedReports(range: ReportRange = 'today'): Promise<AdvancedReportData> {
        const storeId = await getStoreId();
 
        // 1. Determine Date Range
        const now = new Date();
-       const startDate = new Date();
+       let startDate = new Date();
+       let endDate: Date | undefined = undefined;
 
        if (range === 'today') {
               startDate.setHours(0, 0, 0, 0);
+              endDate = new Date();
+              endDate.setHours(23, 59, 59, 999);
+       } else if (range === 'yesterday') {
+              startDate.setDate(now.getDate() - 1);
+              startDate.setHours(0, 0, 0, 0);
+              endDate = new Date(startDate);
+              endDate.setHours(23, 59, 59, 999);
        } else if (range === '7d') {
               startDate.setDate(now.getDate() - 7);
               startDate.setHours(0, 0, 0, 0);
-       } else {
+       } else if (range === '30d') {
               startDate.setDate(now.getDate() - 30);
               startDate.setHours(0, 0, 0, 0);
+       } else if (range === 'this_month') {
+              startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+              startDate.setHours(0, 0, 0, 0);
+       } else if (range === 'last_month') {
+              startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+              startDate.setHours(0, 0, 0, 0);
+              endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+              endDate.setHours(23, 59, 59, 999);
+       } else if (range === 'this_year') {
+              startDate = new Date(now.getFullYear(), 0, 1);
+              startDate.setHours(0, 0, 0, 0);
+       } else if (range === 'all') {
+              // 10 years ago just to be safe
+              startDate = new Date(now.getFullYear() - 10, 0, 1);
        }
 
        // 2. Fetch Sales
        const sales = await prisma.sale.findMany({
               where: {
                      storeId,
-                     timestamp: { gte: startDate }
+                     timestamp: {
+                            gte: startDate,
+                            ...(endDate ? { lte: endDate } : {})
+                     }
               },
               include: {
                      items: true,

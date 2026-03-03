@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import {
@@ -6,12 +6,12 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon } from "lucide-react";
-import { getAdvancedReports, type AdvancedReportData } from "@/app/actions/reports";
+import { getAdvancedReports, type AdvancedReportData, type ReportRange } from "@/app/actions/reports";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function ReportsPage() {
-       const [range, setRange] = useState<'today' | '7d' | '30d'>('today');
+       const [range, setRange] = useState<ReportRange>('today');
        const [data, setData] = useState<AdvancedReportData | null>(null);
        const [loading, setLoading] = useState(true);
 
@@ -42,17 +42,24 @@ export default function ReportsPage() {
                                    <p className="text-gray-500 font-medium mt-1">Análisis profundo del rendimiento de tu negocio.</p>
                             </div>
 
-                            <div className="flex bg-gray-100 p-1 rounded-xl self-start md:self-auto">
-                                   {(['today', '7d', '30d'] as const).map((r) => (
+                            <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl self-start md:self-auto gap-1">
+                                   {(['today', 'yesterday', '7d', '30d', 'this_month', 'last_month', 'this_year', 'all'] as ReportRange[]).map((r) => (
                                           <button
                                                  key={r}
                                                  onClick={() => setRange(r)}
-                                                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${range === r
+                                                 className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${range === r
                                                         ? 'bg-white text-blue-600 shadow-sm'
                                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
                                                         }`}
                                           >
-                                                 {r === 'today' ? 'Hoy' : r === '7d' ? '7 Días' : '30 Días'}
+                                                 {r === 'today' && 'Hoy'}
+                                                 {r === 'yesterday' && 'Ayer'}
+                                                 {r === '7d' && '7 Días'}
+                                                 {r === '30d' && '30 Días'}
+                                                 {r === 'this_month' && 'Este Mes'}
+                                                 {r === 'last_month' && 'Mes Pasado'}
+                                                 {r === 'this_year' && 'Este Año'}
+                                                 {r === 'all' && 'Histórico'}
                                           </button>
                                    ))}
                             </div>
