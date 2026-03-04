@@ -138,6 +138,22 @@ export async function deleteTenant(storeId: string) {
               return { success: false, error: "Error al eliminar tenant" };
        }
 }
+export async function updateTenant(storeId: string, data: { name: string, isActive: boolean }) {
+       try {
+              await prisma.store.update({
+                     where: { id: storeId },
+                     data: {
+                            name: data.name,
+                            isActive: data.isActive
+                     }
+              });
+              revalidatePath("/dashboard/admin");
+              return { success: true };
+       } catch (error) {
+              return { success: false, error: "Error al actualizar tenant" };
+       }
+}
+
 export async function impersonateTenant(storeSlug: string) {
        try {
               const store = await prisma.store.findUnique({

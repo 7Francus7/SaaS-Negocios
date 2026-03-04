@@ -6,7 +6,8 @@ import {
        getTenants,
        createTenant,
        deleteTenant,
-       impersonateTenant
+       impersonateTenant,
+       updateTenant
 } from "@/app/actions/super-admin";
 import {
        Zap,
@@ -72,6 +73,10 @@ export function GodModeDashboard() {
        const [loading, setLoading] = useState(true);
        const [searchTerm, setSearchTerm] = useState("");
        const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+       const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+       const [editFormData, setEditFormData] = useState({ name: "", isActive: true });
+       const [isUpdating, setIsUpdating] = useState(false);
 
        // Form State
        const [isCreating, setIsCreating] = useState(false);
@@ -150,6 +155,30 @@ export function GodModeDashboard() {
               if (!confirm("¿ESTÁS SEGURO? Esto borrará TODO el negocio y sus datos.")) return;
               await deleteTenant(id);
               loadData();
+       };
+
+       const handleEditClick = (tenant: Tenant) => {
+              setEditingTenant(tenant);
+              setEditFormData({ name: tenant.name, isActive: tenant.isActive });
+       };
+
+       const handleEditSubmit = async (e: React.FormEvent) => {
+              e.preventDefault();
+              if (!editingTenant) return;
+              setIsUpdating(true);
+              try {
+                     const res = await updateTenant(editingTenant.id, editFormData);
+                     if (res.success) {
+                            setEditingTenant(null);
+                            loadData();
+                     } else {
+                            alert(res.error);
+                     }
+              } catch (err) {
+                     alert("Error al actualizar");
+              } finally {
+                     setIsUpdating(false);
+              }
        };
 
        const formatCurrency = (amount: number) => {
@@ -374,6 +403,7 @@ export function GodModeDashboard() {
                                                                       key={tenant.id}
                                                                       tenant={tenant}
                                                                       onDelete={() => handleDelete(tenant.id)}
+                                                                      onEdit={() => handleEditClick(tenant)}
                                                                       onImpersonate={() => handleImpersonate(tenant.slug)}
                                                                />
                                                         ))}
@@ -391,7 +421,7 @@ export function GodModeDashboard() {
                                                                </thead>
                                                                <tbody className="divide-y divide-gray-100">
                                                                       {filteredTenants.map(tenant => (
-                                                                             <TenantListRow key={tenant.id} tenant={tenant} onDelete={() => handleDelete(tenant.id)} />
+                                                                             <TenantListRow key={tenant.id} tenant={tenant} onDelete={() => handleDelete(tenant.id)} onEdit={() => handleEditClick(tenant)} />
                                                                       ))}
                                                                </tbody>
                                                         </table>
@@ -400,6 +430,69 @@ export function GodModeDashboard() {
                                    </div>
                             </div>
                      </div>
+
+                     {/* Edit Modal (Premium Design) */}
+                     {editingTenant && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                                   <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-900/20 max-w-md w-full overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200">
+                                          <div className="bg-gray-50 p-6 border-b border-gray-100 flex items-center justify-between">
+                                                 <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-xl">
+                                                               <Edit3 className="w-5 h-5" />
+                                                        </div>
+                                                        <div>
+                                                               <h3 className="font-black text-lg text-slate-900 uppercase tracking-tight">Editar Tenant</h3>
+                                                               <p className="text-[10px] font-mono text-slate-400">{editingTenant.slug}</p>
+                                                        </div>
+                                                 </div>
+                                                 <button onClick={() => setEditingTenant(null)} className="p-2 hover:bg-gray-200 rounded-full text-slate-400 transition-colors">
+                                                        <XCircle className="w-5 h-5" />
+                                                 </button>
+                                          </div>
+                                          <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
+                                                 <div>
+                                                        <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Nombre de la Organización</label>
+                                                        <input
+                                                               required
+                                                               className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-5 py-3.5 focus:border-blue-400 focus:bg-white outline-none transition-all text-sm text-slate-900 font-medium"
+                                                               type="text"
+                                                               value={editFormData.name}
+                                                               onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
+                                                        />
+                                                 </div>
+                                                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                                        <input
+                                                               id="isActiveCheckbox"
+                                                               type="checkbox"
+                                                               className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                               checked={editFormData.isActive}
+                                                               onChange={e => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+                                                        />
+                                                        <label htmlFor="isActiveCheckbox" className="font-bold text-sm text-slate-700 cursor-pointer">
+                                                               Tenant Activo en Producción
+                                                        </label>
+                                                 </div>
+                                                 <div className="flex gap-4 pt-4">
+                                                        <button
+                                                               type="button"
+                                                               onClick={() => setEditingTenant(null)}
+                                                               className="flex-1 py-4 font-bold text-slate-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors"
+                                                        >
+                                                               Cancelar
+                                                        </button>
+                                                        <button
+                                                               type="submit"
+                                                               disabled={isUpdating}
+                                                               className="flex-1 py-4 font-bold text-white bg-blue-600 rounded-2xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50 flex justify-center items-center"
+                                                        >
+                                                               {isUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Guardar Cambios'}
+                                                        </button>
+                                                 </div>
+                                          </form>
+                                   </div>
+                            </div>
+                     )}
+
               </div>
        );
 }
@@ -442,7 +535,7 @@ function StatCard({ title, value, subtext, icon, primary = false, color = "gray"
        );
 }
 
-function TenantGridCard({ tenant, onDelete, onImpersonate }: { tenant: Tenant, onDelete: () => void, onImpersonate: () => void }) {
+function TenantGridCard({ tenant, onDelete, onEdit, onImpersonate }: { tenant: Tenant, onDelete: () => void, onEdit: () => void, onImpersonate: () => void }) {
        return (
               <div className="bg-white p-2 rounded-[2.5rem] border border-gray-100 hover:border-blue-400/50 transition-all group relative overflow-hidden shadow-xl shadow-slate-200/50">
                      <div className="p-6">
@@ -507,7 +600,7 @@ function TenantGridCard({ tenant, onDelete, onImpersonate }: { tenant: Tenant, o
        );
 }
 
-function TenantListRow({ tenant, onDelete }: { tenant: Tenant, onDelete: () => void }) {
+function TenantListRow({ tenant, onDelete, onEdit }: { tenant: Tenant, onDelete: () => void, onEdit: () => void }) {
        return (
               <tr className="hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0 text-slate-900">
                      <td className="px-6 py-5">
