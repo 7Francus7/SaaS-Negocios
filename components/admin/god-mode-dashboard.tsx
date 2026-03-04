@@ -560,7 +560,7 @@ function TenantGridCard({ tenant, onDelete, onEdit, onImpersonate }: { tenant: T
                                           </div>
                                    </div>
                                    <div className="flex gap-2">
-                                          <button className="p-2.5 bg-gray-50 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all text-slate-400 border border-transparent hover:border-blue-100">
+                                          <button onClick={onEdit} className="p-2.5 bg-gray-50 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all text-slate-400 border border-transparent hover:border-blue-100">
                                                  <Edit3 className="w-4 h-4" />
                                           </button>
                                           <button onClick={onDelete} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10 border border-transparent hover:border-red-200">
@@ -632,8 +632,8 @@ function TenantListRow({ tenant, onDelete, onEdit }: { tenant: Tenant, onDelete:
                      </td>
                      <td className="px-6 py-5 text-right">
                             <div className="flex items-center justify-end gap-2">
-                                   <button className="p-2 hover:bg-gray-100 rounded-xl text-slate-400 hover:text-blue-600 transition-all font-bold">
-                                          <LogIn className="w-4 h-4" />
+                                   <button onClick={onEdit} className="p-2 hover:bg-gray-100 rounded-xl text-slate-400 hover:text-blue-600 transition-all font-bold">
+                                          <Edit3 className="w-4 h-4" />
                                    </button>
                                    <button onClick={onDelete} className="p-2 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-500 transition-all font-bold">
                                           <Trash2 className="w-4 h-4" />
