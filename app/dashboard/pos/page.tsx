@@ -9,7 +9,6 @@ import { getOpenSession } from "@/app/actions/cash";
 import { calculatePromotions } from "@/app/actions/promotions";
 import { Modal } from "@/components/ui/modal";
 import { Ticket } from "@/components/pos/ticket";
-import confetti from "canvas-confetti";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -336,11 +335,6 @@ export default function POSPage() {
                      setSelectedCustomerId(null);
                      setShowSuccessModal(true);
                      playCashSound();
-                     confetti({
-                            particleCount: 100,
-                            spread: 70,
-                            origin: { y: 0.6 }
-                     });
               } catch (e: any) {
                      toast(e.message || "Error al procesar la venta", "error");
               } finally {

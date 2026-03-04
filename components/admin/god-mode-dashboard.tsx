@@ -42,7 +42,6 @@ import {
        Fingerprint,
        Package
 } from "lucide-react";
-import confetti from "canvas-confetti";
 import { cn, formatCurrency as globalFormatCurrency } from "@/lib/utils";
 
 // Types
@@ -132,12 +131,6 @@ export function GodModeDashboard() {
               try {
                      const res = await createTenant(formData);
                      if (res.success) {
-                            confetti({
-                                   particleCount: 150,
-                                   spread: 70,
-                                   origin: { y: 0.6 },
-                                   colors: ['#EAB308', '#0F172A', '#3B82F6']
-                            });
                             setFormData({ storeName: "", plan: "SaaS Professional (Recomendado)", ownerName: "", email: "", password: "" });
                             await loadData();
                      } else {
