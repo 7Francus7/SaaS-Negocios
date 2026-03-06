@@ -85,52 +85,52 @@ export default function CashPage() {
 
        return (
               <div className="space-y-6 max-w-5xl mx-auto">
-                     <h1 className="text-2xl font-bold text-gray-900">Gestión de Caja</h1>
+                     <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Gestión de Caja</h1>
 
                      {/* Active Status Card */}
-                     <div className={`p-6 rounded-xl border-l-4 shadow-sm bg-white border ${status === "OPEN" ? "border-l-green-500 border-gray-200" : "border-l-red-500 border-gray-200"}`}>
-                            <div className="flex justify-between items-start">
+                     <div className={`p-4 lg:p-6 rounded-xl border-l-4 shadow-sm bg-white border ${status === "OPEN" ? "border-l-green-500 border-gray-200" : "border-l-red-500 border-gray-200"}`}>
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                                    <div className="flex-1">
                                           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                                  {status === "OPEN" ? <span className="text-green-600">● Caja Abierta</span> : <span className="text-red-600">● Caja Cerrada</span>}
                                           </h2>
                                           {status === "OPEN" && (
-                                                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                                         <div className="p-3 bg-gray-50 rounded-lg">
-                                                               <p className="text-gray-500 mb-1">Caja Inicial</p>
-                                                               <span className="font-mono font-medium text-lg text-gray-900">{formatCurrency(currentSession.initialCash)}</span>
+                                                               <p className="text-gray-500 mb-1 text-xs">Caja Inicial</p>
+                                                               <span className="font-mono font-medium text-base lg:text-lg text-gray-900">{formatCurrency(currentSession.initialCash)}</span>
                                                         </div>
                                                         <div className="p-3 bg-blue-50 rounded-lg">
-                                                               <p className="text-blue-500 mb-1">Ventas (Efectivo)</p>
-                                                               <span className="font-mono font-medium text-lg text-blue-700">+{formatCurrency(currentSession.currentSales || 0)}</span>
+                                                               <p className="text-blue-500 mb-1 text-xs">Ventas (Efvo)</p>
+                                                               <span className="font-mono font-medium text-base lg:text-lg text-blue-700">+{formatCurrency(currentSession.currentSales || 0)}</span>
                                                         </div>
                                                         <div className="p-3 bg-green-50 rounded-lg">
-                                                               <p className="text-green-600 mb-1">Ingresos</p>
-                                                               <span className="font-mono font-medium text-lg text-green-700">+{formatCurrency(currentSession.totalIn || 0)}</span>
+                                                               <p className="text-green-600 mb-1 text-xs">Ingresos</p>
+                                                               <span className="font-mono font-medium text-base lg:text-lg text-green-700">+{formatCurrency(currentSession.totalIn || 0)}</span>
                                                         </div>
                                                         <div className="p-3 bg-red-50 rounded-lg">
-                                                               <p className="text-red-500 mb-1">Egresos / Gastos</p>
-                                                               <span className="font-mono font-medium text-lg text-red-700">-{formatCurrency(currentSession.totalOut || 0)}</span>
+                                                               <p className="text-red-500 mb-1 text-xs">Egresos / Gastos</p>
+                                                               <span className="font-mono font-medium text-base lg:text-lg text-red-700">-{formatCurrency(currentSession.totalOut || 0)}</span>
                                                         </div>
                                                  </div>
                                           )}
 
                                           {status === "OPEN" && (
-                                                 <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                                                 <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                         <div>
                                                                <p className="text-sm text-gray-500">Saldo Esperado en Caja</p>
-                                                               <p className="text-3xl font-bold text-gray-900">{formatCurrency(expectedTotal)}</p>
+                                                               <p className="text-2xl lg:text-3xl font-bold text-gray-900">{formatCurrency(expectedTotal)}</p>
                                                         </div>
-                                                        <div className="flex gap-2">
+                                                        <div className="flex gap-2 w-full sm:w-auto">
                                                                <button
                                                                       onClick={() => setMovementModal({ open: true, type: 'IN' })}
-                                                                      className="px-3 py-2 text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 rounded-lg flex items-center gap-2 transition-colors"
+                                                                      className="flex-1 sm:flex-none px-3 py-2 text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 rounded-lg flex items-center justify-center gap-2 transition-colors"
                                                                >
                                                                       <Plus className="w-4 h-4" /> Ingreso
                                                                </button>
                                                                <button
                                                                       onClick={() => setMovementModal({ open: true, type: 'OUT' })}
-                                                                      className="px-3 py-2 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 rounded-lg flex items-center gap-2 transition-colors"
+                                                                      className="flex-1 sm:flex-none px-3 py-2 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 rounded-lg flex items-center justify-center gap-2 transition-colors"
                                                                >
                                                                       <Minus className="w-4 h-4" /> Gasto / Retiro
                                                                </button>
@@ -143,11 +143,11 @@ export default function CashPage() {
                                           )}
                                    </div>
 
-                                   <div className="ml-6 border-l pl-6 border-gray-100 h-full flex items-center">
+                                   <div className="sm:ml-6 sm:border-l sm:pl-6 border-gray-100 flex items-center">
                                           {status === "CLOSED" ? (
                                                  <button
                                                         onClick={() => setIsOpenModalOpen(true)}
-                                                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center gap-2 shadow-lg hover:shadow-green-500/20 transition-all"
+                                                        className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-green-500/20 transition-all"
                                                  >
                                                         <DollarSign className="h-5 w-5" />
                                                         ABRIR CAJA
@@ -155,7 +155,7 @@ export default function CashPage() {
                                           ) : (
                                                  <button
                                                         onClick={() => setIsCloseModalOpen(true)}
-                                                        className="px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-black font-bold flex items-center gap-2 shadow-lg transition-all"
+                                                        className="w-full sm:w-auto px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-black font-bold flex items-center justify-center gap-2 shadow-lg transition-all"
                                                  >
                                                         <Lock className="h-5 w-5" />
                                                         CERRAR CAJA
@@ -171,12 +171,12 @@ export default function CashPage() {
                                           <div className="space-y-2 max-h-40 overflow-y-auto">
                                                  {currentSession.movements.map((m: any) => (
                                                         <div key={m.id} className="flex justify-between items-center text-sm p-2 rounded hover:bg-gray-50">
-                                                               <div className="flex items-center gap-3">
-                                                                      {m.type === 'IN' ? <ArrowUpCircle className="w-4 h-4 text-green-500" /> : <ArrowDownCircle className="w-4 h-4 text-red-500" />}
-                                                                      <span className="text-gray-900 font-medium">{m.description || 'Sin descripción'}</span>
-                                                                      <span className="text-xs text-gray-400">{formatTime(m.timestamp)}</span>
+                                                               <div className="flex items-center gap-3 min-w-0">
+                                                                      {m.type === 'IN' ? <ArrowUpCircle className="w-4 h-4 text-green-500 shrink-0" /> : <ArrowDownCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                                                                      <span className="text-gray-900 font-medium truncate">{m.description || 'Sin descripción'}</span>
+                                                                      <span className="text-xs text-gray-400 shrink-0">{formatTime(m.timestamp)}</span>
                                                                </div>
-                                                               <span className={`font-mono font-medium ${m.type === 'IN' ? 'text-green-600' : 'text-red-600'}`}>
+                                                               <span className={`font-mono font-medium shrink-0 ml-2 ${m.type === 'IN' ? 'text-green-600' : 'text-red-600'}`}>
                                                                       {m.type === 'IN' ? '+' : '-'}{formatCurrency(m.amount)}
                                                                </span>
                                                         </div>
@@ -188,54 +188,56 @@ export default function CashPage() {
 
                      {/* History Table */}
                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50">
+                            <div className="px-4 lg:px-6 py-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50">
                                    <History className="h-5 w-5 text-gray-500" />
                                    <h3 className="font-semibold text-gray-900">Historial de Cierres</h3>
                             </div>
-                            <table className="w-full text-sm text-left">
-                                   <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
-                                          <tr>
-                                                 <th className="px-6 py-3">Fecha Inicio</th>
-                                                 <th className="px-6 py-3">Fecha Cierre</th>
-                                                 <th className="px-6 py-3 text-right">Inicial</th>
-                                                 <th className="px-6 py-3 text-right">Sistema</th>
-                                                 <th className="px-6 py-3 text-right">Real</th>
-                                                 <th className="px-6 py-3 text-center">Estado</th>
-                                          </tr>
-                                   </thead>
-                                   <tbody className="divide-y divide-gray-100">
-                                          {history.map(s => {
-                                                 const diff = Number(s.finalCashReal || 0) - (Number(s.finalCashSystem || 0));
-                                                 const isBalanced = Math.abs(diff) < 1;
+                            <div className="overflow-x-auto">
+                                   <table className="w-full text-sm text-left min-w-[500px]">
+                                          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                                                 <tr>
+                                                        <th className="px-4 lg:px-6 py-3">Fecha Inicio</th>
+                                                        <th className="px-4 lg:px-6 py-3 hidden sm:table-cell">Fecha Cierre</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-right">Inicial</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-right hidden md:table-cell">Sistema</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-right">Real</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-center">Estado</th>
+                                                 </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-100">
+                                                 {history.map(s => {
+                                                        const diff = Number(s.finalCashReal || 0) - (Number(s.finalCashSystem || 0));
+                                                        const isBalanced = Math.abs(diff) < 1;
 
-                                                 return (
-                                                        <tr key={s.id} className="hover:bg-gray-50">
-                                                               <td className="px-6 py-4">{formatDate(s.startTime)} {formatTime(s.startTime)}</td>
-                                                               <td className="px-6 py-4">{s.endTime ? formatTime(s.endTime) : "-"}</td>
-                                                               <td className="px-6 py-4 text-right text-gray-500">{formatCurrency(s.initialCash)}</td>
-                                                               <td className="px-6 py-4 text-right font-medium">{formatCurrency(s.finalCashSystem || 0)}</td>
-                                                               <td className="px-6 py-4 text-right font-bold text-gray-900">
-                                                                      {s.status === 'CLOSED' ? formatCurrency(s.finalCashReal) : '-'}
-                                                               </td>
-                                                               <td className="px-6 py-4 text-center">
-                                                                      {s.status === 'OPEN' ? (
-                                                                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">ACTIVA</span>
-                                                                      ) : (
-                                                                             <div className="flex flex-col items-center">
-                                                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">CERRADA</span>
-                                                                                    {!isBalanced && (
-                                                                                           <span className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                                                  {diff > 0 ? '+' : ''}{diff.toFixed(0)}
-                                                                                           </span>
-                                                                                    )}
-                                                                             </div>
-                                                                      )}
-                                                               </td>
-                                                        </tr>
-                                                 );
-                                          })}
-                                   </tbody>
-                            </table>
+                                                        return (
+                                                               <tr key={s.id} className="hover:bg-gray-50">
+                                                                      <td className="px-4 lg:px-6 py-3">{formatDate(s.startTime)} {formatTime(s.startTime)}</td>
+                                                                      <td className="px-4 lg:px-6 py-3 hidden sm:table-cell">{s.endTime ? formatTime(s.endTime) : "-"}</td>
+                                                                      <td className="px-4 lg:px-6 py-3 text-right text-gray-500">{formatCurrency(s.initialCash)}</td>
+                                                                      <td className="px-4 lg:px-6 py-3 text-right font-medium hidden md:table-cell">{formatCurrency(s.finalCashSystem || 0)}</td>
+                                                                      <td className="px-4 lg:px-6 py-3 text-right font-bold text-gray-900">
+                                                                             {s.status === 'CLOSED' ? formatCurrency(s.finalCashReal) : '-'}
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 text-center">
+                                                                             {s.status === 'OPEN' ? (
+                                                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">ACTIVA</span>
+                                                                             ) : (
+                                                                                    <div className="flex flex-col items-center">
+                                                                                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">CERRADA</span>
+                                                                                           {!isBalanced && (
+                                                                                                  <span className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                                                         {diff > 0 ? '+' : ''}{diff.toFixed(0)}
+                                                                                                  </span>
+                                                                                           )}
+                                                                                    </div>
+                                                                             )}
+                                                                      </td>
+                                                               </tr>
+                                                        );
+                                                 })}
+                                          </tbody>
+                                   </table>
+                            </div>
                      </div>
 
                      {/* Modals */}

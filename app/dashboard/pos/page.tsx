@@ -68,6 +68,8 @@ export default function POSPage() {
        const [loadingSearch, setLoadingSearch] = useState(false);
        const { toast } = useToast();
        const [isClient, setIsClient] = useState(false);
+       // Mobile tab: "catalog" or "cart"
+       const [mobileTab, setMobileTab] = useState<"catalog" | "cart">("catalog");
 
        // Persistence
        useEffect(() => {
@@ -350,31 +352,64 @@ export default function POSPage() {
               searchInputRef.current?.focus();
        };
 
+       // Colors for product cards
+       const colors = [
+              "bg-red-100 text-red-600", "bg-orange-100 text-orange-600", "bg-amber-100 text-amber-600",
+              "bg-yellow-100 text-yellow-600", "bg-lime-100 text-lime-600", "bg-green-100 text-green-600",
+              "bg-emerald-100 text-emerald-600", "bg-teal-100 text-teal-600", "bg-cyan-100 text-cyan-600",
+              "bg-sky-100 text-sky-600", "bg-blue-100 text-blue-600", "bg-indigo-100 text-indigo-600",
+              "bg-violet-100 text-violet-600", "bg-purple-100 text-purple-600", "bg-fuchsia-100 text-fuchsia-600",
+              "bg-pink-100 text-pink-600", "bg-rose-100 text-rose-600"
+       ];
+
        return (
-              <div className="flex h-[calc(100vh-theme(spacing.24))] gap-6">
+              <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] lg:h-[calc(100vh-theme(spacing.24))] gap-0 lg:gap-6">
                      <Ticket data={lastSale} />
 
-                     {/* Left Column: Search & Catalog */}
-                     <div className="flex-1 flex flex-col gap-4">
+                     {/* ── MOBILE TAB BAR ── */}
+                     <div className="lg:hidden flex border-b border-gray-200 bg-white shrink-0">
+                            <button
+                                   onClick={() => setMobileTab("catalog")}
+                                   className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors ${mobileTab === "catalog" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+                            >
+                                   <Search className="h-4 w-4" />
+                                   Catálogo
+                            </button>
+                            <button
+                                   onClick={() => setMobileTab("cart")}
+                                   className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-colors relative ${mobileTab === "cart" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+                            >
+                                   <ShoppingCart className="h-4 w-4" />
+                                   Carrito
+                                   {cart.length > 0 && (
+                                          <span className="absolute top-2 right-[calc(50%-28px)] bg-blue-600 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+                                                 {cart.length}
+                                          </span>
+                                   )}
+                            </button>
+                     </div>
+
+                     {/* ── LEFT COLUMN: Search & Catalog ── */}
+                     <div className={`flex-1 flex flex-col gap-3 lg:gap-4 min-h-0 ${mobileTab === "cart" ? "hidden lg:flex" : "flex"}`}>
                             <div className="relative">
                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                                    <input
                                           ref={searchInputRef}
                                           type="text"
-                                          placeholder="Buscar producto (F2)..."
-                                          className="w-full pl-12 pr-4 py-4 bg-white border-2 border-transparent focus:border-blue-500 rounded-2xl shadow-sm outline-none text-lg transition-all"
+                                          placeholder="Buscar producto..."
+                                          className="w-full pl-12 pr-4 py-3 lg:py-4 bg-white border-2 border-transparent focus:border-blue-500 rounded-2xl shadow-sm outline-none text-base lg:text-lg transition-all"
                                           value={query}
                                           onChange={(e) => setQuery(e.target.value)}
                                    />
                                    {loadingSearch && <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin"><RotateCcw className="h-5 w-5 text-blue-500" /></div>}
                             </div>
 
-                            <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-                                   <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
-                                          <h2 className="font-bold text-gray-700">Resultados</h2>
+                            <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-0">
+                                   <div className="p-3 lg:p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50 shrink-0">
+                                          <h2 className="font-bold text-gray-700 text-sm lg:text-base">Resultados</h2>
                                           <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{searchResults.length} encontrados</span>
                                    </div>
-                                   <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 xl:grid-cols-3 gap-3 content-start">
+                                   <div className="flex-1 overflow-y-auto p-3 lg:p-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-2 lg:gap-3 content-start">
                                           {searchResults.length === 0 && !loadingSearch && (
                                                  <div className="col-span-full flex flex-col items-center justify-center text-gray-400 py-12">
                                                         <Search className="h-12 w-12 mb-3 opacity-20" />
@@ -386,44 +421,41 @@ export default function POSPage() {
                                                  </div>
                                           )}
                                           {searchResults.map((variant: any) => {
-                                                 // Generate a deterministic color based on the product name length
-                                                 const colors = [
-                                                        "bg-red-100 text-red-600", "bg-orange-100 text-orange-600", "bg-amber-100 text-amber-600",
-                                                        "bg-yellow-100 text-yellow-600", "bg-lime-100 text-lime-600", "bg-green-100 text-green-600",
-                                                        "bg-emerald-100 text-emerald-600", "bg-teal-100 text-teal-600", "bg-cyan-100 text-cyan-600",
-                                                        "bg-sky-100 text-sky-600", "bg-blue-100 text-blue-600", "bg-indigo-100 text-indigo-600",
-                                                        "bg-violet-100 text-violet-600", "bg-purple-100 text-purple-600", "bg-fuchsia-100 text-fuchsia-600",
-                                                        "bg-pink-100 text-pink-600", "bg-rose-100 text-rose-600"
-                                                 ];
                                                  const colorClass = colors[variant.product.name.length % colors.length];
                                                  const initials = variant.product.name.slice(0, 2).toUpperCase();
 
                                                  return (
                                                         <button
                                                                key={variant.id}
-                                                               onClick={() => addToCart(variant)}
+                                                               onClick={() => {
+                                                                      addToCart(variant);
+                                                                      // On mobile, switch to cart after adding
+                                                                      if (window.innerWidth < 1024 && !variant.isWeighable && (variant.stockQuantity > 0 || variant.isWeighable)) {
+                                                                             setMobileTab("cart");
+                                                                      }
+                                                               }}
                                                                disabled={!variant.isWeighable && variant.stockQuantity <= 0}
-                                                               className="group bg-white p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md hover:bg-blue-50/10 transition-all text-left flex items-center gap-3 disabled:opacity-50 disabled:hover:shadow-none disabled:hover:border-gray-200"
+                                                               className="group bg-white p-2.5 lg:p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md hover:bg-blue-50/10 transition-all text-left flex items-center gap-2 lg:gap-3 disabled:opacity-50 disabled:hover:shadow-none disabled:hover:border-gray-200 active:scale-95"
                                                         >
                                                                {/* Icon / Avatar */}
-                                                               <div className={`h-12 w-12 shrink-0 rounded-lg flex items-center justify-center text-sm font-black tracking-tighter ${colorClass}`}>
+                                                               <div className={`h-10 w-10 lg:h-12 lg:w-12 shrink-0 rounded-lg flex items-center justify-center text-xs lg:text-sm font-black tracking-tighter ${colorClass}`}>
                                                                       {initials}
                                                                </div>
 
                                                                {/* Content */}
                                                                <div className="flex-1 min-w-0">
-                                                                      <p className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors truncate text-sm">
+                                                                      <p className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors truncate text-xs lg:text-sm">
                                                                              {variant.product.name}
                                                                       </p>
                                                                       <p className="text-[10px] text-gray-500 font-medium truncate mb-1">
                                                                              {variant.variantName}
                                                                       </p>
-                                                                      <div className="flex items-center gap-2">
-                                                                             <span className="text-blue-600 font-black text-sm">
+                                                                      <div className="flex items-center gap-1.5 lg:gap-2 flex-wrap">
+                                                                             <span className="text-blue-600 font-black text-xs lg:text-sm">
                                                                                     {formatCurrency(variant.salePrice)}
                                                                              </span>
                                                                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${variant.stockQuantity <= 5 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
-                                                                                    Stock: {variant.stockQuantity}
+                                                                                    {variant.stockQuantity}
                                                                              </span>
                                                                       </div>
                                                                </div>
@@ -434,15 +466,15 @@ export default function POSPage() {
                             </div>
                      </div>
 
-                     {/* Right Column: Cart */}
-                     <div className="w-96 flex flex-col bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
-                            <div className="p-4 bg-gray-900 text-white flex items-center gap-3">
-                                   <ShoppingCart className="h-6 w-6 text-blue-400" />
-                                   <h2 className="font-bold text-lg">Carrito Actual</h2>
+                     {/* ── RIGHT COLUMN: Cart ── */}
+                     <div className={`lg:w-96 flex flex-col bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden min-h-0 ${mobileTab === "catalog" ? "hidden lg:flex" : "flex flex-1"}`}>
+                            <div className="p-3 lg:p-4 bg-gray-900 text-white flex items-center gap-3 shrink-0">
+                                   <ShoppingCart className="h-5 w-5 lg:h-6 lg:w-6 text-blue-400" />
+                                   <h2 className="font-bold text-base lg:text-lg">Carrito Actual</h2>
                                    <span className="ml-auto bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold uppercase">{cart.length} items</span>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 lg:space-y-3 min-h-0">
                                    {cart.length === 0 ? (
                                           <div className="h-full flex flex-col items-center justify-center text-gray-300 space-y-3">
                                                  <ShoppingCart className="h-12 w-12 opacity-10" />
@@ -450,31 +482,31 @@ export default function POSPage() {
                                           </div>
                                    ) : (
                                           cart.map((item) => (
-                                                 <div key={item.variantId} className="group p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                                                 <div key={item.variantId} className="group p-2.5 lg:p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
                                                         <div className="flex justify-between items-start mb-2">
                                                                <div className="flex-1 min-w-0">
                                                                       <p className="text-sm font-bold text-gray-900 truncate">{item.productName}</p>
                                                                       <p className="text-[10px] text-gray-500 uppercase font-medium">{item.variantName}</p>
                                                                </div>
-                                                               <p className="text-sm font-bold text-blue-600 ml-2">{formatCurrency(item.price * (item.isWeighable ? 1 : item.quantity))}</p>
+                                                               <p className="text-sm font-bold text-blue-600 ml-2 shrink-0">{formatCurrency(item.price * (item.isWeighable ? 1 : item.quantity))}</p>
                                                         </div>
                                                         <div className="flex items-center justify-between">
                                                                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                                                                       {item.isWeighable ? (
-                                                                             <span className="text-xs font-semibold px-2 text-gray-500">Precio Variable (Personalizado)</span>
+                                                                             <span className="text-xs font-semibold px-2 text-gray-500">Precio Variable</span>
                                                                       ) : (
                                                                              <>
-                                                                                    <button onClick={() => updateQuantity(item.variantId, -1)} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                                                                                    <button onClick={() => updateQuantity(item.variantId, -1)} className="p-1.5 hover:bg-gray-200 rounded text-gray-500 active:scale-90">
                                                                                            <Minus className="h-3 w-3" />
                                                                                     </button>
                                                                                     <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
-                                                                                    <button onClick={() => updateQuantity(item.variantId, 1)} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                                                                                    <button onClick={() => updateQuantity(item.variantId, 1)} className="p-1.5 hover:bg-gray-200 rounded text-gray-500 active:scale-90">
                                                                                            <Plus className="h-3 w-3" />
                                                                                     </button>
                                                                              </>
                                                                       )}
                                                                </div>
-                                                               <button onClick={() => removeFromCart(item.variantId)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                                                               <button onClick={() => removeFromCart(item.variantId)} className="p-2 text-gray-300 hover:text-red-500 transition-colors active:scale-90">
                                                                       <Trash2 className="h-4 w-4" />
                                                                </button>
                                                         </div>
@@ -483,7 +515,7 @@ export default function POSPage() {
                                    )}
                             </div>
 
-                            <div className="p-4 border-t border-gray-100 bg-gray-50 space-y-4">
+                            <div className="p-3 lg:p-4 border-t border-gray-100 bg-gray-50 space-y-3 lg:space-y-4 shrink-0">
                                    {promotionInfo.appliedPromos.length > 0 && (
                                           <div className="space-y-1">
                                                  {promotionInfo.appliedPromos.map((p, idx) => (
@@ -499,7 +531,7 @@ export default function POSPage() {
                                           </div>
                                    )}
 
-                                   <div className="flex justify-between items-center text-2xl font-black text-gray-900">
+                                   <div className="flex justify-between items-center text-xl lg:text-2xl font-black text-gray-900">
                                           <span>Total</span>
                                           <span>{formatCurrency(total)}</span>
                                    </div>
@@ -513,9 +545,9 @@ export default function POSPage() {
                                    <button
                                           disabled={cart.length === 0 || !session}
                                           onClick={() => setShowPayModal(true)}
-                                          className="w-full py-4 text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                                          className="w-full py-3.5 lg:py-4 text-base lg:text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2 active:scale-95"
                                    >
-                                          <CreditCard className="h-6 w-6" />
+                                          <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />
                                           Cobrar
                                    </button>
                             </div>
@@ -523,45 +555,45 @@ export default function POSPage() {
 
                      {/* Payment Modal */}
                      <Modal isOpen={showPayModal} onClose={() => setShowPayModal(false)} title="Finalizar Venta">
-                            <div className="space-y-6">
-                                   <div className="bg-gray-50 p-6 rounded-2xl text-center border border-gray-100">
+                            <div className="space-y-5 lg:space-y-6">
+                                   <div className="bg-gray-50 p-5 lg:p-6 rounded-2xl text-center border border-gray-100">
                                           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Total a Pagar</p>
-                                          <p className="text-5xl font-black text-gray-900">{formatCurrency(total)}</p>
+                                          <p className="text-4xl lg:text-5xl font-black text-gray-900">{formatCurrency(total)}</p>
                                    </div>
 
                                    <div className="space-y-3">
                                           <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">Método de Pago</label>
-                                          <div className="grid grid-cols-2 gap-3">
+                                          <div className="grid grid-cols-2 gap-2 lg:gap-3">
                                                  <button
                                                         onClick={() => setPaymentMethod("EFECTIVO")}
-                                                        className={`p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2
+                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
                              ${paymentMethod === "EFECTIVO" ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
                                                  >
-                                                        <CreditCard className="h-6 w-6" />
+                                                        <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />
                                                         Efectivo
                                                  </button>
                                                  <button
                                                         onClick={() => setPaymentMethod("TRANSFERENCIA")}
-                                                        className={`p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2
+                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
                              ${paymentMethod === "TRANSFERENCIA" ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
                                                  >
-                                                        <QrCode className="h-6 w-6" />
+                                                        <QrCode className="h-5 w-5 lg:h-6 lg:w-6" />
                                                         Transferencia / QR
                                                  </button>
                                                  <button
                                                         onClick={() => setPaymentMethod("TARJETA")}
-                                                        className={`p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2
+                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
                              ${paymentMethod === "TARJETA" ? "border-orange-600 bg-orange-50 text-orange-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
                                                  >
-                                                        <CreditCard className="h-6 w-6" />
+                                                        <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />
                                                         Tarjeta (Créd/Déb)
                                                  </button>
                                                  <button
                                                         onClick={() => setPaymentMethod("CTA_CTE")}
-                                                        className={`p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2
+                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
                              ${paymentMethod === "CTA_CTE" ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
                                                  >
-                                                        <User className="h-6 w-6" />
+                                                        <User className="h-5 w-5 lg:h-6 lg:w-6" />
                                                         Cuenta Corriente
                                                  </button>
                                           </div>
@@ -615,7 +647,7 @@ export default function POSPage() {
                                    <button
                                           onClick={handleCheckout}
                                           disabled={processing || (paymentMethod === "CTA_CTE" && !selectedCustomerId) || (paymentMethod === "EFECTIVO" && Number(tenderedAmount) > 0 && Number(tenderedAmount) < total)}
-                                          className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none transition-all"
+                                          className="w-full py-4 lg:py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg lg:text-xl rounded-2xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
                                    >
                                           {processing ? "Procesando..." : "CONFIRMAR VENTA"}
                                    </button>

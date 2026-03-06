@@ -20,7 +20,9 @@ import {
        Terminal,
        Monitor,
        BarChart3,
-       Cpu
+       Cpu,
+       Menu,
+       X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +40,7 @@ const menuItems = [
        { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];
 
-function SidebarContent() {
+function SidebarContent({ onClose }: { onClose?: () => void }) {
        const pathname = usePathname();
        const router = useRouter();
        const searchParams = useSearchParams();
@@ -78,17 +80,21 @@ function SidebarContent() {
               router.push('/');
        };
 
+       const handleNavClick = () => {
+              onClose?.();
+       };
+
        return (
               <aside className={cn(
-                     "w-72 border-r flex flex-col h-full fixed left-0 top-0 transition-all duration-500 z-50 print:hidden",
+                     "w-72 border-r flex flex-col h-full transition-all duration-500 z-50 print:hidden",
                      godMode ? "bg-white border-yellow-400/30" : "bg-white border-gray-200"
               )}>
                      <div className={cn(
-                            "p-8 flex items-center gap-3 border-b transition-colors duration-500",
+                            "p-6 flex items-center gap-3 border-b transition-colors duration-500",
                             godMode ? "border-yellow-400/20 bg-yellow-50/10" : "border-gray-100"
                      )}>
                             {godMode ? (
-                                   <div className="flex items-center gap-3">
+                                   <div className="flex items-center gap-3 flex-1">
                                           <Zap className="h-8 w-8 text-yellow-500 fill-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)] anim-pulse" />
                                           <div className="flex flex-col">
                                                  <span className="font-black text-xl tracking-tighter uppercase leading-none text-slate-900">GOD MODE</span>
@@ -97,13 +103,22 @@ function SidebarContent() {
                                    </div>
                             ) : (
                                    <>
-                                          <Store className="h-6 w-6 text-blue-600 mr-2" />
-                                          <span className="font-bold text-xl tracking-tight text-gray-900 truncate">{storeName}</span>
+                                          <Store className="h-6 w-6 text-blue-600 mr-2 shrink-0" />
+                                          <span className="font-bold text-xl tracking-tight text-gray-900 truncate flex-1">{storeName}</span>
                                    </>
+                            )}
+                            {/* Close button for mobile */}
+                            {onClose && (
+                                   <button
+                                          onClick={onClose}
+                                          className="ml-auto p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 lg:hidden"
+                                   >
+                                          <X className="h-5 w-5" />
+                                   </button>
                             )}
                      </div>
 
-                     <nav className="flex-1 px-4 py-8 space-y-1 overflow-y-auto">
+                     <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                             {/* Standard menu items - ONLY visible if NOT in godMode */}
                             {!godMode && menuItems.filter(i => {
                                    if (userRole === "CASHIER") {
@@ -118,6 +133,7 @@ function SidebarContent() {
                                           <Link
                                                  key={item.href}
                                                  href={item.href}
+                                                 onClick={handleNavClick}
                                                  className={cn(
                                                         "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group",
                                                         isActive
@@ -142,6 +158,7 @@ function SidebarContent() {
                                                  <div className="space-y-1">
                                                         <Link
                                                                href="/dashboard/admin"
+                                                               onClick={handleNavClick}
                                                                className={cn(
                                                                       "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group border",
                                                                       pathname === "/dashboard/admin"
@@ -154,6 +171,7 @@ function SidebarContent() {
                                                         </Link>
                                                         <Link
                                                                href="/dashboard/admin/metrics"
+                                                               onClick={handleNavClick}
                                                                className="flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-gray-50 group transition-all"
                                                         >
                                                                <Activity className="h-5 w-5 mr-3 text-slate-400 group-hover:text-emerald-500 transition-colors" />
@@ -167,6 +185,7 @@ function SidebarContent() {
                                                  <div className="space-y-1">
                                                         <Link
                                                                href="/dashboard/admin/logs"
+                                                               onClick={handleNavClick}
                                                                className="flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-gray-50 group transition-all"
                                                         >
                                                                <Terminal className="h-5 w-5 mr-3 text-slate-400 group-hover:text-blue-500 transition-colors" />
@@ -174,6 +193,7 @@ function SidebarContent() {
                                                         </Link>
                                                         <Link
                                                                href="/dashboard/admin/deployment"
+                                                               onClick={handleNavClick}
                                                                className="flex items-center px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-gray-50 group transition-all"
                                                         >
                                                                <Cpu className="h-5 w-5 mr-3 text-slate-400 group-hover:text-purple-500 transition-colors" />
@@ -214,10 +234,54 @@ function SidebarContent() {
        );
 }
 
+function SidebarContentWrapper() {
+       const [isOpen, setIsOpen] = useState(false);
+
+       return (
+              <>
+                     {/* Mobile Header Bar */}
+                     <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 print:hidden">
+                            <button
+                                   onClick={() => setIsOpen(true)}
+                                   className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700"
+                                   aria-label="Abrir menú"
+                            >
+                                   <Menu className="h-5 w-5" />
+                            </button>
+                            <Store className="h-5 w-5 text-blue-600" />
+                            <span className="font-bold text-gray-900 truncate text-sm">Panel de Control</span>
+                     </div>
+
+                     {/* Mobile/Tablet Overlay Drawer */}
+                     {isOpen && (
+                            <div
+                                   className="lg:hidden fixed inset-0 z-50 flex print:hidden"
+                                   onClick={() => setIsOpen(false)}
+                            >
+                                   {/* Backdrop */}
+                                   <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" />
+                                   {/* Drawer */}
+                                   <div
+                                          className="relative h-full flex flex-col animate-in slide-in-from-left duration-300"
+                                          onClick={(e) => e.stopPropagation()}
+                                   >
+                                          <SidebarContent onClose={() => setIsOpen(false)} />
+                                   </div>
+                            </div>
+                     )}
+
+                     {/* Desktop Sidebar (always visible on lg+) */}
+                     <div className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:left-0 lg:top-0 lg:h-full print:hidden">
+                            <SidebarContent />
+                     </div>
+              </>
+       );
+}
+
 export function Sidebar() {
        return (
-              <Suspense fallback={<div className="w-64 bg-white border-r h-full fixed" />}>
-                     <SidebarContent />
+              <Suspense fallback={<div className="hidden lg:block w-72 bg-white border-r h-full fixed" />}>
+                     <SidebarContentWrapper />
               </Suspense>
        );
 }

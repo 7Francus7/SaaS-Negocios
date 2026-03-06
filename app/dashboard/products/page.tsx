@@ -10,13 +10,13 @@ import { Modal } from "@/components/ui/modal";
 import { formatCurrency, cn } from "@/lib/utils";
 
 // Minimal button UI
-function Button({ children, onClick, variant = "primary" }: any) {
-       const base = "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
+function Button({ children, onClick, variant = "primary", disabled }: any) {
+       const base = "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50";
        const styles = {
               primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
               secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500",
        };
-       return <button onClick={onClick} className={`${base} ${styles[variant as keyof typeof styles]}`}>{children}</button>;
+       return <button onClick={onClick} disabled={disabled} className={`${base} ${styles[variant as keyof typeof styles]}`}>{children}</button>;
 }
 
 interface Category {
@@ -188,7 +188,7 @@ export default function ProductsPage() {
        });
 
        return (
-              <div className="space-y-6">
+              <div className="space-y-5 lg:space-y-6">
                      {isEditModalOpen && (
                             <EditProductModal
                                    isOpen={isEditModalOpen}
@@ -210,42 +210,44 @@ export default function ProductsPage() {
                             onSuccess={fetchProducts}
                      />
 
-                     <div className="flex items-center justify-between">
+                     {/* Header */}
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
-                                   <h1 className="text-2xl font-bold tracking-tight text-gray-900">Inventario</h1>
+                                   <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-gray-900">Inventario</h1>
                                    <p className="text-sm text-gray-500 mt-1">Gestiona tus productos y stock.</p>
                             </div>
-                            <div className="flex gap-2 flex-wrap justify-end">
+                            <div className="flex gap-2 flex-wrap">
                                    <Button variant="secondary" onClick={() => setIsBulkPriceModalOpen(true)}>
-                                          <TrendingUp className="h-4 w-4 mr-2" />
-                                          Actualizar Precios
+                                          <TrendingUp className="h-4 w-4 mr-1" />
+                                          <span className="hidden sm:inline">Precios</span>
                                    </Button>
                                    <Button variant="secondary" onClick={() => setIsCategoryModalOpen(true)}>
-                                          <Tag className="h-4 w-4 mr-2" />
-                                          Categorías
+                                          <Tag className="h-4 w-4 mr-1" />
+                                          <span className="hidden sm:inline">Categorías</span>
+                                          <span className="sm:hidden">Cat.</span>
                                    </Button>
                                    <Button variant="secondary" onClick={handleExport}>
-                                          <Download className="h-4 w-4 mr-2" />
-                                          Exportar
+                                          <Download className="h-4 w-4 sm:mr-1" />
+                                          <span className="hidden sm:inline">Exportar</span>
                                    </Button>
                                    <Button variant="secondary" onClick={() => setIsBulkModalOpen(true)}>
-                                          <UploadCloud className="h-4 w-4 mr-2" />
-                                          Importar
+                                          <UploadCloud className="h-4 w-4 sm:mr-1" />
+                                          <span className="hidden sm:inline">Importar</span>
                                    </Button>
                                    <Button onClick={() => setIsModalOpen(true)}>
-                                          <Plus className="h-4 w-4 mr-2" />
-                                          Nuevo Producto
+                                          <Plus className="h-4 w-4 mr-1" />
+                                          <span className="hidden sm:inline">Nuevo </span>Producto
                                    </Button>
                             </div>
                      </div>
 
                      {/* Filters */}
-                     <div className="flex gap-4 items-center bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                     <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
                             <div className="relative flex-1">
                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                    <input
                                           type="text"
-                                          placeholder="Buscar por nombre o código de barras..."
+                                          placeholder="Buscar por nombre o código..."
                                           className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                           value={searchQuery}
                                           onChange={e => setSearchQuery(e.target.value)}
@@ -266,13 +268,13 @@ export default function ProductsPage() {
 
                      {/* Summary */}
                      {!loading && (
-                            <div className="flex gap-4">
+                            <div className="flex gap-3">
                                    <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 text-sm">
-                                          <span className="text-blue-400 font-bold text-[10px] uppercase">Productos:</span>{" "}
+                                          <span className="text-blue-400 font-bold text-[10px] uppercase">Productos: </span>
                                           <span className="font-black text-blue-700">{filtered.length}</span>
                                    </div>
                                    <div className="bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 text-sm">
-                                          <span className="text-amber-400 font-bold text-[10px] uppercase">Stock Bajo:</span>{" "}
+                                          <span className="text-amber-400 font-bold text-[10px] uppercase">Stock Bajo: </span>
                                           <span className="font-black text-amber-700">
                                                  {filtered.filter((v: any) => v.stockQuantity <= v.minStock).length}
                                           </span>
@@ -282,83 +284,86 @@ export default function ProductsPage() {
 
                      {/* Table */}
                      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                   <thead className="bg-gray-50">
-                                          <tr>
-                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU / Barras</th>
-                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
-                                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                                          </tr>
-                                   </thead>
-                                   <tbody className="bg-white divide-y divide-gray-200">
-                                          {loading ? (
-                                                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">Cargando inventario...</td></tr>
-                                          ) : filtered.length === 0 ? (
-                                                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                                                        {searchQuery ? "No se encontraron productos." : "No hay productos registrados."}
-                                                 </td></tr>
-                                          ) : (
-                                                 filtered.map((variant: any) => (
-                                                        <tr key={variant.id} className="hover:bg-gray-50 transition-colors">
-                                                               <td className="px-6 py-4 whitespace-nowrap">
-                                                                      <div className="text-sm font-medium text-gray-900">{variant.product.name}</div>
-                                                                      <div className="text-sm text-gray-500">{variant.variantName}</div>
-                                                               </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                      {variant.barcode || "-"}
-                                                               </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-800">
-                                                                             {variant.product.category?.name || "General"}
-                                                                      </span>
-                                                               </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                                                      {formatCurrency(variant.costPrice)}
-                                                               </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                                                      {formatCurrency(variant.salePrice)}
-                                                               </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                 ${variant.stockQuantity <= variant.minStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                                                             {variant.stockQuantity}
-                                                                      </span>
-                                                               </td>
-                                                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                                                      <button
-                                                                             onClick={() => openStockModal(variant)}
-                                                                             className="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1"
-                                                                             title="Ajustar stock"
-                                                                      >
-                                                                             <PackagePlus className="h-3.5 w-3.5" />
-                                                                             <span className="text-xs">Stock</span>
-                                                                      </button>
-                                                                      <button
-                                                                             onClick={() => { setEditingVariant(variant); setIsEditModalOpen(true); }}
-                                                                             className="text-blue-500 hover:text-blue-700 inline-flex items-center gap-1"
-                                                                             title="Editar producto"
-                                                                      >
-                                                                             <Pencil className="h-3.5 w-3.5" />
-                                                                             <span className="text-xs">Editar</span>
-                                                                      </button>
-                                                                      <button
-                                                                             onClick={() => handleDeleteProduct(variant.product.id, variant.product.name)}
-                                                                             className="text-red-500 hover:text-red-700 inline-flex items-center gap-1"
-                                                                             title="Eliminar producto"
-                                                                      >
-                                                                             <Trash2 className="h-3.5 w-3.5" />
-                                                                             <span className="text-xs">Eliminar</span>
-                                                                      </button>
-                                                               </td>
-                                                        </tr>
-                                                 ))
-                                          )}
-                                   </tbody>
-                            </table>
+                            <div className="overflow-x-auto">
+                                   <table className="min-w-full divide-y divide-gray-200">
+                                          <thead className="bg-gray-50">
+                                                 <tr>
+                                                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">SKU / Barras</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Categoría</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Costo</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                                 </tr>
+                                          </thead>
+                                          <tbody className="bg-white divide-y divide-gray-200">
+                                                 {loading ? (
+                                                        <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">Cargando inventario...</td></tr>
+                                                 ) : filtered.length === 0 ? (
+                                                        <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                                               {searchQuery ? "No se encontraron productos." : "No hay productos registrados."}
+                                                        </td></tr>
+                                                 ) : (
+                                                        filtered.map((variant: any) => (
+                                                               <tr key={variant.id} className="hover:bg-gray-50 transition-colors">
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap">
+                                                                             <div className="text-sm font-medium text-gray-900">{variant.product.name}</div>
+                                                                             <div className="text-xs text-gray-500">{variant.variantName}</div>
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
+                                                                             {variant.barcode || "-"}
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
+                                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-800">
+                                                                                    {variant.product.category?.name || "General"}
+                                                                             </span>
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right hidden lg:table-cell">
+                                                                             {formatCurrency(variant.costPrice)}
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                                                             {formatCurrency(variant.salePrice)}
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-center">
+                                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variant.stockQuantity <= variant.minStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                                                                    {variant.stockQuantity}
+                                                                             </span>
+                                                                      </td>
+                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                                                             <div className="flex items-center justify-end gap-2 lg:gap-3">
+                                                                                    <button
+                                                                                           onClick={() => openStockModal(variant)}
+                                                                                           className="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1"
+                                                                                           title="Ajustar stock"
+                                                                                    >
+                                                                                           <PackagePlus className="h-3.5 w-3.5" />
+                                                                                           <span className="text-xs hidden sm:inline">Stock</span>
+                                                                                    </button>
+                                                                                    <button
+                                                                                           onClick={() => { setEditingVariant(variant); setIsEditModalOpen(true); }}
+                                                                                           className="text-blue-500 hover:text-blue-700 inline-flex items-center gap-1"
+                                                                                           title="Editar producto"
+                                                                                    >
+                                                                                           <Pencil className="h-3.5 w-3.5" />
+                                                                                           <span className="text-xs hidden sm:inline">Editar</span>
+                                                                                    </button>
+                                                                                    <button
+                                                                                           onClick={() => handleDeleteProduct(variant.product.id, variant.product.name)}
+                                                                                           className="text-red-500 hover:text-red-700 inline-flex items-center gap-1"
+                                                                                           title="Eliminar producto"
+                                                                                    >
+                                                                                           <Trash2 className="h-3.5 w-3.5" />
+                                                                                           <span className="text-xs hidden sm:inline">Eliminar</span>
+                                                                                    </button>
+                                                                             </div>
+                                                                      </td>
+                                                               </tr>
+                                                        ))
+                                                 )}
+                                          </tbody>
+                                   </table>
+                            </div>
                      </div>
 
                      {/* Category Management Modal */}
@@ -405,7 +410,7 @@ export default function ProductsPage() {
                                                         ) : (
                                                                <>
                                                                       <span className="font-bold text-gray-700 text-sm">{cat.name}</span>
-                                                                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                      <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                                              <button
                                                                                     onClick={() => { setEditingCategory(cat); setEditCategoryName(cat.name); }}
                                                                                     className="text-blue-500 hover:text-blue-700"
@@ -440,17 +445,6 @@ export default function ProductsPage() {
                      <Modal isOpen={isStockModalOpen} onClose={() => setIsStockModalOpen(false)} title="AJUSTAR STOCK">
                             {stockVariant && (
                                    <div className="space-y-6">
-                                          <style jsx>{`
-                                                 input::-webkit-outer-spin-button,
-                                                 input::-webkit-inner-spin-button {
-                                                        -webkit-appearance: none;
-                                                        margin: 0;
-                                                 }
-                                                 input[type=number] {
-                                                        -moz-appearance: textfield;
-                                                 }
-                                          `}</style>
-
                                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                                                  <p className="text-lg font-black text-gray-900 leading-tight">{stockVariant.product?.name || stockVariant.productName}</p>
                                                  <p className="text-sm text-gray-500">{stockVariant.variantName}</p>
@@ -502,12 +496,12 @@ export default function ProductsPage() {
                                                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Motivo del Ajuste</label>
                                                  <div className="grid grid-cols-2 gap-2">
                                                         {[
-                                                               { value: "COMPRA", label: "📦 Compra", color: "emerald" },
-                                                               { value: "MERMA", label: "🗑️ Merma", color: "red" },
-                                                               { value: "MANUAL", label: "✏️ Ajuste Manual", color: "blue" },
-                                                               { value: "VENCIMIENTO", label: "🗓️ Vencimiento", color: "amber" },
-                                                               { value: "ROBO", label: "🚨 Robo / Pérdida", color: "red" },
-                                                               { value: "DEVOLUCION", label: "🔄 Devolución", color: "purple" },
+                                                               { value: "COMPRA", label: "📦 Compra" },
+                                                               { value: "MERMA", label: "🗑️ Merma" },
+                                                               { value: "MANUAL", label: "✏️ Ajuste Manual" },
+                                                               { value: "VENCIMIENTO", label: "🗓️ Vencimiento" },
+                                                               { value: "ROBO", label: "🚨 Robo / Pérdida" },
+                                                               { value: "DEVOLUCION", label: "🔄 Devolución" },
                                                         ].map(r => (
                                                                <button
                                                                       key={r.value}
