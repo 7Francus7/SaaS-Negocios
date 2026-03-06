@@ -82,7 +82,7 @@ export function Ticket({ data }: { data: TicketData | null }) {
                                           width: 100% !important;
                                           max-width: 100% !important;
                                           box-sizing: border-box !important;
-                                          padding: 2mm !important;
+                                          padding: 2mm 5mm 2mm 2mm !important;
                                           background: white !important;
                                           -webkit-print-color-adjust: exact !important;
                                           print-color-adjust: exact !important;
