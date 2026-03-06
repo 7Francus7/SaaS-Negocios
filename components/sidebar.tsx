@@ -34,6 +34,7 @@ const menuItems = [
        { href: "/dashboard/customers", label: "Clientes", icon: Users },
        { href: "/dashboard/reports", label: "Reportes", icon: BarChart3 },
        { href: "/dashboard/suppliers", label: "Proveedores", icon: Truck },
+       { href: "/dashboard/install", label: "Descargar App", icon: Monitor },
        { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];
 
