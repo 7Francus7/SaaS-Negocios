@@ -58,13 +58,12 @@ export function Ticket({ data }: { data: TicketData | null }) {
                      <style>{`
                             @media print {
                                    @page { 
-                                          size: ${profile.width}mm auto; 
                                           margin: 0; 
                                    }
                                    html, body {
                                           margin: 0 !important;
                                           padding: 0 !important;
-                                          width: ${profile.width}mm !important;
+                                          width: 100% !important;
                                           background: white !important;
                                           font-family: Arial, sans-serif !important;
                                           font-size: ${profile.fontSize}px !important;
@@ -80,12 +79,14 @@ export function Ticket({ data }: { data: TicketData | null }) {
                                           left: 0;
                                           top: 0;
                                           margin: 0 !important;
-                                          width: ${profile.width}mm !important;
+                                          width: 100% !important;
+                                          max-width: 100% !important;
                                           box-sizing: border-box !important;
                                           padding: 2mm !important;
                                           background: white !important;
                                           -webkit-print-color-adjust: exact !important;
                                           print-color-adjust: exact !important;
+                                          overflow: hidden !important;
                                    }
                             }
                      `}</style>
