@@ -104,7 +104,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
               setError("");
 
               try {
-                     await updateProductDetails(variant.id, {
+                     const res = await updateProductDetails(variant.id, {
                             productName: formData.name,
                             categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
                             variantName: formData.variantName,
@@ -113,8 +113,13 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                             salePrice: Number(formData.salePrice) || 0,
                             minStock: Number(formData.minStock),
                             isWeighable: formData.isWeighable,
-
                      });
+
+                     if (res.error) {
+                            setError(res.error);
+                            setLoading(false);
+                            return;
+                     }
 
                      // Clear form & close
                      setFormData({

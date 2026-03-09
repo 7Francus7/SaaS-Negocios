@@ -81,7 +81,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
               setError("");
 
               try {
-                     await createProduct({
+                     const res = await createProduct({
                             name: formData.name,
                             variantName: formData.variantName,
                             barcode: formData.barcode || undefined,
@@ -91,6 +91,12 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             minStock: Number(formData.minStock),
                             isWeighable: formData.isWeighable,
                      });
+
+                     if (res.error) {
+                            setError(res.error);
+                            setLoading(false);
+                            return;
+                     }
 
                      // Clear form & close
                      setFormData({
@@ -117,7 +123,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
               <Modal isOpen={isOpen} onClose={onClose} title="Nuevo Producto">
                      <form onSubmit={handleSubmit} className="space-y-4">
                             {error && (
-                                   <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+                                   <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-100">
                                           {error}
                                    </div>
                             )}
@@ -277,7 +283,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                                    <button
                                           type="submit"
                                           disabled={loading}
-                                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+                                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center shadow-lg"
                                    >
                                           {loading ? "Guardando..." : "Guardar Producto"}
                                    </button>

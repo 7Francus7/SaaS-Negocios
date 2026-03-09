@@ -24,7 +24,7 @@ export async function getProducts(filter: ProductFilter = {}) {
               ...(searchQuery
                      ? {
                             OR: [
-                                   { product: { name: { contains: searchQuery, mode: 'insensitive' } } }, // PostgreSQL: mode: 'insensitive' (SQLite doesn't support it natively in Prisma yet easily)
+                                   { product: { name: { contains: searchQuery, mode: 'insensitive' } } },
                                    { variantName: { contains: searchQuery, mode: 'insensitive' } },
                                    { barcode: { contains: searchQuery, mode: 'insensitive' } },
                             ],
@@ -53,7 +53,7 @@ export async function getProducts(filter: ProductFilter = {}) {
               salePrice: Number(v.salePrice),
               product: {
                      ...v.product,
-                     description: v.product.description || "" // Handle null description if needed, though optional string is fine
+                     description: v.product.description || ""
               }
        }));
 
@@ -100,67 +100,80 @@ export async function createProduct(data: {
        minStock?: number;
        isWeighable?: boolean;
 }) {
-       // Validate Zod
-       const parsed = productSchema.parse(data);
+       try {
+              // Validate Zod
+              const parsed = productSchema.parse(data);
 
-       const storeId = await getStoreId();
+              const storeId = await getStoreId();
 
-       // Check barcode uniqueness
-       if (parsed.barcode) {
-              const existing = await prisma.productVariant.findFirst({
-                     where: {
-                            storeId,
-                            barcode: parsed.barcode,
-                            active: true,
-                     },
-              });
-              if (existing) {
-                     throw new Error(`El código '${parsed.barcode}' ya está en uso.`);
-              }
-       }
-
-       // Transaction: Create Product -> Variant -> StockMovement
-       return await prisma.$transaction(async (tx) => {
-              const product = await tx.product.create({
-                     data: {
-                            name: parsed.name,
-                            description: parsed.description,
-                            categoryId: parsed.categoryId,
-                            storeId,
-                            active: true,
-                     },
-              });
-
-              const variant = await tx.productVariant.create({
-                     data: {
-                            productId: product.id,
-                            variantName: parsed.variantName,
-                            barcode: parsed.barcode || null,
-                            costPrice: parsed.costPrice,
-                            salePrice: parsed.salePrice,
-                            stockQuantity: parsed.stock,
-                            minStock: parsed.minStock ?? 5,
-                            isWeighable: parsed.isWeighable ?? false,
-                            storeId,
-                            active: true,
-                     },
-              });
-
-              if (parsed.stock !== 0) {
-                     await tx.stockMovement.create({
-                            data: {
-                                   variantId: variant.id,
-                                   movementType: "ADJUSTMENT",
-                                   quantity: parsed.stock,
-                                   reason: "Stock Inicial",
-                                   balanceSnapshot: parsed.stock,
-                                   timestamp: new Date(),
+              // Check barcode uniqueness (including inactive ones to avoid DB constraint failure)
+              if (parsed.barcode) {
+                     const existing = await prisma.productVariant.findFirst({
+                            where: {
+                                   storeId,
+                                   barcode: parsed.barcode,
                             },
                      });
+                     if (existing) {
+                            return { error: `El código '${parsed.barcode}' ya está en uso (puede estar en un producto eliminado).` };
+                     }
               }
 
-              return variant;
-       });
+              // Transaction: Create Product -> Variant -> StockMovement
+              const variant = await prisma.$transaction(async (tx) => {
+                     const product = await tx.product.create({
+                            data: {
+                                   name: parsed.name,
+                                   description: parsed.description,
+                                   categoryId: parsed.categoryId,
+                                   storeId,
+                                   active: true,
+                            },
+                     });
+
+                     const variant = await tx.productVariant.create({
+                            data: {
+                                   productId: product.id,
+                                   variantName: parsed.variantName,
+                                   barcode: parsed.barcode || null,
+                                   costPrice: parsed.costPrice,
+                                   salePrice: parsed.salePrice,
+                                   stockQuantity: parsed.stock,
+                                   minStock: parsed.minStock ?? 5,
+                                   isWeighable: parsed.isWeighable ?? false,
+                                   storeId,
+                                   active: true,
+                            },
+                     });
+
+                     if (parsed.stock !== 0) {
+                            await tx.stockMovement.create({
+                                   data: {
+                                          variantId: variant.id,
+                                          movementType: "ADJUSTMENT",
+                                          quantity: parsed.stock,
+                                          reason: "Stock Inicial",
+                                          balanceSnapshot: parsed.stock,
+                                          timestamp: new Date(),
+                                   },
+                            });
+                     }
+
+                     return variant;
+              });
+
+              return {
+                     success: true,
+                     data: {
+                            ...variant,
+                            costPrice: Number(variant.costPrice),
+                            salePrice: Number(variant.salePrice),
+                     }
+              };
+       } catch (error: any) {
+              console.error("Error creating product:", error);
+              return { error: error.message || "Error al crear el producto" };
+       }
 }
 
 export async function updateVariant(
@@ -193,7 +206,6 @@ export async function updateVariant(
                             storeId,
                             barcode: parsed.barcode,
                             NOT: { id: variantId },
-                            active: true,
                      },
               });
               if (existing) {
@@ -201,10 +213,16 @@ export async function updateVariant(
               }
        }
 
-       return await prisma.productVariant.update({
+       const updated = await prisma.productVariant.update({
               where: { id: variantId },
               data: parsed
        });
+
+       return {
+              ...updated,
+              costPrice: Number(updated.costPrice),
+              salePrice: Number(updated.salePrice),
+       };
 }
 
 // --- NEW: Bulk Update Prices ---
@@ -236,7 +254,13 @@ export async function bulkUpdatePrices(data: {
               });
        });
 
-       return await prisma.$transaction(updates);
+       const results = await prisma.$transaction(updates);
+
+       return results.map(v => ({
+              ...v,
+              costPrice: Number(v.costPrice),
+              salePrice: Number(v.salePrice),
+       }));
 }
 
 export async function adjustStock(
@@ -265,7 +289,7 @@ export async function adjustStock(
               else if (reason === "VENTA") type = "SALE";
        }
 
-       return await prisma.$transaction([
+       const [updatedVariant] = await prisma.$transaction([
               prisma.productVariant.update({
                      where: { id: variantId },
                      data: { stockQuantity: newStock }
@@ -281,6 +305,12 @@ export async function adjustStock(
                      }
               })
        ]);
+
+       return {
+              ...updatedVariant,
+              costPrice: Number(updatedVariant.costPrice),
+              salePrice: Number(updatedVariant.salePrice),
+       };
 }
 
 export async function getCategories() {
@@ -375,64 +405,77 @@ export async function deleteCategory(id: number) {
 
 
 export async function updateProductDetails(
-    variantId: number,
-    data: {
-        productName: string;
-        variantName: string;
-        barcode?: string;
-        costPrice: number;
-        salePrice: number;
-        minStock: number;
-        isWeighable: boolean;
-        categoryId?: number;
-    }
+       variantId: number,
+       data: {
+              productName: string;
+              variantName: string;
+              barcode?: string;
+              costPrice: number;
+              salePrice: number;
+              minStock: number;
+              isWeighable: boolean;
+              categoryId?: number;
+       }
 ) {
-    const storeId = await getStoreId();
+       try {
+              const storeId = await getStoreId();
 
-    const variant = await prisma.productVariant.findUnique({
-        where: { id: variantId },
-        include: { product: true },
-    });
+              const variant = await prisma.productVariant.findUnique({
+                     where: { id: variantId },
+                     include: { product: true },
+              });
 
-    if (!variant || variant.storeId !== storeId) {
-        throw new Error("Variante no encontrada o sin acceso.");
-    }
+              if (!variant || variant.storeId !== storeId) {
+                     return { error: "Variante no encontrada o sin acceso." };
+              }
 
-    if (data.barcode && data.barcode !== variant.barcode) {
-        const existing = await prisma.productVariant.findFirst({
-            where: {
-                storeId,
-                barcode: data.barcode,
-                NOT: { id: variantId },
-                active: true,
-            },
-        });
-        if (existing) {
-            throw new Error(`El código '${data.barcode}' ya está en uso.`);
-        }
-    }
+              if (data.barcode && data.barcode !== variant.barcode) {
+                     const existing = await prisma.productVariant.findFirst({
+                            where: {
+                                   storeId,
+                                   barcode: data.barcode,
+                                   NOT: { id: variantId },
+                            },
+                     });
+                     if (existing) {
+                            return { error: `El código '${data.barcode}' ya está en uso (puede estar en un producto eliminado).` };
+                     }
+              }
 
-    return await prisma.$transaction(async (tx) => {
-        // Update product
-        await tx.product.update({
-            where: { id: variant.productId },
-            data: {
-                name: data.productName,
-                categoryId: data.categoryId,
-            },
-        });
+              const result = await prisma.$transaction(async (tx) => {
+                     // Update product
+                     await tx.product.update({
+                            where: { id: variant.productId },
+                            data: {
+                                   name: data.productName,
+                                   categoryId: data.categoryId,
+                            },
+                     });
 
-        // Update variant
-        return await tx.productVariant.update({
-            where: { id: variantId },
-            data: {
-                variantName: data.variantName,
-                barcode: data.barcode || null,
-                costPrice: data.costPrice,
-                salePrice: data.salePrice,
-                minStock: data.minStock,
-                isWeighable: data.isWeighable,
-            },
-        });
-    });
+                     // Update variant
+                     return await tx.productVariant.update({
+                            where: { id: variantId },
+                            data: {
+                                   variantName: data.variantName,
+                                   barcode: data.barcode || null,
+                                   costPrice: data.costPrice,
+                                   salePrice: data.salePrice,
+                                   minStock: data.minStock,
+                                   isWeighable: data.isWeighable,
+                            },
+                     });
+              });
+
+              return {
+                     success: true,
+                     data: {
+                            ...result,
+                            costPrice: Number(result.costPrice),
+                            salePrice: Number(result.salePrice),
+                     }
+              };
+       } catch (error: any) {
+              console.error("Error updating product:", error);
+              return { error: error.message || "Error al actualizar el producto" };
+       }
 }
