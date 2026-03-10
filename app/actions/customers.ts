@@ -18,7 +18,6 @@ export async function getCustomers(activeOnly: boolean = true) {
        return customers.map(c => ({
               ...c,
               currentBalance: Number(c.currentBalance),
-              // @ts-ignore
               closedBalance: Number(c.closedBalance || 0),
               creditLimit: Number(c.creditLimit)
        }));
@@ -44,7 +43,6 @@ export async function createCustomer(data: {
                      address: parsed.address,
                      creditLimit: parsed.creditLimit ?? 0,
                      currentBalance: 0,
-                     // @ts-ignore
                      closedBalance: 0,
                      active: true,
               },
@@ -208,7 +206,6 @@ export async function closeCustomerMonth(customerId: number) {
                      where: { id: customerId },
                      data: {
                             currentBalance: 0,
-                            // @ts-ignore
                             closedBalance: { increment: amountToMove }
                      }
               });

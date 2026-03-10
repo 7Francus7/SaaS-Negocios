@@ -111,6 +111,7 @@ model Customer {
   address          String?
   creditLimit      Decimal           @default(0.00)
   currentBalance   Decimal           @default(0.00)
+  closedBalance    Decimal           @default(0.00)
   active           Boolean           @default(true)
   storeId          String
   accountMovements AccountMovement[]
