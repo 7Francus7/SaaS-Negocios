@@ -130,11 +130,9 @@ export default function POSPage() {
               try {
                      const product = await findProductByBarcode(code);
                      if (product) {
-                            if (product.stockQuantity > 0 || product.isWeighable) {
-                                   addToCart(product);
-                            } else {
-                                   toast(`Producto sin stock: ${product.product.name}`, "error");
-                            }
+                            addToCart(product);
+                     } else {
+                            toast(`Código no encontrado: ${code}`, "warning");
                      }
               } finally {
                      setLoadingSearch(false);
@@ -240,7 +238,7 @@ export default function POSPage() {
                      const qtyToAdd = customQuantity || 1;
 
                      if (existing && !variant.isWeighable) {
-                            if (existing.quantity >= variant.stockQuantity) return prev;
+                            // Allow bypass stock check
                             return prev.map((item) =>
                                    item.variantId === variant.id
                                           ? { ...item, quantity: item.quantity + 1 }
@@ -269,8 +267,10 @@ export default function POSPage() {
 
        const handleWeighableSubmit = (e: React.FormEvent) => {
               e.preventDefault();
-              if (!weighableProduct || !weighablePrice) return;
-              addToCart(weighableProduct, Number(weighablePrice), Number(weighableQuantity || 1));
+              const price = Number(weighablePrice);
+              const quantity = Number(weighableQuantity || 1);
+              if (!weighableProduct || !weighablePrice || isNaN(price) || isNaN(quantity)) return;
+              addToCart(weighableProduct, price, quantity);
        };
 
        const removeFromCart = (variantId: number) => {
@@ -304,7 +304,8 @@ export default function POSPage() {
               try {
                      const itemsInput: SaleItemInput[] = cart.map(i => ({
                             variantId: i.variantId,
-                            quantity: i.quantity
+                            quantity: i.quantity,
+                            unitPrice: i.price
                      }));
 
                      await processSale(
@@ -430,11 +431,10 @@ export default function POSPage() {
                                                                onClick={() => {
                                                                       addToCart(variant);
                                                                       // On mobile, switch to cart after adding
-                                                                      if (window.innerWidth < 1024 && !variant.isWeighable && (variant.stockQuantity > 0 || variant.isWeighable)) {
+                                                                      if (window.innerWidth < 1024 && !variant.isWeighable) {
                                                                              setMobileTab("cart");
                                                                       }
                                                                }}
-                                                               disabled={!variant.isWeighable && variant.stockQuantity <= 0}
                                                                className="group bg-white p-2.5 lg:p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md hover:bg-blue-50/10 transition-all text-left flex items-center gap-2 lg:gap-3 disabled:opacity-50 disabled:hover:shadow-none disabled:hover:border-gray-200 active:scale-95"
                                                         >
                                                                {/* Icon / Avatar */}
@@ -538,12 +538,12 @@ export default function POSPage() {
 
                                    {!session && (
                                           <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-xs text-center font-bold uppercase tracking-tight">
-                                                 ⚠️ La caja está cerrada
+                                                 ⚠️ Atención: La caja está cerrada
                                           </div>
                                    )}
 
                                    <button
-                                          disabled={cart.length === 0 || !session}
+                                          disabled={cart.length === 0}
                                           onClick={() => setShowPayModal(true)}
                                           className="w-full py-3.5 lg:py-4 text-base lg:text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2 active:scale-95"
                                    >
@@ -641,12 +641,17 @@ export default function POSPage() {
                                                         }
                                                         return null;
                                                  })()}
+                                                 {!session && (
+                                                        <div className="mt-3 bg-red-100 border border-red-200 text-red-600 p-3 rounded-lg text-xs text-center font-bold uppercase tracking-tight">
+                                                               ⚠️ Debe abrir la caja (en la sección Caja) para cobrar en efectivo.
+                                                        </div>
+                                                 )}
                                           </div>
                                    )}
 
                                    <button
                                           onClick={handleCheckout}
-                                          disabled={processing || (paymentMethod === "CTA_CTE" && !selectedCustomerId) || (paymentMethod === "EFECTIVO" && Number(tenderedAmount) > 0 && Number(tenderedAmount) < total)}
+                                          disabled={processing || (paymentMethod === "CTA_CTE" && !selectedCustomerId) || (paymentMethod === "EFECTIVO" && Number(tenderedAmount) > 0 && Number(tenderedAmount) < total) || (paymentMethod === "EFECTIVO" && !session)}
                                           className="w-full py-4 lg:py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg lg:text-xl rounded-2xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
                                    >
                                           {processing ? "Procesando..." : "CONFIRMAR VENTA"}

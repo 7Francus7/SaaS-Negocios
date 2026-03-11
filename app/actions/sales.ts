@@ -6,6 +6,7 @@ import { getStoreId } from "@/lib/store";
 export type SaleItemInput = {
        variantId: number;
        quantity: number;
+       unitPrice?: number;
 };
 
 import { saleSchema } from "@/lib/validations";
@@ -52,18 +53,16 @@ export async function processSale(
                      const variant = variantsMap.get(item.variantId);
                      if (!variant) throw new Error(`Producto ID ${item.variantId} no encontrado.`);
 
-                     if (variant.stockQuantity < item.quantity) {
-                            throw new Error(
-                                   `Stock insuficiente para: ${variant.product.name} ${variant.variantName}`
-                            );
-                     }
-
-                     // Ensure Decimal handled as number for JS math, or use a Decimal lib
-                     // Prisma Decimals are objects/strings, converting to Number for simple logic
-                     const price = Number(variant.salePrice);
-                     const cost = Number(variant.costPrice);
-                     const lineTotal = price * item.quantity;
-                     const lineTotalCost = cost * item.quantity;
+                      // We allow sales even if stock is insufficient. 
+                      // In a retail environment, if the merchant has the item, they should be able to sell it.
+                      // The stock will simply go negative and can be adjusted later.
+                      
+                      // Use the price from the frontend if provided (for custom/variable prices), 
+                      // otherwise fallback to the database price.
+                      const price = item.unitPrice !== undefined ? item.unitPrice : Number(variant.salePrice);
+                      const cost = Number(variant.costPrice);
+                      const lineTotal = price * item.quantity;
+                      const lineTotalCost = cost * item.quantity;
                      subtotal += lineTotal;
 
                      saleItemsData.push({
@@ -129,14 +128,14 @@ export async function processSale(
 
                      // finalCashSystem in schema is just a snapshot, the true expected is calculated.
                      // But we update it for safety.
-                     await tx.cashSession.update({
-                            where: { id: session.id },
-                            data: {
-                                   finalCashSystem: {
-                                          increment: total,
-                                   },
-                            },
-                     });
+                      // Use a safe increment or direct calculation to avoid issues with null values
+                      const currentFinalCash = Number(session.finalCashSystem || session.initialCash || 0);
+                      await tx.cashSession.update({
+                             where: { id: session.id },
+                             data: {
+                                    finalCashSystem: currentFinalCash + total,
+                             },
+                      });
               } else if (paymentMethod === "CTA_CTE") {
                      if (!customerId) throw new Error("Debe seleccionar cliente para Cuenta Corriente.");
 

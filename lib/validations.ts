@@ -28,7 +28,7 @@ export const updateVariantSchema = z.object({
 export const saleItemSchema = z.object({
        variantId: z.number().int().positive(),
        quantity: z.number().positive("La cantidad debe ser mayor a 0."),
-       customPrice: z.number().min(0).optional(),
+       unitPrice: z.number().min(0).optional(),
 });
 
 export const saleSchema = z.object({
