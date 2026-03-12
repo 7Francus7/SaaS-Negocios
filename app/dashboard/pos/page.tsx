@@ -90,54 +90,65 @@ export default function POSPage() {
               }
        }, [cart, isClient]);
 
-       // Barcode Scanner State
-       const lastKeyTime = useRef<number>(0);
-       const barcodeBuffer = useRef<string>("");
-
-       // Barcode Scanner Listener
-       useEffect(() => {
-              const handleGlobalKeyDown = async (e: KeyboardEvent) => {
-                     const isInputFocused = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
-                     const now = Date.now();
-                     const timeDiff = now - lastKeyTime.current;
-                     lastKeyTime.current = now;
-
-                     if (e.key === 'Enter') {
-                            if (barcodeBuffer.current.length > 3 && !isInputFocused) {
-                                   const code = barcodeBuffer.current;
-                                   barcodeBuffer.current = "";
-                                   await handleBarcodeScan(code);
-                            } else {
-                                   barcodeBuffer.current = "";
-                            }
-                            return;
-                     }
-
-                     if (e.key.length === 1) {
-                            if (timeDiff > 100 && barcodeBuffer.current.length > 0) {
-                                   barcodeBuffer.current = "";
-                            }
-                            barcodeBuffer.current += e.key;
-                     }
-              };
-
-              window.addEventListener('keydown', handleGlobalKeyDown);
-              return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-       }, []);
-
-       const handleBarcodeScan = async (code: string) => {
+       const handleBarcodeScan = useCallback(async (code: string) => {
+              if (loadingSearch) return;
               setLoadingSearch(true);
               try {
                      const product = await findProductByBarcode(code);
                      if (product) {
                             addToCart(product);
+                            toast(`Agregado: ${product.product.name}`, "success");
                      } else {
                             toast(`Código no encontrado: ${code}`, "warning");
                      }
+              } catch (error) {
+                     console.error("Scan error:", error);
               } finally {
                      setLoadingSearch(false);
               }
-       };
+       }, [loadingSearch, toast]);
+
+       // Robust Barcode Scanner Listener
+       useEffect(() => {
+              let buffer = "";
+              let lastTime = 0;
+
+              const handleKeyDown = (e: KeyboardEvent) => {
+                     // Ignore if it's a modifier key
+                     if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
+
+                     const now = Date.now();
+                     const timeDiff = now - lastTime;
+                     lastTime = now;
+
+                     // If the delay between keys is very short (< 50ms), it's likely a scanner
+                     const isScanner = timeDiff < 50;
+
+                     if (e.key === 'Enter') {
+                            if (buffer.length > 2) {
+                                   handleBarcodeScan(buffer);
+                                   buffer = "";
+                                   e.preventDefault();
+                                   e.stopPropagation();
+                            } else {
+                                   buffer = "";
+                            }
+                            return;
+                     }
+
+                     // Append characters to buffer
+                     if (e.key.length === 1) {
+                            if (!isScanner && buffer.length > 0 && timeDiff > 100) {
+                                   // If it's a slow key and we had a buffer, it was probably manual typing, so reset
+                                   buffer = "";
+                            }
+                            buffer += e.key;
+                     }
+              };
+
+              window.addEventListener('keydown', handleKeyDown, true);
+              return () => window.removeEventListener('keydown', handleKeyDown, true);
+       }, [handleBarcodeScan]);
 
        // Weighable Modal State
        const [weighableProduct, setWeighableProduct] = useState<any>(null);
@@ -146,6 +157,11 @@ export default function POSPage() {
 
        // Payment & Promotions State
        const [paymentMethod, setPaymentMethod] = useState("EFECTIVO");
+       const [isSplitPayment, setIsSplitPayment] = useState(false);
+       const [splitPayments, setSplitPayments] = useState<{ method: string, amount: number }[]>([
+              { method: "EFECTIVO", amount: 0 },
+              { method: "TRANSFERENCIA", amount: 0 }
+       ]);
        const [tenderedAmount, setTenderedAmount] = useState("");
        const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
        const [promotionInfo, setPromotionInfo] = useState<{ totalDiscount: number, appliedPromos: string[] }>({
@@ -300,6 +316,20 @@ export default function POSPage() {
                      toast("Debe abrir la caja antes de realizar ventas.", "warning");
                      return;
               }
+
+              let finalPayments: { method: string, amount: number }[] = [];
+
+              if (isSplitPayment) {
+                     finalPayments = splitPayments.filter(p => p.amount > 0);
+                     const totalPaid = finalPayments.reduce((sum, p) => sum + p.amount, 0);
+                     if (Math.abs(totalPaid - total) > 0.01) {
+                            toast(`El total de los pagos (${formatCurrency(totalPaid)}) debe coincidir con el total de la venta (${formatCurrency(total)})`, "error");
+                            return;
+                     }
+              } else {
+                     finalPayments = [{ method: paymentMethod, amount: total }];
+              }
+
               setProcessing(true);
               try {
                      const itemsInput: SaleItemInput[] = cart.map(i => ({
@@ -310,7 +340,7 @@ export default function POSPage() {
 
                      await processSale(
                             itemsInput,
-                            paymentMethod,
+                            finalPayments,
                             selectedCustomerId || undefined,
                             promotionInfo.totalDiscount
                      );
@@ -319,7 +349,7 @@ export default function POSPage() {
                             items: [...cart],
                             total,
                             date: new Date(),
-                            paymentMethod,
+                            paymentMethod: isSplitPayment ? "MIXTO" : paymentMethod,
                             store: {
                                    name: storeSettings?.name || session?.store?.name,
                                    address: storeSettings?.address || session?.store?.address,
@@ -333,8 +363,12 @@ export default function POSPage() {
                      setCart([]);
                      setShowPayModal(false);
                      setPaymentMethod("EFECTIVO");
-                     setSelectedCustomerId(null);
-                     setPaymentMethod("EFECTIVO");
+                     setIsSplitPayment(false);
+                     setSplitPayments([
+                            { method: "EFECTIVO", amount: 0 },
+                            { method: "TRANSFERENCIA", amount: 0 }
+                     ]);
+                     setTenderedAmount("");
                      setSelectedCustomerId(null);
                      setShowSuccessModal(true);
                      playCashSound();
@@ -562,100 +596,151 @@ export default function POSPage() {
                                    </div>
 
                                    <div className="space-y-3">
-                                          <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">Método de Pago</label>
-                                          <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                                                 <button
-                                                        onClick={() => setPaymentMethod("EFECTIVO")}
-                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
-                             ${paymentMethod === "EFECTIVO" ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
-                                                 >
-                                                        <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />
-                                                        Efectivo
-                                                 </button>
-                                                 <button
-                                                        onClick={() => setPaymentMethod("TRANSFERENCIA")}
-                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
-                             ${paymentMethod === "TRANSFERENCIA" ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
-                                                 >
-                                                        <QrCode className="h-5 w-5 lg:h-6 lg:w-6" />
-                                                        Transferencia / QR
-                                                 </button>
-                                                 <button
-                                                        onClick={() => setPaymentMethod("TARJETA")}
-                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
-                             ${paymentMethod === "TARJETA" ? "border-orange-600 bg-orange-50 text-orange-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
-                                                 >
-                                                        <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />
-                                                        Tarjeta (Créd/Déb)
-                                                 </button>
-                                                 <button
-                                                        onClick={() => setPaymentMethod("CTA_CTE")}
-                                                        className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
-                             ${paymentMethod === "CTA_CTE" ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
-                                                 >
-                                                        <User className="h-5 w-5 lg:h-6 lg:w-6" />
-                                                        Cuenta Corriente
-                                                 </button>
-                                          </div>
+                                          <div className="flex items-center justify-between mb-2">
+                                           <label className="text-sm font-bold text-gray-700 uppercase tracking-tight">Método de Pago</label>
+                                           <button 
+                                                  onClick={() => setIsSplitPayment(!isSplitPayment)}
+                                                  className={`text-xs font-bold px-3 py-1.5 rounded-full transition-all ${isSplitPayment ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                                           >
+                                                  {isSplitPayment ? "Dividir: SÍ" : "Dividir Pago?"}
+                                           </button>
+                                    </div>
+
+                                    {!isSplitPayment ? (
+                                           <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                                                  {[
+                                                         { id: "EFECTIVO", label: "Efectivo", icon: <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />, color: "blue" },
+                                                         { id: "TRANSFERENCIA", label: "Transferencia", icon: <QrCode className="h-5 w-5 lg:h-6 lg:w-6" />, color: "purple" },
+                                                         { id: "TARJETA", label: "Tarjeta", icon: <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />, color: "orange" },
+                                                         { id: "CTA_CTE", label: "Cuenta Corriente", icon: <User className="h-5 w-5 lg:h-6 lg:w-6" />, color: "blue" },
+                                                  ].map((m) => (
+                                                         <button
+                                                                key={m.id}
+                                                                onClick={() => setPaymentMethod(m.id)}
+                                                                className={`p-3 lg:p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-1.5 lg:gap-2 active:scale-95
+                                    ${paymentMethod === m.id ? `border-${m.color}-600 bg-${m.color}-50 text-${m.color}-700 shadow-sm` : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-500"}`}
+                                                         >
+                                                                {m.icon}
+                                                                {m.label}
+                                                         </button>
+                                                  ))}
+                                           </div>
+                                    ) : (
+                                           <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                                  {[
+                                                         { id: "EFECTIVO", label: "Efectivo" },
+                                                         { id: "TRANSFERENCIA", label: "Transferencia" },
+                                                         { id: "TARJETA", label: "Tarjeta" },
+                                                         { id: "CTA_CTE", label: "Cta. Cte." },
+                                                  ].map((m) => {
+                                                         const current = splitPayments.find(p => p.method === m.id) || { method: m.id, amount: 0 };
+                                                         return (
+                                                                <div key={m.id} className="flex items-center gap-3">
+                                                                       <span className="text-sm font-bold text-gray-600 w-24 shrink-0">{m.label}</span>
+                                                                       <div className="relative flex-1">
+                                                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                                              <input 
+                                                                                     type="number"
+                                                                                     className="w-full pl-7 p-2 border border-gray-200 rounded-lg text-sm font-bold focus:border-blue-500 outline-none"
+                                                                                     value={current.amount || ""}
+                                                                                     onChange={(e) => {
+                                                                                            const val = parseFloat(e.target.value) || 0;
+                                                                                            setSplitPayments(prev => {
+                                                                                                   const exists = prev.find(p => p.method === m.id);
+                                                                                                   if (exists) {
+                                                                                                          return prev.map(p => p.method === m.id ? { ...p, amount: val } : p);
+                                                                                                   }
+                                                                                                   return [...prev, { method: m.id, amount: val }];
+                                                                                            });
+                                                                                     }}
+                                                                                     placeholder="0.00"
+                                                                              />
+                                                                       </div>
+                                                                       {m.id === "EFECTIVO" && current.amount > 0 && (
+                                                                              <button 
+                                                                                     onClick={() => setSplitPayments(prev => prev.map(p => p.method === "EFECTIVO" ? { ...p, amount: total - prev.filter(x => x.method !== "EFECTIVO").reduce((s, x) => s + x.amount, 0) } : p))}
+                                                                                     className="text-[10px] bg-blue-100 text-blue-600 px-2 py-1 rounded font-bold"
+                                                                              >
+                                                                                     RESTO
+                                                                              </button>
+                                                                       )}
+                                                                </div>
+                                                         );
+                                                  })}
+                                                  <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                                                         <span className="text-xs font-bold text-gray-400 uppercase">Suma Ingresada</span>
+                                                         <span className={`text-sm font-black ${Math.abs(splitPayments.reduce((s, p) => s + p.amount, 0) - total) < 0.1 ? "text-emerald-600" : "text-amber-500"}`}>
+                                                                {formatCurrency(splitPayments.reduce((s, p) => s + p.amount, 0))}
+                                                         </span>
+                                                  </div>
+                                           </div>
+                                    )}
+
+                                    {(paymentMethod === "CTA_CTE" || (isSplitPayment && splitPayments.find(p => p.method === "CTA_CTE" && p.amount > 0))) && (
+                                           <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                  <label className="block text-sm font-bold text-gray-700 uppercase">Seleccionar Cliente</label>
+                                                  <select
+                                                         className="w-full p-3 border-2 border-gray-100 rounded-xl focus:border-blue-500 outline-none transition-all font-medium"
+                                                         value={selectedCustomerId || ""}
+                                                         onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
+                                                  >
+                                                         <option value="">Seleccione un cliente...</option>
+                                                         {customers.map(c => (
+                                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                                         ))}
+                                                  </select>
+                                           </div>
+                                    )}
+
+                                    {paymentMethod === "EFECTIVO" && !isSplitPayment && (
+                                           <div className="space-y-2 animate-in fade-in slide-in-from-top-2 bg-blue-50 p-4 border border-blue-100 rounded-xl">
+                                                  <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">Monto Recibido</label>
+                                                  <div className="relative">
+                                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
+                                                         <input
+                                                                type="number"
+                                                                style={{ fontSize: '1.5rem' }}
+                                                                className="w-full pl-8 py-3 pr-4 border-2 border-white rounded-xl focus:border-blue-500 outline-none transition-all font-black text-gray-900 shadow-sm"
+                                                                value={tenderedAmount}
+                                                                onChange={(e) => setTenderedAmount(e.target.value)}
+                                                                placeholder="0.00"
+                                                         />
+                                                  </div>
+                                                  {(() => {
+                                                         const received = Number(tenderedAmount);
+                                                         if (tenderedAmount && received > 0) {
+                                                                const change = received - total;
+                                                                if (change < 0) {
+                                                                       return <p className="text-red-500 font-bold text-sm uppercase tracking-widest mt-1">Falta: {formatCurrency(Math.abs(change))}</p>;
+                                                                } else {
+                                                                       return <p className="text-emerald-600 font-black text-xl uppercase tracking-widest mt-1">Vuelto: {formatCurrency(change)}</p>;
+                                                                }
+                                                         }
+                                                         return null;
+                                                  })()}
+                                                  {!session && (
+                                                         <div className="mt-3 bg-red-100 border border-red-200 text-red-600 p-3 rounded-lg text-xs text-center font-bold uppercase tracking-tight">
+                                                                ⚠️ Debe abrir la caja (en la sección Caja) para cobrar en efectivo.
+                                                         </div>
+                                                  )}
+                                           </div>
+                                    )}
+
                                    </div>
 
-                                   {paymentMethod === "CTA_CTE" && (
-                                          <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                 <label className="block text-sm font-bold text-gray-700 uppercase">Seleccionar Cliente</label>
-                                                 <select
-                                                        className="w-full p-3 border-2 border-gray-100 rounded-xl focus:border-blue-500 outline-none transition-all font-medium"
-                                                        value={selectedCustomerId || ""}
-                                                        onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-                                                 >
-                                                        <option value="">Seleccione un cliente...</option>
-                                                        {customers.map(c => (
-                                                               <option key={c.id} value={c.id}>{c.name}</option>
-                                                        ))}
-                                                 </select>
-                                          </div>
-                                   )}
-
-                                   {paymentMethod === "EFECTIVO" && (
-                                          <div className="space-y-2 animate-in fade-in slide-in-from-top-2 bg-blue-50 p-4 border border-blue-100 rounded-xl">
-                                                 <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">Monto Recibido</label>
-                                                 <div className="relative">
-                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
-                                                        <input
-                                                               type="number"
-                                                               style={{ fontSize: '1.5rem' }}
-                                                               className="w-full pl-8 py-3 pr-4 border-2 border-white rounded-xl focus:border-blue-500 outline-none transition-all font-black text-gray-900 shadow-sm"
-                                                               value={tenderedAmount}
-                                                               onChange={(e) => setTenderedAmount(e.target.value)}
-                                                               placeholder="0.00"
-                                                        />
-                                                 </div>
-                                                 {(() => {
-                                                        const received = Number(tenderedAmount);
-                                                        if (tenderedAmount && received > 0) {
-                                                               const change = received - total;
-                                                               if (change < 0) {
-                                                                      return <p className="text-red-500 font-bold text-sm uppercase tracking-widest mt-1">Falta: {formatCurrency(Math.abs(change))}</p>;
-                                                               } else {
-                                                                      return <p className="text-emerald-600 font-black text-xl uppercase tracking-widest mt-1">Vuelto: {formatCurrency(change)}</p>;
-                                                               }
-                                                        }
-                                                        return null;
-                                                 })()}
-                                                 {!session && (
-                                                        <div className="mt-3 bg-red-100 border border-red-200 text-red-600 p-3 rounded-lg text-xs text-center font-bold uppercase tracking-tight">
-                                                               ⚠️ Debe abrir la caja (en la sección Caja) para cobrar en efectivo.
-                                                        </div>
-                                                 )}
-                                          </div>
-                                   )}
-
                                    <button
-                                          onClick={handleCheckout}
-                                          disabled={processing || (paymentMethod === "CTA_CTE" && !selectedCustomerId) || (paymentMethod === "EFECTIVO" && Number(tenderedAmount) > 0 && Number(tenderedAmount) < total) || (paymentMethod === "EFECTIVO" && !session)}
-                                          className="w-full py-4 lg:py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg lg:text-xl rounded-2xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
-                                   >
-                                          {processing ? "Procesando..." : "CONFIRMAR VENTA"}
-                                   </button>
+                                           onClick={handleCheckout}
+                                           disabled={processing || 
+                                                  (!isSplitPayment && paymentMethod === "CTA_CTE" && !selectedCustomerId) || 
+                                                  (!isSplitPayment && paymentMethod === "EFECTIVO" && Number(tenderedAmount) > 0 && Number(tenderedAmount) < total) || 
+                                                  (!isSplitPayment && paymentMethod === "EFECTIVO" && !session) ||
+                                                  (isSplitPayment && Math.abs(splitPayments.reduce((s, p) => s + p.amount, 0) - total) > 0.01) ||
+                                                  (isSplitPayment && splitPayments.find(p => p.method === "CTA_CTE" && p.amount > 0) && !selectedCustomerId)
+                                           }
+                                           className="w-full py-4 lg:py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg lg:text-xl rounded-2xl shadow-xl shadow-emerald-100 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
+                                    >
+                                           {processing ? "Procesando..." : "CONFIRMAR VENTA"}
+                                    </button>
                             </div>
                      </Modal>
 

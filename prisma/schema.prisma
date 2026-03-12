@@ -122,20 +122,32 @@ model Customer {
 }
 
 model Sale {
-  id             Int        @id @default(autoincrement())
-  timestamp      DateTime   @default(now())
+  id             Int           @id @default(autoincrement())
+  timestamp      DateTime      @default(now())
   customerId     Int?
-  paymentMethod  String     @default("EFECTIVO")
-  subtotal       Decimal    @default(0.00)
-  discountAmount Decimal    @default(0.00)
-  totalAmount    Decimal    @default(0.00)
+  paymentMethod  String        @default("EFECTIVO")
+  subtotal       Decimal       @default(0.00)
+  discountAmount Decimal       @default(0.00)
+  totalAmount    Decimal       @default(0.00)
   storeId        String
   items          SaleItem[]
-  customer       Customer?  @relation(fields: [customerId], references: [id])
-  store          Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  payments       SalePayment[]
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@map("sales")
 }
+
+model SalePayment {
+  id            Int      @id @default(autoincrement())
+  saleId        Int
+  paymentMethod String
+  amount        Decimal
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_payments")
+}
+
 
 model SaleItem {
   id                  Int            @id @default(autoincrement())

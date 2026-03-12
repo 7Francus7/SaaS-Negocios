@@ -22,6 +22,7 @@ export async function getSalesHistory(options?: {
               },
               include: {
                      items: true,
+                     payments: true,
                      customer: { select: { name: true } },
               },
               orderBy: { timestamp: "desc" },
@@ -36,7 +37,7 @@ export async function voidSale(saleId: number) {
 
        const sale = await prisma.sale.findUnique({
               where: { id: saleId },
-              include: { items: true },
+              include: { items: true, payments: true },
        });
 
        if (!sale || sale.storeId !== storeId) throw new Error("Venta no encontrada.");
@@ -61,22 +62,37 @@ export async function voidSale(saleId: number) {
                      });
               }
 
-              // If payment was CTA_CTE, reverse the customer balance
-              if (sale.paymentMethod === "CTA_CTE" && sale.customerId) {
-                     await tx.customer.update({
-                            where: { id: sale.customerId },
-                            data: { currentBalance: { decrement: Number(sale.totalAmount) } },
-                     });
+              // Reverse each payment type
+              for (const payment of sale.payments) {
+                     if (payment.paymentMethod === "EFECTIVO") {
+                            // Find the session that was active during the sale or just the most recent open one
+                            const session = await tx.cashSession.findFirst({
+                                   where: { storeId, status: "OPEN" },
+                                   orderBy: { startTime: "desc" },
+                            });
 
-                     await tx.accountMovement.create({
-                            data: {
-                                   customerId: sale.customerId,
-                                   movementType: "VOID",
-                                   amount: -Number(sale.totalAmount),
-                                   description: `Anulación Venta #${saleId}`,
-                                   timestamp: new Date(),
-                            },
-                     });
+                            if (session) {
+                                   await tx.cashSession.update({
+                                          where: { id: session.id },
+                                          data: { finalCashSystem: { decrement: payment.amount } },
+                                   });
+                            }
+                     } else if (payment.paymentMethod === "CTA_CTE" && sale.customerId) {
+                            await tx.customer.update({
+                                   where: { id: sale.customerId },
+                                   data: { currentBalance: { decrement: payment.amount } },
+                            });
+
+                            await tx.accountMovement.create({
+                                   data: {
+                                          customerId: sale.customerId,
+                                          movementType: "VOID",
+                                          amount: -payment.amount,
+                                          description: `Anulación Venta #${saleId}`,
+                                          timestamp: new Date(),
+                                   },
+                            });
+                     }
               }
 
               // Delete the sale
@@ -85,3 +101,4 @@ export async function voidSale(saleId: number) {
               return { success: true };
        });
 }
+
