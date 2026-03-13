@@ -29,6 +29,20 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
               isWeighable: false,
        });
 
+       const [additionalBarcodes, setAdditionalBarcodes] = useState<string[]>([]);
+       const [newBarcode, setNewBarcode] = useState("");
+
+       const addBarcode = () => {
+              if (newBarcode && !additionalBarcodes.includes(newBarcode) && newBarcode !== formData.barcode) {
+                     setAdditionalBarcodes(prev => [...prev, newBarcode]);
+                     setNewBarcode("");
+              }
+       };
+
+       const removeBarcode = (barcodeToRemove: string) => {
+              setAdditionalBarcodes(prev => prev.filter(bc => bc !== barcodeToRemove));
+       };
+
        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
               const { name } = e.target;
@@ -85,6 +99,7 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             name: formData.name,
                             variantName: formData.variantName,
                             barcode: formData.barcode || undefined,
+                            barcodes: additionalBarcodes,
                             costPrice: Number(formData.costPrice) || 0,
                             salePrice: Number(formData.salePrice) || 0,
                             stock: Number(formData.stock),
@@ -110,6 +125,9 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             minStock: "5",
                             isWeighable: false,
                      });
+                     setAdditionalBarcodes([]);
+                     setNewBarcode("");
+
                      onSuccess();
                      onClose();
               } catch (err: any) {
@@ -131,12 +149,12 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                             <div className="grid grid-cols-1 gap-4">
                                    {/* Barcode Field First for easy scanning */}
                                    <div>
-                                          <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras (Escáner)</label>
+                                          <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras Principal</label>
                                           <div className="flex gap-2">
                                                  <input
                                                         name="barcode"
                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                        placeholder="Ej: 779123456789 (Solo números)"
+                                                        placeholder="Ej: 779123456789"
                                                         value={formData.barcode}
                                                         onChange={handleChange}
                                                         autoFocus
@@ -151,9 +169,50 @@ export function CreateProductModal({ isOpen, onClose, onSuccess }: CreateProduct
                                                         {searching ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" /> : <Search className="h-4 w-4" />}
                                                  </button>
                                           </div>
-                                          <p className="text-xs text-gray-500 mt-1">
-                                                 Ingresa el código numérico del producto para autocompletar nombre y marca.
-                                          </p>
+                                   </div>
+
+                                   {/* Additional Barcodes */}
+                                   <div>
+                                          <label className="block text-sm font-medium text-gray-700 mb-1">Códigos Adicionales (Ej: otros sabores)</label>
+                                          <div className="flex gap-2 mb-2">
+                                                 <input
+                                                        type="text"
+                                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                        placeholder="Escanear otro código..."
+                                                        value={newBarcode}
+                                                        onChange={(e) => setNewBarcode(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                               if (e.key === "Enter") {
+                                                                      e.preventDefault();
+                                                                      addBarcode();
+                                                               }
+                                                        }}
+                                                 />
+                                                 <button
+                                                        type="button"
+                                                        onClick={addBarcode}
+                                                        className="bg-gray-100 text-gray-600 px-3 py-2 rounded-md border border-gray-200 hover:bg-gray-200 text-sm font-medium"
+                                                 >
+                                                        Agregar
+                                                 </button>
+                                          </div>
+                                          <div className="flex flex-wrap gap-2">
+                                                 {additionalBarcodes.map(bc => (
+                                                        <span key={bc} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs border border-blue-100">
+                                                               {bc}
+                                                               <button
+                                                                      type="button"
+                                                                      onClick={() => removeBarcode(bc)}
+                                                                      className="hover:text-red-600 font-bold ml-1"
+                                                               >
+                                                                      &times;
+                                                               </button>
+                                                        </span>
+                                                 ))}
+                                          </div>
+                                          {additionalBarcodes.length === 0 && (
+                                                 <p className="text-xs text-gray-400">No hay códigos adicionales.</p>
+                                          )}
                                    </div>
 
                                    <div>

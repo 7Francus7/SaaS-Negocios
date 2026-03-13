@@ -181,7 +181,8 @@ export default function ProductsPage() {
               const matchesSearch = searchQuery === "" ||
                      v.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                      v.variantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                     (v.barcode && v.barcode.includes(searchQuery));
+                     (v.barcode && v.barcode.includes(searchQuery)) ||
+                     (v.barcodes && v.barcodes.some((bc: string) => bc.includes(searchQuery)));
               const matchesCategory = filterCategory === "" ||
                      (filterCategory === "none" ? !v.product.categoryId : v.product.categoryId?.toString() === filterCategory);
               return matchesSearch && matchesCategory;
@@ -311,9 +312,15 @@ export default function ProductsPage() {
                                                                              <div className="text-sm font-medium text-gray-900">{variant.product.name}</div>
                                                                              <div className="text-xs text-gray-500">{variant.variantName}</div>
                                                                       </td>
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
-                                                                             {variant.barcode || "-"}
-                                                                      </td>
+                                                                       <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
+                                                                              <div>{variant.barcode || "-"}</div>
+                                                                              {variant.barcodes && variant.barcodes.length > 0 && (
+                                                                                     <div className="text-[10px] text-gray-400 mt-0.5 max-w-[150px] truncate">
+                                                                                            +{variant.barcodes.length} adicionales
+                                                                                     </div>
+                                                                              )}
+                                                                       </td>
+
                                                                       <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                                                                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-800">
                                                                                     {variant.product.category?.name || "General"}

@@ -40,6 +40,7 @@ export async function getProducts(filter: ProductFilter = {}) {
                                    category: true,
                             },
                      },
+                     barcodes: true,
               },
               orderBy: [
                      { product: { name: "asc" } },
@@ -51,6 +52,7 @@ export async function getProducts(filter: ProductFilter = {}) {
               ...v,
               costPrice: Number(v.costPrice),
               salePrice: Number(v.salePrice),
+              barcodes: v.barcodes.map(b => b.barcode),
               product: {
                      ...v.product,
                      description: v.product.description || ""
@@ -65,16 +67,40 @@ export async function findProductByBarcode(barcode: string) {
 
        if (!barcode) return null;
 
-       const variant = await prisma.productVariant.findFirst({
+       // Search in variant primary barcode
+       let variant = await prisma.productVariant.findFirst({
               where: {
                      storeId,
                      barcode: barcode,
                      active: true
               },
               include: {
-                     product: true
+                     product: true,
+                     barcodes: true,
               }
        });
+
+       // Search in additional barcodes
+       if (!variant) {
+              const barcodeEntry = await prisma.productBarcode.findFirst({
+                     where: {
+                            storeId,
+                            barcode: barcode,
+                     },
+                     include: {
+                            variant: {
+                                   include: {
+                                          product: true,
+                                          barcodes: true,
+                                   }
+                            }
+                     }
+              });
+
+              if (barcodeEntry && barcodeEntry.variant.active) {
+                     variant = barcodeEntry.variant;
+              }
+       }
 
        if (!variant) return null;
 
@@ -84,7 +110,8 @@ export async function findProductByBarcode(barcode: string) {
               salePrice: Number(variant.salePrice),
               stockQuantity: variant.stockQuantity,
               isWeighable: variant.isWeighable,
-              product: variant.product
+              product: variant.product,
+              barcodes: variant.barcodes.map(b => b.barcode)
        };
 }
 
@@ -143,6 +170,12 @@ export async function createProduct(data: {
                                    isWeighable: parsed.isWeighable ?? false,
                                    storeId,
                                    active: true,
+                                   barcodes: parsed.barcodes ? {
+                                          create: parsed.barcodes.map(b => ({
+                                                 barcode: b,
+                                                 storeId,
+                                          }))
+                                   } : undefined,
                             },
                      });
 
@@ -462,6 +495,13 @@ export async function updateProductDetails(
                                    salePrice: data.salePrice,
                                    minStock: data.minStock,
                                    isWeighable: data.isWeighable,
+                                   barcodes: data.barcodes ? {
+                                          deleteMany: {},
+                                          create: data.barcodes.map(b => ({
+                                                 barcode: b,
+                                                 storeId,
+                                          }))
+                                   } : undefined,
                             },
                      });
               });

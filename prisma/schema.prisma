@@ -43,6 +43,7 @@ model Store {
   categories             Category[]
   customers              Customer[]
   productVariants        ProductVariant[]
+  productBarcodes        ProductBarcode[]
   products               Product[]
   promotions             Promotion[]
   purchases              Purchase[]
@@ -94,6 +95,7 @@ model ProductVariant {
   isWeighable    Boolean         @default(false)
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  barcodes       ProductBarcode[]
   promotionItems PromotionItem[]
   purchaseItems  PurchaseItem[]
   saleItems      SaleItem[]
@@ -102,6 +104,19 @@ model ProductVariant {
   @@unique([storeId, barcode])
   @@map("product_variants")
 }
+
+model ProductBarcode {
+  id        Int            @id @default(autoincrement())
+  barcode   String
+  variantId Int
+  storeId   String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, barcode])
+  @@map("product_barcodes")
+}
+
 
 model Customer {
   id               Int               @id @default(autoincrement())
