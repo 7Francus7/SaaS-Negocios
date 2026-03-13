@@ -214,6 +214,7 @@ export async function updateVariant(
        data: Partial<{
               variantName: string;
               barcode: string;
+              barcodes: string[];
               costPrice: number;
               salePrice: number;
               minStock: number;
@@ -246,10 +247,22 @@ export async function updateVariant(
               }
        }
 
-       const updated = await prisma.productVariant.update({
-              where: { id: variantId },
-              data: parsed
-       });
+        const { barcodes, ...rest } = parsed;
+
+        const updated = await prisma.productVariant.update({
+               where: { id: variantId },
+               data: {
+                      ...rest,
+                      barcodes: barcodes ? {
+                             deleteMany: {},
+                             create: barcodes.map(bc => ({
+                                    barcode: bc,
+                                    storeId
+                             }))
+                      } : undefined
+               }
+        });
+
 
        return {
               ...updated,
@@ -443,6 +456,7 @@ export async function updateProductDetails(
               productName: string;
               variantName: string;
               barcode?: string;
+              barcodes?: string[];
               costPrice: number;
               salePrice: number;
               minStock: number;
