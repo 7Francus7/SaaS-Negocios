@@ -54,30 +54,46 @@ export function formatCurrency(amount: number | string | null | undefined): stri
 /**
  * Formato de fecha para Argentina (DD/MM/YYYY)
  */
-export function formatDate(date: Date | string | number): string {
-       const d = new Date(date);
-       return new Intl.DateTimeFormat('es-AR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-       }).format(d);
+export function formatDate(date: Date | string | number | null | undefined): string {
+       if (!date) return "-";
+       try {
+              const d = new Date(date);
+              if (isNaN(d.getTime())) return "-";
+              return new Intl.DateTimeFormat('es-AR', {
+                     day: '2-digit',
+                     month: '2-digit',
+                     year: 'numeric',
+              }).format(d);
+       } catch (e) {
+              return "-";
+       }
 }
 
 /**
  * Formato de hora para Argentina (HH:mm)
  */
-export function formatTime(date: Date | string | number): string {
-       const d = new Date(date);
-       return new Intl.DateTimeFormat('es-AR', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-       }).format(d);
+export function formatTime(date: Date | string | number | null | undefined): string {
+       if (!date) return "-";
+       try {
+              const d = new Date(date);
+              if (isNaN(d.getTime())) return "-";
+              return new Intl.DateTimeFormat('es-AR', {
+                     hour: '2-digit',
+                     minute: '2-digit',
+                     hour12: false,
+              }).format(d);
+       } catch (e) {
+              return "-";
+       }
 }
 
 /**
  * Formato completo (DD/MM/YYYY HH:mm)
  */
-export function formatDateTime(date: Date | string | number): string {
-       return `${formatDate(date)} ${formatTime(date)}`;
+export function formatDateTime(date: Date | string | number | null | undefined): string {
+       if (!date) return "-";
+       const formattedDate = formatDate(date);
+       const formattedTime = formatTime(date);
+       if (formattedDate === "-" || formattedTime === "-") return "-";
+       return `${formattedDate} ${formattedTime}`;
 }

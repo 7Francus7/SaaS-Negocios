@@ -356,7 +356,7 @@ export default function CashPage() {
                       <Modal 
                              isOpen={summaryModal.open} 
                              onClose={() => setSummaryModal({ ...summaryModal, open: false })} 
-                             title={`Resumen de Caja - ${formatDate(summaryModal.session?.startTime)}`}
+                             title={summaryModal.session ? `Resumen de Caja - ${formatDate(summaryModal.session.startTime)}` : "Resumen de Caja"}
                       >
                              {summaryModal.session?.summary ? (
                                     <div className="space-y-6">
