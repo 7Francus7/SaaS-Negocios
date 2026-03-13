@@ -67,6 +67,53 @@ async function calculateSessionTotals(sessionId: number, storeId: string, startT
        return { totalSales, totalIn, totalOut };
 }
 
+async function generateSessionSummary(sessionId: number, storeId: string, startTime: Date, endTime: Date) {
+       // Get all sales for this session's time range
+       const sales = await prisma.sale.findMany({
+              where: {
+                     storeId,
+                     timestamp: { gte: startTime, lte: endTime }
+              },
+              include: {
+                     payments: true
+              }
+       });
+
+       // Get all movements
+       const movements = await prisma.cashMovement.findMany({
+              where: { cashSessionId: sessionId }
+       });
+
+       const salesByMethod: Record<string, number> = {};
+       let totalSalesValue = 0;
+
+       sales.forEach(sale => {
+              totalSalesValue += Number(sale.totalAmount);
+              
+              // Use specific payments if they exist, otherwise fallback to the sale's paymentMethod
+              if (sale.payments && sale.payments.length > 0) {
+                     sale.payments.forEach(p => {
+                            salesByMethod[p.paymentMethod] = (salesByMethod[p.paymentMethod] || 0) + Number(p.amount);
+                     });
+              } else {
+                     salesByMethod[sale.paymentMethod] = (salesByMethod[sale.paymentMethod] || 0) + Number(sale.totalAmount);
+              }
+       });
+
+       const income = movements.filter(m => m.type === 'IN').reduce((acc, m) => acc + Number(m.amount), 0);
+       const expenses = movements.filter(m => m.type === 'OUT').reduce((acc, m) => acc + Number(m.amount), 0);
+
+       return {
+              totalSales: totalSalesValue,
+              salesCount: sales.length,
+              salesByMethod,
+              cashIn: income,
+              cashOut: expenses,
+              movementsCount: movements.length,
+              generatedAt: endTime
+       };
+}
+
 export async function registerCashMovement(amount: number, type: 'IN' | 'OUT', description: string) {
        const session = await getOpenSession();
        if (!session) throw new Error("No hay caja abierta");
@@ -120,16 +167,20 @@ export async function closeSession(sessionId: number, finalCashReal: number, not
        // Calculate final system expected cash
        const totals = await calculateSessionTotals(sessionId, storeId, session.startTime);
        const finalCashSystem = Number(session.initialCash) + totals.totalSales + totals.totalIn - totals.totalOut;
+       const endTime = new Date();
+
+       // Generate detailed summary
+       const summary = await generateSessionSummary(sessionId, storeId, session.startTime, endTime);
 
        const updated = await prisma.cashSession.update({
               where: { id: sessionId },
               data: {
                      status: "CLOSED",
-                     endTime: new Date(),
+                     endTime,
                      finalCashSystem,
                      finalCashReal,
-                     // We could add notes here if we extend the schema, 
-                     // but for now we just close it.
+                     summary: summary as any,
+                     notes: notes || null
               }
        });
 

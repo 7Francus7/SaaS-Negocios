@@ -15,6 +15,7 @@ export default function CashPage() {
        const [isOpenModalOpen, setIsOpenModalOpen] = useState(false);
        const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
        const [movementModal, setMovementModal] = useState({ open: false, type: 'IN' as 'IN' | 'OUT' });
+       const [summaryModal, setSummaryModal] = useState({ open: false, session: null as any });
 
        // Form inputs
        const [amountInput, setAmountInput] = useState("");
@@ -202,7 +203,8 @@ export default function CashPage() {
                                                         <th className="px-4 lg:px-6 py-3 text-right hidden md:table-cell">Sistema</th>
                                                         <th className="px-4 lg:px-6 py-3 text-right">Real</th>
                                                         <th className="px-4 lg:px-6 py-3 text-center">Estado</th>
-                                                 </tr>
+                                                        <th className="px-4 lg:px-6 py-3 text-center">Acciones</th>
+                                                  </tr>
                                           </thead>
                                           <tbody className="divide-y divide-gray-100">
                                                  {history.map(s => {
@@ -218,21 +220,31 @@ export default function CashPage() {
                                                                       <td className="px-4 lg:px-6 py-3 text-right font-bold text-gray-900">
                                                                              {s.status === 'CLOSED' ? formatCurrency(s.finalCashReal) : '-'}
                                                                       </td>
-                                                                      <td className="px-4 lg:px-6 py-3 text-center">
-                                                                             {s.status === 'OPEN' ? (
-                                                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">ACTIVA</span>
-                                                                             ) : (
-                                                                                    <div className="flex flex-col items-center">
-                                                                                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">CERRADA</span>
-                                                                                           {!isBalanced && (
-                                                                                                  <span className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                                                         {diff > 0 ? '+' : ''}{diff.toFixed(0)}
-                                                                                                  </span>
-                                                                                           )}
-                                                                                    </div>
-                                                                             )}
-                                                                      </td>
-                                                               </tr>
+                                                                       <td className="px-4 lg:px-6 py-3 text-center">
+                                                                              {s.status === 'OPEN' ? (
+                                                                                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">ACTIVA</span>
+                                                                              ) : (
+                                                                                     <div className="flex flex-col items-center">
+                                                                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">CERRADA</span>
+                                                                                            {!isBalanced && (
+                                                                                                   <span className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                                                          {diff > 0 ? '+' : ''}{diff.toFixed(0)}
+                                                                                                   </span>
+                                                                                            )}
+                                                                                     </div>
+                                                                              )}
+                                                                       </td>
+                                                                       <td className="px-4 lg:px-6 py-3 text-center">
+                                                                              {s.summary && (
+                                                                                     <button 
+                                                                                            onClick={() => setSummaryModal({ open: true, session: s })}
+                                                                                            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200 transition-colors font-medium"
+                                                                                     >
+                                                                                            RESUMEN
+                                                                                     </button>
+                                                                              )}
+                                                                       </td>
+                                                                </tr>
                                                         );
                                                  })}
                                           </tbody>
@@ -337,8 +349,85 @@ export default function CashPage() {
                                    >
                                           {loadingAction ? "Registrando..." : "Registrar Movimiento"}
                                    </button>
-                            </div>
-                     </Modal>
-              </div>
+                             </div>
+                      </Modal>
+
+                      {/* Summary Modal */}
+                      <Modal 
+                             isOpen={summaryModal.open} 
+                             onClose={() => setSummaryModal({ ...summaryModal, open: false })} 
+                             title={`Resumen de Caja - ${formatDate(summaryModal.session?.startTime)}`}
+                      >
+                             {summaryModal.session?.summary ? (
+                                    <div className="space-y-6">
+                                           <div className="grid grid-cols-2 gap-4">
+                                                  <div className="p-3 bg-gray-50 rounded-lg">
+                                                         <p className="text-gray-500 text-xs mb-1">Monto Inicial</p>
+                                                         <p className="font-bold text-lg">{formatCurrency(summaryModal.session.initialCash)}</p>
+                                                  </div>
+                                                  <div className="p-3 bg-gray-50 rounded-lg">
+                                                         <p className="text-gray-500 text-xs mb-1">Total Ventas</p>
+                                                         <p className="font-bold text-lg text-blue-600">{formatCurrency(summaryModal.session.summary.totalSales)}</p>
+                                                  </div>
+                                           </div>
+
+                                           <div>
+                                                  <h4 className="text-sm font-semibold text-gray-700 mb-2 border-b pb-1">Ventas por Medio de Pago</h4>
+                                                  <div className="space-y-2">
+                                                         {Object.entries(summaryModal.session.summary.salesByMethod || {}).map(([method, amount]: [string, any]) => (
+                                                                <div key={method} className="flex justify-between text-sm">
+                                                                       <span className="text-gray-600">{method}</span>
+                                                                       <span className="font-mono font-medium">{formatCurrency(amount)}</span>
+                                                                </div>
+                                                         ))}
+                                                  </div>
+                                           </div>
+
+                                           <div className="grid grid-cols-2 gap-4">
+                                                  <div>
+                                                         <h4 className="text-sm font-semibold text-gray-700 mb-2 border-b pb-1">Movimientos</h4>
+                                                         <div className="space-y-1 text-sm">
+                                                                <div className="flex justify-between">
+                                                                       <span className="text-green-600">Ingresos (+)</span>
+                                                                       <span className="font-mono">{formatCurrency(summaryModal.session.summary.cashIn)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                       <span className="text-red-600">Egresos (-)</span>
+                                                                       <span className="font-mono">{formatCurrency(summaryModal.session.summary.cashOut)}</span>
+                                                                </div>
+                                                         </div>
+                                                  </div>
+                                                  <div>
+                                                         <h4 className="text-sm font-semibold text-gray-700 mb-2 border-b pb-1">Estadísticas</h4>
+                                                         <div className="space-y-1 text-sm">
+                                                                <div className="flex justify-between">
+                                                                       <span className="text-gray-500">Transacciones</span>
+                                                                       <span>{summaryModal.session.summary.salesCount}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                       <span className="text-gray-500">Movimientos</span>
+                                                                       <span>{summaryModal.session.summary.movementsCount}</span>
+                                                                </div>
+                                                         </div>
+                                                  </div>
+                                           </div>
+
+                                           <div className="pt-4 border-t">
+                                                  <div className="flex justify-between items-center p-3 bg-slate-900 text-white rounded-lg">
+                                                         <span className="font-medium">Cierre Real Reportado</span>
+                                                         <span className="text-xl font-bold">{formatCurrency(summaryModal.session.finalCashReal)}</span>
+                                                  </div>
+                                                  {summaryModal.session.notes && (
+                                                         <div className="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-sm italic text-yellow-800">
+                                                                "{summaryModal.session.notes}"
+                                                         </div>
+                                                  )}
+                                           </div>
+                                    </div>
+                             ) : (
+                                    <p className="text-gray-500 text-center py-8">No hay resumen detallado para este cierre.</p>
+                             )}
+                      </Modal>
+               </div>
        );
 }

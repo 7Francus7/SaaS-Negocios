@@ -201,6 +201,8 @@ model CashSession {
   finalCashSystem Decimal?
   finalCashReal   Decimal?
   status          String         @default("OPEN")
+  summary         Json?
+  notes           String?
   storeId         String
   userId          String?
   movements       CashMovement[]
