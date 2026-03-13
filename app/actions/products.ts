@@ -121,6 +121,7 @@ export async function createProduct(data: {
        categoryId?: number;
        variantName: string;
        barcode?: string;
+       barcodes?: string[];
        costPrice: number;
        salePrice: number;
        stock: number;
