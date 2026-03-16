@@ -1,8 +1,13 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getStoreId } from "@/lib/store";
+import { getStoreId, getCurrentUser } from "@/lib/store";
 import { safeSerialize } from "@/lib/utils";
+
+export async function getUserRole() {
+       const user = await getCurrentUser();
+       return user?.role || "EMPLOYEE";
+}
 
 export async function checkHasOpenSession() {
        const storeId = await getStoreId();
@@ -184,7 +189,11 @@ export async function closeSession(sessionId: number, finalCashReal: number, not
               }
        });
 
-       return safeSerialize(updated);
+       return {
+              ...safeSerialize(updated),
+              difference: Number(finalCashReal) - finalCashSystem,
+              expected: finalCashSystem
+       };
 }
 
 export async function getSessionHistory() {
