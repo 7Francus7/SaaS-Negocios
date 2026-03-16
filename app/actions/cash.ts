@@ -46,15 +46,17 @@ export async function getOpenSession() {
 }
 
 async function calculateSessionTotals(sessionId: number, storeId: string, startTime: Date) {
-       const [salesAggregate, movementsAggregate] = await Promise.all([
-              // Sum only CASH sales created after session start
-              prisma.sale.aggregate({
+       const [cashPaymentsAggregate, movementsAggregate] = await Promise.all([
+              // Sum all EFECTIVO payments (including from MIXTO sales)
+              prisma.salePayment.aggregate({
                      where: {
-                            storeId,
-                            timestamp: { gte: startTime },
-                            paymentMethod: "EFECTIVO"
+                            paymentMethod: "EFECTIVO",
+                            sale: {
+                                   storeId,
+                                   timestamp: { gte: startTime }
+                            }
                      },
-                     _sum: { totalAmount: true }
+                     _sum: { amount: true }
               }),
               // Sum Movements
               prisma.cashMovement.groupBy({
@@ -64,7 +66,7 @@ async function calculateSessionTotals(sessionId: number, storeId: string, startT
               })
        ]);
 
-       const totalSales = Number(salesAggregate._sum.totalAmount || 0);
+       const totalSales = Number(cashPaymentsAggregate._sum.amount || 0);
 
        const totalIn = Number(movementsAggregate.find(m => m.type === 'IN')?._sum.amount || 0);
        const totalOut = Number(movementsAggregate.find(m => m.type === 'OUT')?._sum.amount || 0);
