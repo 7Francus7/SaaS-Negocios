@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare } from "lucide-react";
 import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale } from "@/app/actions/customers";
 import { Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus } from "lucide-react";
@@ -140,6 +140,7 @@ export default function CustomersPage() {
 
        const [expandedMovementId, setExpandedMovementId] = useState<number | null>(null);
        const [movementSaleDetails, setMovementSaleDetails] = useState<any>(null);
+       const historyContentRef = useRef<HTMLDivElement>(null);
 
        const handleExpandMovement = async (h: any) => {
               if (expandedMovementId === h.id) {
@@ -204,6 +205,37 @@ export default function CustomersPage() {
               link.click();
               document.body.removeChild(link);
               URL.revokeObjectURL(url);
+       };
+
+       const downloadHistoryPDF = async () => {
+              if (!selectedCustomer || !historyContentRef.current) return;
+              const html2canvas = (await import('html2canvas')).default;
+              const { jsPDF } = await import('jspdf');
+              const canvas = await html2canvas(historyContentRef.current, {
+                     scale: 2,
+                     useCORS: true,
+                     backgroundColor: '#ffffff',
+              });
+              const imgData = canvas.toDataURL('image/jpeg', 0.95);
+              const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+              const pdfWidth = pdf.internal.pageSize.getWidth();
+              const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+              pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+              pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_historial.pdf`);
+       };
+
+       const downloadHistoryJPG = async () => {
+              if (!selectedCustomer || !historyContentRef.current) return;
+              const html2canvas = (await import('html2canvas')).default;
+              const canvas = await html2canvas(historyContentRef.current, {
+                     scale: 2,
+                     useCORS: true,
+                     backgroundColor: '#ffffff',
+              });
+              const link = document.createElement('a');
+              link.download = `${selectedCustomer.name.replace(/\s+/g, '_')}_historial.jpg`;
+              link.href = canvas.toDataURL('image/jpeg', 0.95);
+              link.click();
        };
 
        const handleViewHistory = async (customer: Customer) => {
@@ -380,15 +412,28 @@ export default function CustomersPage() {
                                           <span className="text-[10px] uppercase font-black tracking-widest text-red-500">Deuda Actual</span>
                                           <p className="text-2xl font-black text-red-600 mt-1">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
                                    </div>
-                                   <div className="flex items-stretch">
+                                   <div className="flex flex-col gap-2">
                                           <button
                                                  onClick={downloadHistoryCSV}
-                                                 className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30 transition-all"
+                                                 className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
                                           >
-                                                 <Download className="h-5 w-5" /> Exportar a CSV
+                                                 <Download className="h-4 w-4" /> CSV
+                                          </button>
+                                          <button
+                                                 onClick={downloadHistoryPDF}
+                                                 className="flex-1 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                          >
+                                                 <Download className="h-4 w-4" /> PDF
+                                          </button>
+                                          <button
+                                                 onClick={downloadHistoryJPG}
+                                                 className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-3 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                          >
+                                                 <Download className="h-4 w-4" /> Imagen JPG
                                           </button>
                                    </div>
                             </div>
+                            <div ref={historyContentRef}>
 
                             <div className="border border-gray-100 rounded-2xl shadow-sm overflow-hidden bg-white mb-6">
                                    <div className="overflow-x-auto">
@@ -475,6 +520,7 @@ export default function CustomersPage() {
                                           </table>
                                    </div>
                             </div>
+                            </div>{/* end historyContentRef */}
                             <div className="pt-4 border-t border-gray-100 flex justify-end">
                                    <button
                                           onClick={() => setIsHistoryOpen(false)}
