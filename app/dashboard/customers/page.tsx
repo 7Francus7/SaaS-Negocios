@@ -207,35 +207,60 @@ export default function CustomersPage() {
               URL.revokeObjectURL(url);
        };
 
+       const captureElement = async (el: HTMLElement): Promise<HTMLCanvasElement> => {
+              const html2canvas = (await import('html2canvas')).default;
+              // Clone outside the scrollable modal to capture full content without clipping
+              const clone = el.cloneNode(true) as HTMLElement;
+              clone.style.position = 'fixed';
+              clone.style.top = '0';
+              clone.style.left = '-9999px';
+              clone.style.width = el.scrollWidth + 'px';
+              clone.style.overflow = 'visible';
+              clone.style.background = '#ffffff';
+              document.body.appendChild(clone);
+              try {
+                     return await html2canvas(clone, {
+                            scale: 2,
+                            useCORS: true,
+                            backgroundColor: '#ffffff',
+                            logging: false,
+                     });
+              } finally {
+                     document.body.removeChild(clone);
+              }
+       };
+
        const downloadHistoryPDF = async () => {
               if (!selectedCustomer || !historyContentRef.current) return;
-              const html2canvas = (await import('html2canvas')).default;
-              const { jsPDF } = await import('jspdf');
-              const canvas = await html2canvas(historyContentRef.current, {
-                     scale: 2,
-                     useCORS: true,
-                     backgroundColor: '#ffffff',
-              });
-              const imgData = canvas.toDataURL('image/jpeg', 0.95);
-              const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-              const pdfWidth = pdf.internal.pageSize.getWidth();
-              const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-              pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-              pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_historial.pdf`);
+              try {
+                     const { jsPDF } = await import('jspdf');
+                     const canvas = await captureElement(historyContentRef.current);
+                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                     const pdfWidth = pdf.internal.pageSize.getWidth();
+                     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                     pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_historial.pdf`);
+              } catch (e) {
+                     console.error('Error al generar PDF:', e);
+                     alert('No se pudo generar el PDF. Intentá de nuevo.');
+              }
        };
 
        const downloadHistoryJPG = async () => {
               if (!selectedCustomer || !historyContentRef.current) return;
-              const html2canvas = (await import('html2canvas')).default;
-              const canvas = await html2canvas(historyContentRef.current, {
-                     scale: 2,
-                     useCORS: true,
-                     backgroundColor: '#ffffff',
-              });
-              const link = document.createElement('a');
-              link.download = `${selectedCustomer.name.replace(/\s+/g, '_')}_historial.jpg`;
-              link.href = canvas.toDataURL('image/jpeg', 0.95);
-              link.click();
+              try {
+                     const canvas = await captureElement(historyContentRef.current);
+                     const link = document.createElement('a');
+                     link.download = `${selectedCustomer.name.replace(/\s+/g, '_')}_historial.jpg`;
+                     link.href = canvas.toDataURL('image/jpeg', 0.95);
+                     document.body.appendChild(link);
+                     link.click();
+                     document.body.removeChild(link);
+              } catch (e) {
+                     console.error('Error al generar JPG:', e);
+                     alert('No se pudo generar la imagen. Intentá de nuevo.');
+              }
        };
 
        const handleViewHistory = async (customer: Customer) => {
