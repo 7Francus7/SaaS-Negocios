@@ -207,40 +207,281 @@ export default function CustomersPage() {
               URL.revokeObjectURL(url);
        };
 
-       const captureElement = async (el: HTMLElement): Promise<HTMLCanvasElement> => {
-              const html2canvas = (await import('html2canvas')).default;
-              // Clone outside the scrollable modal to capture full content without clipping
-              const clone = el.cloneNode(true) as HTMLElement;
-              clone.style.position = 'fixed';
-              clone.style.top = '0';
-              clone.style.left = '-9999px';
-              clone.style.width = el.scrollWidth + 'px';
-              clone.style.overflow = 'visible';
-              clone.style.background = '#ffffff';
-              document.body.appendChild(clone);
-              try {
-                     return await html2canvas(clone, {
-                            scale: 2,
-                            useCORS: true,
-                            backgroundColor: '#ffffff',
-                            logging: false,
+       // ─── Boleta builder (pure Canvas, no DOM capture) ───────────────────
+       const buildBoletaCanvas = (
+              customer: Customer,
+              movements: any[],
+              store: { name: string; address: string; phone: string; cuit: string; ticketFooter: string }
+       ): HTMLCanvasElement => {
+              const SC = 2;
+              const W = 794;
+              const PAD = 36;
+              const ROW_H = 26;
+              const SECTION_GAP = 14;
+
+              // Pre-calculate total height
+              const H_HEADER = 110;
+              const H_CLIENT = 90;
+              const H_SUMMARY = 80;
+              const H_TABLE_HEAD = 32;
+              const H_TABLE = Math.max(movements.length, 1) * ROW_H;
+              const H_FOOTER = 56;
+              const TOTAL_H = H_HEADER + SECTION_GAP + H_CLIENT + SECTION_GAP + H_SUMMARY + SECTION_GAP + H_TABLE_HEAD + H_TABLE + SECTION_GAP + H_FOOTER;
+
+              const canvas = document.createElement('canvas');
+              canvas.width = W * SC;
+              canvas.height = TOTAL_H * SC;
+              const ctx = canvas.getContext('2d')!;
+              ctx.scale(SC, SC);
+              ctx.imageSmoothingEnabled = true;
+
+              // ── Helpers ──────────────────────────────────────────────────
+              const fmtCurrency = (n: number) =>
+                     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n);
+
+              const fmtDate = (ts: string | Date) => {
+                     const d = new Date(ts);
+                     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+              };
+
+              const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+                     ctx.beginPath();
+                     ctx.moveTo(x + r, y);
+                     ctx.lineTo(x + w - r, y);
+                     ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                     ctx.lineTo(x + w, y + h - r);
+                     ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                     ctx.lineTo(x + r, y + h);
+                     ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                     ctx.lineTo(x, y + r);
+                     ctx.quadraticCurveTo(x, y, x + r, y);
+                     ctx.closePath();
+              };
+
+              // ── Background ───────────────────────────────────────────────
+              ctx.fillStyle = '#f1f5f9';
+              ctx.fillRect(0, 0, W, TOTAL_H);
+
+              let y = 0;
+
+              // ── HEADER ───────────────────────────────────────────────────
+              ctx.fillStyle = '#1e3a5f';
+              ctx.fillRect(0, 0, W, H_HEADER);
+
+              // Accent stripe
+              ctx.fillStyle = '#2563eb';
+              ctx.fillRect(0, H_HEADER - 5, W, 5);
+
+              ctx.fillStyle = '#ffffff';
+              ctx.font = `bold 26px Arial`;
+              ctx.fillText((store.name || 'Mi Negocio').toUpperCase(), PAD, 42);
+
+              ctx.font = `13px Arial`;
+              ctx.fillStyle = '#93c5fd';
+              const headerLine2Parts = [store.address, store.phone ? `Tel: ${store.phone}` : '', store.cuit ? `CUIT: ${store.cuit}` : ''].filter(Boolean).join('   •   ');
+              ctx.fillText(headerLine2Parts, PAD, 62);
+
+              // Title right-aligned
+              ctx.font = `bold 16px Arial`;
+              ctx.fillStyle = '#ffffff';
+              const titleText = 'ESTADO DE CUENTA CORRIENTE';
+              const titleW = ctx.measureText(titleText).width;
+              ctx.fillText(titleText, W - PAD - titleW, 38);
+
+              ctx.font = `12px Arial`;
+              ctx.fillStyle = '#93c5fd';
+              const dateText = `Fecha: ${fmtDate(new Date())}`;
+              const dateW = ctx.measureText(dateText).width;
+              ctx.fillText(dateText, W - PAD - dateW, 58);
+
+              y = H_HEADER + SECTION_GAP;
+
+              // ── CLIENT CARD ──────────────────────────────────────────────
+              roundRect(PAD, y, W - PAD * 2, H_CLIENT, 8);
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.strokeStyle = '#dbeafe';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              // Section label
+              ctx.fillStyle = '#2563eb';
+              ctx.font = `bold 10px Arial`;
+              ctx.fillText('DATOS DEL CLIENTE', PAD + 14, y + 18);
+              ctx.fillStyle = '#2563eb';
+              ctx.fillRect(PAD + 14, y + 22, 100, 1.5);
+
+              ctx.fillStyle = '#1e293b';
+              ctx.font = `bold 18px Arial`;
+              ctx.fillText(customer.name, PAD + 14, y + 46);
+
+              ctx.font = `12px Arial`;
+              ctx.fillStyle = '#64748b';
+              const clientInfoParts = [
+                     customer.dni ? `DNI: ${customer.dni}` : '',
+                     customer.phone ? `Tel: ${customer.phone}` : '',
+                     customer.address ? `Dir: ${customer.address}` : '',
+              ].filter(Boolean).join('     ');
+              ctx.fillText(clientInfoParts || 'Sin información adicional', PAD + 14, y + 68);
+
+              y += H_CLIENT + SECTION_GAP;
+
+              // ── SUMMARY CARDS ────────────────────────────────────────────
+              const cardW = (W - PAD * 2 - 12) / 3;
+
+              const drawSummaryCard = (x: number, label: string, value: string, bg: string, textColor: string) => {
+                     roundRect(x, y, cardW, H_SUMMARY, 8);
+                     ctx.fillStyle = bg;
+                     ctx.fill();
+                     ctx.font = `bold 9px Arial`;
+                     ctx.fillStyle = textColor;
+                     ctx.fillText(label, x + 14, y + 22);
+                     ctx.font = `bold 20px Arial`;
+                     ctx.fillText(value, x + 14, y + 56);
+              };
+
+              const totalDebt = (customer.closedBalance || 0) + (customer.currentBalance || 0);
+              drawSummaryCard(PAD, 'MESES ANTERIORES', fmtCurrency(customer.closedBalance || 0), '#ffffff', '#64748b');
+              drawSummaryCard(PAD + cardW + 6, 'DEUDA DEL MES', fmtCurrency(customer.currentBalance || 0), '#fff1f2', '#e11d48');
+              drawSummaryCard(PAD + (cardW + 6) * 2, 'TOTAL A PAGAR', fmtCurrency(totalDebt), '#eff6ff', '#1d4ed8');
+
+              // Add borders
+              [PAD, PAD + cardW + 6, PAD + (cardW + 6) * 2].forEach((x, i) => {
+                     roundRect(x, y, cardW, H_SUMMARY, 8);
+                     ctx.strokeStyle = i === 0 ? '#e2e8f0' : i === 1 ? '#fecdd3' : '#bfdbfe';
+                     ctx.lineWidth = 1.5;
+                     ctx.stroke();
+              });
+
+              y += H_SUMMARY + SECTION_GAP;
+
+              // ── MOVEMENTS TABLE ──────────────────────────────────────────
+              const tableW = W - PAD * 2;
+              const colWidths = [110, tableW - 110 - 130 - 120, 130, 120];
+              const colX = [PAD, PAD + colWidths[0], PAD + colWidths[0] + colWidths[1], PAD + colWidths[0] + colWidths[1] + colWidths[2]];
+
+              // Table header
+              roundRect(PAD, y, tableW, H_TABLE_HEAD, 6);
+              ctx.fillStyle = '#1e3a5f';
+              ctx.fill();
+
+              ctx.font = `bold 10px Arial`;
+              ctx.fillStyle = '#ffffff';
+              ['FECHA', 'DESCRIPCIÓN / CONCEPTO', 'IMPORTE', 'SALDO ACUMULADO'].forEach((header, i) => {
+                     const align = i >= 2 ? 'right' : 'left';
+                     if (align === 'right') {
+                            const tw = ctx.measureText(header).width;
+                            ctx.fillText(header, colX[i] + colWidths[i] - 10 - tw, y + 21);
+                     } else {
+                            ctx.fillText(header, colX[i] + (i === 0 ? 10 : 6), y + 21);
+                     }
+              });
+
+              y += H_TABLE_HEAD;
+
+              // Table rows
+              let runningBalance = customer.closedBalance || 0;
+
+              if (movements.length === 0) {
+                     roundRect(PAD, y, tableW, ROW_H * 2, 0);
+                     ctx.fillStyle = '#ffffff';
+                     ctx.fill();
+                     ctx.font = `italic 12px Arial`;
+                     ctx.fillStyle = '#94a3b8';
+                     ctx.textAlign = 'center';
+                     ctx.fillText('Sin movimientos registrados', W / 2, y + ROW_H);
+                     ctx.textAlign = 'left';
+                     y += ROW_H * 2;
+              } else {
+                     movements.forEach((mov, idx) => {
+                            runningBalance += mov.amount;
+                            const rowY = y + idx * ROW_H;
+                            const isEven = idx % 2 === 0;
+
+                            // Row background
+                            if (idx === movements.length - 1) {
+                                   roundRect(PAD, rowY, tableW, ROW_H, 0);
+                            } else {
+                                   ctx.beginPath();
+                                   ctx.rect(PAD, rowY, tableW, ROW_H);
+                            }
+                            ctx.fillStyle = isEven ? '#ffffff' : '#f8fafc';
+                            ctx.fill();
+
+                            // Separator
+                            ctx.strokeStyle = '#e2e8f0';
+                            ctx.lineWidth = 0.5;
+                            ctx.beginPath();
+                            ctx.moveTo(PAD, rowY + ROW_H);
+                            ctx.lineTo(PAD + tableW, rowY + ROW_H);
+                            ctx.stroke();
+
+                            const cellY = rowY + ROW_H * 0.65;
+
+                            // Date
+                            ctx.font = `bold 11px Arial`;
+                            ctx.fillStyle = '#374151';
+                            ctx.fillText(fmtDate(mov.timestamp), colX[0] + 10, cellY);
+
+                            // Description
+                            ctx.font = `11px Arial`;
+                            ctx.fillStyle = '#374151';
+                            const maxDescW = colWidths[1] - 12;
+                            let desc = mov.description || '';
+                            while (ctx.measureText(desc).width > maxDescW && desc.length > 0) {
+                                   desc = desc.slice(0, -1);
+                            }
+                            if (desc !== mov.description) desc += '…';
+                            ctx.fillText(desc, colX[1] + 6, cellY);
+
+                            // Amount
+                            const isDebit = mov.amount > 0;
+                            ctx.font = `bold 11px Arial`;
+                            ctx.fillStyle = isDebit ? '#dc2626' : '#16a34a';
+                            const amtText = (isDebit ? '+' : '') + fmtCurrency(mov.amount);
+                            const amtW = ctx.measureText(amtText).width;
+                            ctx.fillText(amtText, colX[2] + colWidths[2] - 10 - amtW, cellY);
+
+                            // Running balance
+                            ctx.fillStyle = runningBalance > 0 ? '#1d4ed8' : '#16a34a';
+                            const balText = fmtCurrency(runningBalance);
+                            const balW = ctx.measureText(balText).width;
+                            ctx.fillText(balText, colX[3] + colWidths[3] - 10 - balW, cellY);
                      });
-              } finally {
-                     document.body.removeChild(clone);
+                     y += movements.length * ROW_H;
               }
+
+              y += SECTION_GAP;
+
+              // ── FOOTER ───────────────────────────────────────────────────
+              ctx.fillStyle = '#1e3a5f';
+              ctx.fillRect(0, y, W, H_FOOTER);
+              ctx.fillStyle = '#2563eb';
+              ctx.fillRect(0, y, W, 3);
+
+              ctx.font = `13px Arial`;
+              ctx.fillStyle = '#93c5fd';
+              ctx.textAlign = 'center';
+              ctx.fillText(store.ticketFooter || '¡Gracias por su preferencia!', W / 2, y + 28);
+              ctx.font = `11px Arial`;
+              ctx.fillStyle = '#60a5fa';
+              ctx.fillText('Este documento es un resumen de cuenta corriente — No es comprobante fiscal', W / 2, y + 46);
+              ctx.textAlign = 'left';
+
+              return canvas;
        };
 
        const downloadHistoryPDF = async () => {
-              if (!selectedCustomer || !historyContentRef.current) return;
+              if (!selectedCustomer) return;
               try {
                      const { jsPDF } = await import('jspdf');
-                     const canvas = await captureElement(historyContentRef.current);
-                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-                     const pdfWidth = pdf.internal.pageSize.getWidth();
-                     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                     pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_historial.pdf`);
+                     const { getStoreSettings } = await import('@/app/actions/settings');
+                     const store = await getStoreSettings();
+                     const canvas = buildBoletaCanvas(selectedCustomer, history, store);
+                     const imgData = canvas.toDataURL('image/jpeg', 0.97);
+                     const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
+                     pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
+                     pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_cuenta_corriente.pdf`);
               } catch (e) {
                      console.error('Error al generar PDF:', e);
                      alert('No se pudo generar el PDF. Intentá de nuevo.');
@@ -248,12 +489,14 @@ export default function CustomersPage() {
        };
 
        const downloadHistoryJPG = async () => {
-              if (!selectedCustomer || !historyContentRef.current) return;
+              if (!selectedCustomer) return;
               try {
-                     const canvas = await captureElement(historyContentRef.current);
+                     const { getStoreSettings } = await import('@/app/actions/settings');
+                     const store = await getStoreSettings();
+                     const canvas = buildBoletaCanvas(selectedCustomer, history, store);
                      const link = document.createElement('a');
-                     link.download = `${selectedCustomer.name.replace(/\s+/g, '_')}_historial.jpg`;
-                     link.href = canvas.toDataURL('image/jpeg', 0.95);
+                     link.download = `${selectedCustomer.name.replace(/\s+/g, '_')}_cuenta_corriente.jpg`;
+                     link.href = canvas.toDataURL('image/jpeg', 0.97);
                      document.body.appendChild(link);
                      link.click();
                      document.body.removeChild(link);
