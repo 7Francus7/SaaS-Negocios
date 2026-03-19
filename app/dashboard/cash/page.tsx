@@ -232,10 +232,10 @@ export default function CashPage() {
                                                         return (
                                                                <tr key={s.id} className="hover:bg-gray-50">
                                                                       <td className="px-4 lg:px-6 py-3">{formatDate(s.startTime)} {formatTime(s.startTime)}</td>
-                                                                      <td className="px-4 lg:px-6 py-3 hidden sm:table-cell">{s.endTime ? formatTime(s.endTime) : "-"}</td>
-                                                                      <td className="px-4 lg:px-6 py-3 text-right text-gray-500">{formatCurrency(s.initialCash)}</td>
+                                                                      <td className="px-4 lg:px-6 py-3 hidden sm:table-cell text-gray-700">{s.endTime ? formatTime(s.endTime) : "-"}</td>
+                                                                      <td className="px-4 lg:px-6 py-3 text-right text-gray-700">{formatCurrency(s.initialCash)}</td>
                                                                       {userRole === 'OWNER' && (
-                                                                             <td className="px-4 lg:px-6 py-3 text-right font-medium hidden md:table-cell">{formatCurrency(s.finalCashSystem || 0)}</td>
+                                                                             <td className="px-4 lg:px-6 py-3 text-right font-medium text-gray-700 hidden md:table-cell">{formatCurrency(s.finalCashSystem || 0)}</td>
                                                                       )}
                                                                       <td className="px-4 lg:px-6 py-3 text-right font-bold text-gray-900">
                                                                              {s.status === 'CLOSED' ? formatCurrency(s.finalCashReal) : '-'}
