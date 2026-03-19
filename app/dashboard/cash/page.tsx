@@ -399,7 +399,7 @@ export default function CashPage() {
                                                         {Object.entries(summaryModal.session.summary.salesByMethod || {}).map(([method, amount]: [string, any]) => (
                                                                <div key={method} className="flex justify-between text-sm">
                                                                       <span className="text-gray-600">{method}</span>
-                                                                      <span className="font-mono font-medium">{formatCurrency(amount)}</span>
+                                                                      <span className="font-mono font-medium text-gray-700">{formatCurrency(amount)}</span>
                                                                </div>
                                                         ))}
                                                  </div>
@@ -411,11 +411,11 @@ export default function CashPage() {
                                                         <div className="space-y-1 text-sm">
                                                                <div className="flex justify-between">
                                                                       <span className="text-green-600">Ingresos (+)</span>
-                                                                      <span className="font-mono">{formatCurrency(summaryModal.session.summary.cashIn)}</span>
+                                                                      <span className="font-mono text-gray-700">{formatCurrency(summaryModal.session.summary.cashIn)}</span>
                                                                </div>
                                                                <div className="flex justify-between">
                                                                       <span className="text-red-600">Egresos (-)</span>
-                                                                      <span className="font-mono">{formatCurrency(summaryModal.session.summary.cashOut)}</span>
+                                                                      <span className="font-mono text-gray-700">{formatCurrency(summaryModal.session.summary.cashOut)}</span>
                                                                </div>
                                                         </div>
                                                  </div>
@@ -424,11 +424,11 @@ export default function CashPage() {
                                                         <div className="space-y-1 text-sm">
                                                                <div className="flex justify-between">
                                                                       <span className="text-gray-500">Transacciones</span>
-                                                                      <span>{summaryModal.session.summary.salesCount}</span>
+                                                                      <span className="text-gray-700 font-medium">{summaryModal.session.summary.salesCount}</span>
                                                                </div>
                                                                <div className="flex justify-between">
                                                                       <span className="text-gray-500">Movimientos</span>
-                                                                      <span>{summaryModal.session.summary.movementsCount}</span>
+                                                                      <span className="text-gray-700 font-medium">{summaryModal.session.summary.movementsCount}</span>
                                                                </div>
                                                         </div>
                                                  </div>
