@@ -217,6 +217,7 @@ export default function CustomersPage() {
               const W = 794;
               const PAD = 36;
               const ROW_H = 26;
+              const ITEM_ROW_H = 18;
               const SECTION_GAP = 14;
 
               // Pre-calculate total height
@@ -224,7 +225,8 @@ export default function CustomersPage() {
               const H_CLIENT = 90;
               const H_SUMMARY = 80;
               const H_TABLE_HEAD = 32;
-              const H_TABLE = Math.max(movements.length, 1) * ROW_H;
+              const totalItemRows = movements.reduce((sum: number, m: any) => sum + (m.saleItems?.length || 0), 0);
+              const H_TABLE = Math.max(movements.length, 1) * ROW_H + totalItemRows * ITEM_ROW_H;
               const H_FOOTER = 56;
               const TOTAL_H = H_HEADER + SECTION_GAP + H_CLIENT + SECTION_GAP + H_SUMMARY + SECTION_GAP + H_TABLE_HEAD + H_TABLE + SECTION_GAP + H_FOOTER;
 
@@ -393,18 +395,16 @@ export default function CustomersPage() {
                      ctx.textAlign = 'left';
                      y += ROW_H * 2;
               } else {
+                     let rowY = y;
                      movements.forEach((mov, idx) => {
                             runningBalance += mov.amount;
-                            const rowY = y + idx * ROW_H;
                             const isEven = idx % 2 === 0;
+                            const items: any[] = mov.saleItems || [];
+                            const blockH = ROW_H + items.length * ITEM_ROW_H;
 
                             // Row background
-                            if (idx === movements.length - 1) {
-                                   roundRect(PAD, rowY, tableW, ROW_H, 0);
-                            } else {
-                                   ctx.beginPath();
-                                   ctx.rect(PAD, rowY, tableW, ROW_H);
-                            }
+                            ctx.beginPath();
+                            ctx.rect(PAD, rowY, tableW, blockH);
                             ctx.fillStyle = isEven ? '#ffffff' : '#f8fafc';
                             ctx.fill();
 
@@ -412,8 +412,8 @@ export default function CustomersPage() {
                             ctx.strokeStyle = '#e2e8f0';
                             ctx.lineWidth = 0.5;
                             ctx.beginPath();
-                            ctx.moveTo(PAD, rowY + ROW_H);
-                            ctx.lineTo(PAD + tableW, rowY + ROW_H);
+                            ctx.moveTo(PAD, rowY + blockH);
+                            ctx.lineTo(PAD + tableW, rowY + blockH);
                             ctx.stroke();
 
                             const cellY = rowY + ROW_H * 0.65;
@@ -447,8 +447,45 @@ export default function CustomersPage() {
                             const balText = fmtCurrency(runningBalance);
                             const balW = ctx.measureText(balText).width;
                             ctx.fillText(balText, colX[3] + colWidths[3] - 10 - balW, cellY);
+
+                            // Sale item sub-rows
+                            items.forEach((item: any, iIdx: number) => {
+                                   const itemY = rowY + ROW_H + iIdx * ITEM_ROW_H;
+                                   const itemCellY = itemY + ITEM_ROW_H * 0.72;
+
+                                   // Indent accent bar
+                                   ctx.fillStyle = '#93c5fd';
+                                   ctx.fillRect(colX[1] + 6, itemY + 3, 2, ITEM_ROW_H - 6);
+
+                                   // Product name
+                                   ctx.font = `10px Arial`;
+                                   ctx.fillStyle = '#475569';
+                                   const itemNameMaxW = colWidths[1] - 32;
+                                   let itemName = item.productNameSnapshot || '';
+                                   while (ctx.measureText(itemName).width > itemNameMaxW && itemName.length > 0) {
+                                          itemName = itemName.slice(0, -1);
+                                   }
+                                   if (itemName !== item.productNameSnapshot) itemName += '…';
+                                   ctx.fillText(itemName, colX[1] + 14, itemCellY);
+
+                                   // Qty × unit price (right-aligned in amount col)
+                                   ctx.font = `10px Arial`;
+                                   ctx.fillStyle = '#64748b';
+                                   const qtyText = `${item.quantity} × ${fmtCurrency(item.unitPrice)}`;
+                                   const qtyW = ctx.measureText(qtyText).width;
+                                   ctx.fillText(qtyText, colX[2] + colWidths[2] - 10 - qtyW, itemCellY);
+
+                                   // Subtotal (right-aligned in balance col)
+                                   ctx.font = `bold 10px Arial`;
+                                   ctx.fillStyle = '#374151';
+                                   const subText = fmtCurrency(item.subtotal);
+                                   const subW = ctx.measureText(subText).width;
+                                   ctx.fillText(subText, colX[3] + colWidths[3] - 10 - subW, itemCellY);
+                            });
+
+                            rowY += blockH;
                      });
-                     y += movements.length * ROW_H;
+                     y = rowY;
               }
 
               y += SECTION_GAP;

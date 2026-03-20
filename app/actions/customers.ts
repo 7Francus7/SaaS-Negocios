@@ -136,10 +136,37 @@ export async function getCustomerHistory(customerId: number) {
               take: 50
        });
 
-       return history.map(h => ({
-              ...h,
-              amount: Number(h.amount)
-       }));
+       // Extract sale IDs from descriptions to fetch product details
+       const saleIds: number[] = [];
+       for (const h of history) {
+              const match = h.description?.match(/Venta #(\d+)/);
+              if (match) saleIds.push(parseInt(match[1]));
+       }
+
+       const salesWithItems = saleIds.length > 0
+              ? await prisma.sale.findMany({
+                     where: { id: { in: saleIds }, storeId },
+                     include: { items: true }
+              })
+              : [];
+
+       const salesMap = new Map(salesWithItems.map(s => [s.id, s]));
+
+       return history.map(h => {
+              const match = h.description?.match(/Venta #(\d+)/);
+              const sale = match ? salesMap.get(parseInt(match[1])) : undefined;
+              return {
+                     ...h,
+                     amount: Number(h.amount),
+                     saleItems: (sale?.items || []).map(item => ({
+                            id: item.id,
+                            productNameSnapshot: item.productNameSnapshot,
+                            quantity: Number(item.quantity),
+                            unitPrice: Number(item.unitPrice),
+                            subtotal: Number(item.subtotal),
+                     }))
+              };
+       });
 }
 
 export async function updateCustomer(customerId: number, data: {
