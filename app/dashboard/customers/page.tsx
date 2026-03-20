@@ -479,8 +479,10 @@ export default function CustomersPage() {
                      const store = await getStoreSettings();
                      const canvas = buildBoletaCanvas(selectedCustomer, history, store);
                      const imgData = canvas.toDataURL('image/jpeg', 0.97);
-                     const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
-                     pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
+                     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                     const pageW = pdf.internal.pageSize.getWidth();
+                     const imgH = pageW * (canvas.height / canvas.width);
+                     pdf.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
                      pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_cuenta_corriente.pdf`);
               } catch (e) {
                      console.error('Error al generar PDF:', e);
