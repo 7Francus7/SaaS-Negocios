@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import json
 from datetime import datetime
 from app.db.repositories.movement_repo import MovementRepository
 from app.db.repositories.client_repo import ClientRepository
@@ -234,50 +235,87 @@ class MovementsView(ctk.CTkFrame):
         ctk.CTkLabel(f, text="No se encontraron movimientos", font=("Segoe UI", 13), text_color=COLOR_TEXT_SEC).pack()
 
     def render_row(self, m, is_even):
-        # Fixed height row
         bg = COLOR_SURFACE if is_even else "#1A2332"
         if m['active'] == 0: bg = "#080C14"
-    
-        row = ctk.CTkFrame(self.scroll, fg_color=bg, height=36, corner_radius=0)
-        row.pack(fill="x", pady=0)
-        row.grid_propagate(False) # Fixed height!
-    
+
+        # Parse products
+        products = None
+        if m.get('products'):
+            try:
+                parsed = json.loads(m['products'])
+                if isinstance(parsed, list) and parsed:
+                    products = parsed
+            except Exception:
+                pass
+
+        # Container (main row + optional product detail)
+        container = ctk.CTkFrame(self.scroll, fg_color="transparent", corner_radius=0)
+        container.pack(fill="x", pady=0)
+
+        # Main row
+        row = ctk.CTkFrame(container, fg_color=bg, height=36, corner_radius=0)
+        row.pack(fill="x")
+        row.grid_propagate(False)
         row.grid_columnconfigure(2, weight=1)
-    
+
         # 1. Date
-        # Convert date to nicer format if possible, otherwise slice str
         d_str = str(m['date_time'])
         d_short = d_str[8:10] + "/" + d_str[5:7] + " " + d_str[11:16]
-        ctk.CTkLabel(row, text=d_short, width=80, font=("Segoe UI", 10), 
-                     text_color=COLOR_TEXT_SEC, anchor="w").grid(row=0, column=0, padx=(10,5), pady=0, sticky="w")
-    
+        ctk.CTkLabel(row, text=d_short, width=80, font=("Segoe UI", 10),
+                     text_color=COLOR_TEXT_SEC, anchor="w").grid(row=0, column=0, padx=(10, 5), pady=0, sticky="w")
+
         # 2. Chip
         f_chip = ctk.CTkFrame(row, width=65, height=28, fg_color="transparent")
-        f_chip.grid(row=0, column=1, padx=(0,5), pady=0, sticky="w")
-        chip = TypeChip(f_chip, m['type'])
-        chip.place(relx=0, rely=0.5, anchor="w")
-    
-        # 3. Desc
-        desc = m['description'][:50] + "..." if len(m['description']) > 50 else m['description']
+        f_chip.grid(row=0, column=1, padx=(0, 5), pady=0, sticky="w")
+        TypeChip(f_chip, m['type']).place(relx=0, rely=0.5, anchor="w")
+
+        # 3. Desc (with product count hint if applicable)
+        desc = m['description'][:48] + "..." if len(m['description']) > 48 else m['description']
         if m.get('payment_method'): desc += f" ({m['payment_method'][:10]})"
         if m['active'] == 0: desc = "[ANULADO] " + desc
-        ctk.CTkLabel(row, text=desc, font=("Segoe UI", 11), text_color=COLOR_TEXT_MAIN, anchor="w").grid(row=0, column=2, padx=(0,10), pady=0, sticky="w")
-    
+        if products:
+            desc += f"  [{len(products)} prod.]"
+        ctk.CTkLabel(row, text=desc, font=("Segoe UI", 11), text_color=COLOR_TEXT_MAIN, anchor="w").grid(row=0, column=2, padx=(0, 10), pady=0, sticky="w")
+
         # 4. Amount
         net = m['debit'] - m['credit']
         col = COLOR_DANGER if net > 0 else COLOR_SUCCESS
-        # If paying debt (negative net usually means debt? No. Mov: Debit=Debt, Credit=Pay. Net=Debit-Credit. Positive=Balance Increased(Debt), Negative=Balance Decreased(Pay)) of course.
-        # But wait, visually we might want to see payments as negative balance? Or just Green?
-        # Standard: +1000 (Debt), -1000 (Pay).
-        # Adjust logic if needed. For now: +Red, -Green.
-        lbl_amt = ctk.CTkLabel(row, text=f"{net:+,.0f}", width=90, font=("Segoe UI", 12, "bold"), 
-                               text_color=col, anchor="e")
-        lbl_amt.grid(row=0, column=3, padx=15, pady=0, sticky="e")
-    
+        ctk.CTkLabel(row, text=f"{net:+,.0f}", width=90, font=("Segoe UI", 12, "bold"),
+                     text_color=col, anchor="e").grid(row=0, column=3, padx=15, pady=0, sticky="e")
+
+        # Product detail section (always visible if products exist)
+        if products:
+            det_bg = "#131E2E"
+            detail = ctk.CTkFrame(container, fg_color=det_bg, corner_radius=0)
+            detail.pack(fill="x")
+            detail.grid_columnconfigure(0, weight=1)
+
+            for p in products:
+                name = p.get('name', '')
+                qty = p.get('qty', 1)
+                price = p.get('price', 0)
+                subtotal = qty * price
+
+                pr = ctk.CTkFrame(detail, fg_color="transparent")
+                pr.pack(fill="x", padx=20, pady=1)
+                pr.grid_columnconfigure(0, weight=1)
+
+                ctk.CTkLabel(
+                    pr, text=f"  - {name}",
+                    font=("Segoe UI", 10), text_color=COLOR_TEXT_SEC, anchor="w"
+                ).grid(row=0, column=0, sticky="w")
+
+                ctk.CTkLabel(
+                    pr, text=f"{qty:.0f} x ${price:,.0f}  =  ${subtotal:,.0f}",
+                    font=("Segoe UI", 10), text_color=COLOR_TEXT_SEC, anchor="e"
+                ).grid(row=0, column=1, padx=(10, 0), sticky="e")
+
+            ctk.CTkFrame(detail, height=4, fg_color="transparent").pack()
+
         # Hover
         if m['active']:
-            def enter(e=None): row.configure(fg_color=COLOR_SURFACE_HOVER)
-            def leave(e=None): row.configure(fg_color=bg)
+            def enter(e=None, r=row, b=bg): r.configure(fg_color=COLOR_SURFACE_HOVER)
+            def leave(e=None, r=row, b=bg): r.configure(fg_color=b)
             row.bind("<Enter>", enter)
             row.bind("<Leave>", leave)
             row.bind("<Button-1>", lambda e: self.on_row_click(m))
@@ -296,11 +334,11 @@ class MovementsView(ctk.CTkFrame):
         from app.ui.transaction_dialog import TransactionDialog
         TransactionDialog(self, "Registrar Pago", False, self._save_pay)
         
-    def _save_debt(self, amount, desc, pay_method=None):
-        self.accounting.register_movement(self.client_id, "DEUDA", amount, desc)
+    def _save_debt(self, amount, desc, pay_method=None, products=None):
+        self.accounting.register_movement(self.client_id, "DEUDA", amount, desc, products=products)
         self.refresh_movements()
-        
-    def _save_pay(self, amount, desc, pay_method="Efectivo"):
+
+    def _save_pay(self, amount, desc, pay_method="Efectivo", products=None):
         method = pay_method if pay_method else "Efectivo"
         prev_balance = self.accounting.get_client_status(self.client_id)['balance']
         movement_id = self.accounting.register_movement(self.client_id, "PAGO", amount, desc, payment_method=method)
