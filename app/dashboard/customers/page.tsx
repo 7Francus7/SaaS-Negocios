@@ -519,19 +519,38 @@ export default function CustomersPage() {
                      const pageW = pdf.internal.pageSize.getWidth();
                      const pageH = pdf.internal.pageSize.getHeight();
                      const canvasPageH = Math.floor(canvas.width * pageH / pageW);
-                     const pageCount = Math.ceil(canvas.height / canvasPageH);
-                     for (let page = 0; page < pageCount; page++) {
-                            if (page > 0) pdf.addPage();
-                            const sliceY = page * canvasPageH;
-                            const sliceH = Math.min(canvasPageH, canvas.height - sliceY);
+                     // Build cut boundaries aligned to movement block edges (same constants as buildBoletaCanvas)
+                     const SC = 2, ROW_H_B = 26, ITEM_ROW_H_B = 18, GAP_B = 14;
+                     const tableStartPx = (110 + GAP_B + 90 + GAP_B + 80 + GAP_B + 32) * SC;
+                     const boundaries: number[] = [0];
+                     let blockYPx = tableStartPx;
+                     for (const mov of history) {
+                            blockYPx += (ROW_H_B + (mov.saleItems?.length || 0) * ITEM_ROW_H_B) * SC;
+                            boundaries.push(blockYPx);
+                     }
+                     boundaries.push(canvas.height);
+                     // Slice pages cutting only at block boundaries
+                     let pageStartPx = 0;
+                     let isFirst = true;
+                     while (pageStartPx < canvas.height) {
+                            const pageEndMax = pageStartPx + canvasPageH;
+                            let cutPx = canvas.height;
+                            if (pageEndMax < canvas.height) {
+                                   const fitting = boundaries.filter(b => b > pageStartPx && b <= pageEndMax);
+                                   cutPx = fitting.length > 0 ? Math.max(...fitting) : pageEndMax;
+                                   if (cutPx <= pageStartPx) cutPx = pageEndMax;
+                            }
+                            if (!isFirst) pdf.addPage();
+                            isFirst = false;
+                            const sliceH = Math.min(cutPx, canvas.height) - pageStartPx;
                             const sliceCanvas = document.createElement('canvas');
                             sliceCanvas.width = canvas.width;
                             sliceCanvas.height = sliceH;
                             const sliceCtx = sliceCanvas.getContext('2d')!;
-                            sliceCtx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+                            sliceCtx.drawImage(canvas, 0, pageStartPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
                             const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.97);
-                            const sliceHmm = pageW * sliceH / canvas.width;
-                            pdf.addImage(sliceData, 'JPEG', 0, 0, pageW, sliceHmm);
+                            pdf.addImage(sliceData, 'JPEG', 0, 0, pageW, pageW * sliceH / canvas.width);
+                            pageStartPx = cutPx;
                      }
                      pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_cuenta_corriente.pdf`);
               } catch (e) {
