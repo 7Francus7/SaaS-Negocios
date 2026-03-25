@@ -372,6 +372,11 @@ export default function POSPage() {
                      setSelectedCustomerId(null);
                      setShowSuccessModal(true);
                      playCashSound();
+
+                     // Auto-imprimir ticket al confirmar la venta
+                     setTimeout(() => {
+                            window.print();
+                     }, 300);
               } catch (e: any) {
                      toast(e.message || "Error al procesar la venta", "error");
               } finally {
@@ -753,10 +758,11 @@ export default function POSPage() {
                                    <div className="space-y-1">
                                           <p className="text-2xl font-black text-gray-900">Venta Registrada</p>
                                           <p className="text-sm text-gray-500 font-medium">Monto total: <span className="text-lg font-bold text-gray-900">{formatCurrency(lastSale?.total || 0)}</span></p>
+                                          <p className="text-xs text-emerald-600 font-bold mt-2">✅ Ticket enviado a imprimir automáticamente</p>
                                    </div>
                                    <div className="flex flex-col gap-3 mt-8">
-                                          <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-white border-2 border-gray-100 text-gray-700 font-bold rounded-xl hover:border-gray-200 transition-all">
-                                                 <Printer className="h-5 w-5" /> Imprimir Comprobante
+                                          <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-gray-100 text-gray-700 font-bold rounded-xl hover:border-gray-200 transition-all text-sm">
+                                                 <Printer className="h-4 w-4" /> Reimprimir Ticket
                                           </button>
                                           <button onClick={handleNewSale} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
                                                  Nueva Venta <ArrowRight className="h-5 w-5" />

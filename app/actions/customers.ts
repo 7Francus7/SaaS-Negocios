@@ -251,6 +251,99 @@ export async function closeCustomerMonth(customerId: number) {
        });
 }
 
+/**
+ * Cierre automático de cuentas corrientes.
+ * Se ejecuta al cargar la app: si hoy es el último día del mes (o si ya pasó
+ * el último día y no se cerró), cierra todas las cuentas corrientes con deuda 
+ * positiva, moviendo currentBalance → closedBalance.
+ */
+export async function autoCloseMonthlyAccounts() {
+        const storeId = await getStoreId();
+        const now = new Date();
+        
+        // Calcular el último día del mes actual
+        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const currentDay = now.getDate();
+        
+        // Solo ejecutar el último día del mes
+        if (currentDay !== lastDayOfMonth) {
+                return { executed: false, reason: "No es el último día del mes." };
+        }
+        
+        // Verificar si ya se ejecutó este mes usando StoreSetting
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const lastCloseRecord = await prisma.storeSetting.findUnique({
+                where: { storeId_key: { storeId, key: "last_auto_month_close" } }
+        });
+        
+        if (lastCloseRecord && lastCloseRecord.value === monthKey) {
+                return { executed: false, reason: "Ya se cerró este mes." };
+        }
+        
+        // Obtener todos los clientes con deuda actual positiva
+        const customersWithDebt = await prisma.customer.findMany({
+                where: {
+                        storeId,
+                        active: true,
+                        currentBalance: { gt: 0 }
+                }
+        });
+        
+        if (customersWithDebt.length === 0) {
+                // Marcar como cerrado aunque no haya deudas
+                await prisma.storeSetting.upsert({
+                        where: { storeId_key: { storeId, key: "last_auto_month_close" } },
+                        update: { value: monthKey },
+                        create: { storeId, key: "last_auto_month_close", value: monthKey, description: "Último cierre automático de cuentas corrientes" }
+                });
+                return { executed: true, closed: 0, reason: "No hay clientes con deuda para cerrar." };
+        }
+        
+        // Cerrar cada cuenta en una transacción
+        const closedCount = await prisma.$transaction(async (tx) => {
+                let count = 0;
+                
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                const monthName = monthNames[now.getMonth()];
+                
+                for (const customer of customersWithDebt) {
+                        const amountToMove = customer.currentBalance;
+                        
+                        await tx.customer.update({
+                                where: { id: customer.id },
+                                data: {
+                                        currentBalance: 0,
+                                        closedBalance: { increment: amountToMove }
+                                }
+                        });
+                        
+                        await tx.accountMovement.create({
+                                data: {
+                                        customerId: customer.id,
+                                        movementType: "MONTH_CLOSE",
+                                        amount: amountToMove,
+                                        description: `Cierre Automático de ${monthName} ${now.getFullYear()}`,
+                                        timestamp: new Date()
+                                }
+                        });
+                        
+                        count++;
+                }
+                
+                return count;
+        });
+        
+        // Registrar que ya se hizo el cierre de este mes
+        await prisma.storeSetting.upsert({
+                where: { storeId_key: { storeId, key: "last_auto_month_close" } },
+                update: { value: monthKey },
+                create: { storeId, key: "last_auto_month_close", value: monthKey, description: "Último cierre automático de cuentas corrientes" }
+        });
+        
+        return { executed: true, closed: closedCount };
+}
+
 
 export async function removeProductFromAccountSale(movementId: number, saleId: number, saleItemId: number) {
        const storeId = await getStoreId();

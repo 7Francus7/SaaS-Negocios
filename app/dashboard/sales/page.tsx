@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Receipt, Search, XCircle, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { Receipt, Search, XCircle, ChevronDown, ChevronUp, Filter, Printer } from "lucide-react";
 import { getSalesHistory, voidSale } from "@/app/actions/sales-history";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
+import { Ticket } from "@/components/pos/ticket";
+import { getStoreSettings } from "@/app/actions/settings";
 
 interface SaleItem {
        id: number;
@@ -40,6 +42,8 @@ export default function SalesHistoryPage() {
        const [filterMethod, setFilterMethod] = useState<string>("");
        const [dateFrom, setDateFrom] = useState("");
        const [dateTo, setDateTo] = useState("");
+       const [reprintData, setReprintData] = useState<any>(null);
+       const [storeSettings, setStoreSettings] = useState<any>(null);
 
        const fetchSales = useCallback(async () => {
               setLoading(true);
@@ -59,6 +63,33 @@ export default function SalesHistoryPage() {
        }, [filterMethod, dateFrom, dateTo]);
 
        useEffect(() => { fetchSales(); }, [fetchSales]);
+       useEffect(() => { getStoreSettings().then(setStoreSettings); }, []);
+
+       const handleReprint = (sale: Sale) => {
+              const ticketData = {
+                     items: sale.items.map(item => ({
+                            quantity: item.quantity,
+                            productName: item.productNameSnapshot,
+                            variantName: "",
+                            price: Number(item.unitPrice),
+                     })),
+                     total: Number(sale.totalAmount),
+                     date: new Date(sale.timestamp),
+                     paymentMethod: PAYMENT_LABELS[sale.paymentMethod] || sale.paymentMethod,
+                     store: storeSettings ? {
+                            name: storeSettings.name,
+                            address: storeSettings.address,
+                            phone: storeSettings.phone,
+                            cuit: storeSettings.cuit,
+                            ticketFooter: storeSettings.ticketFooter,
+                            ticketInstagram: storeSettings.ticketInstagram,
+                     } : undefined,
+              };
+              setReprintData(ticketData);
+              setTimeout(() => {
+                     window.print();
+              }, 300);
+       };
 
        const handleVoid = async (saleId: number) => {
               if (!confirm(`¿Estás seguro de ANULAR la venta #${saleId}? Esto revertirá el stock y los pagos asociados.`)) return;
@@ -74,6 +105,7 @@ export default function SalesHistoryPage() {
 
        return (
               <div className="space-y-5 lg:space-y-6">
+                     <Ticket data={reprintData} />
                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                             <div>
                                    <h1 className="text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -172,6 +204,13 @@ export default function SalesHistoryPage() {
                                                                       </td>
                                                                       <td className="px-3 lg:px-6 py-3 text-right">
                                                                              <div className="flex items-center justify-end gap-1 lg:gap-2">
+                                                                                    <button
+                                                                                           onClick={(e) => { e.stopPropagation(); handleReprint(sale); }}
+                                                                                           className="text-gray-400 hover:text-blue-600 p-1"
+                                                                                           title="Reimprimir ticket"
+                                                                                    >
+                                                                                           <Printer className="h-4 w-4" />
+                                                                                    </button>
                                                                                     <button className="text-gray-400 hover:text-blue-600 p-1">
                                                                                            {expandedSale === sale.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                                                                     </button>

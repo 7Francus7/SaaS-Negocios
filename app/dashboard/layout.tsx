@@ -40,6 +40,17 @@ export default function DashboardLayout({
                      }
               });
 
+              // Auto-cierre de cuentas corrientes si es el último día del mes
+              import("@/app/actions/customers").then(mod => {
+                     mod.autoCloseMonthlyAccounts().then((result) => {
+                            if (result?.executed && result?.closed && result.closed > 0) {
+                                   console.log(`✅ Cierre automático de mes: ${result.closed} cuentas cerradas.`);
+                            }
+                     }).catch(err => {
+                            console.error("Error en cierre automático de cuentas:", err);
+                     });
+              });
+
               return () => {
                      isMounted = false;
               };
