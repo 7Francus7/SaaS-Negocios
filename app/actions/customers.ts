@@ -69,13 +69,30 @@ export async function registerPayment(
                             throw new Error("Cliente no encontrado.");
                      }
 
-                     // Apply Payment to currentBalance (reduces debt)
-                     await tx.customer.update({
-                            where: { id: customerId },
-                            data: {
-                                   currentBalance: { decrement: amount },
-                            }
-                     });
+                     // Apply Payment: first reduce closedBalance (old debt), then currentBalance
+                      const closedBal = Number(customer.closedBalance || 0);
+                      const currentBal = Number(customer.currentBalance || 0);
+                      
+                      let deductFromClosed = 0;
+                      let deductFromCurrent = 0;
+                      
+                      if (amount > 0) {
+                             // Positive payment → reduce debt
+                             // First pay off old (closed) debt, then current
+                             deductFromClosed = Math.min(amount, closedBal);
+                             deductFromCurrent = amount - deductFromClosed;
+                      } else {
+                             // Negative amount (refund/adjustment) → add to current balance
+                             deductFromCurrent = amount; // will be negative, so decrement negative = increment
+                      }
+                      
+                      await tx.customer.update({
+                             where: { id: customerId },
+                             data: {
+                                    closedBalance: { decrement: deductFromClosed },
+                                    currentBalance: { decrement: deductFromCurrent },
+                             }
+                      });
 
                      // Log Movement
                      await tx.accountMovement.create({

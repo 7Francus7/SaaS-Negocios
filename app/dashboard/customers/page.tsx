@@ -382,7 +382,9 @@ export default function CustomersPage() {
               y += H_TABLE_HEAD;
 
               // Table rows
-              let runningBalance = customer.closedBalance || 0;
+              // Start from 0 because MONTH_CLOSE movements already carry over
+              // the old balance. Starting from closedBalance would double-count.
+              let runningBalance = 0;
 
               if (movements.length === 0) {
                      roundRect(PAD, y, tableW, ROW_H * 2, 0);
@@ -514,7 +516,7 @@ export default function CustomersPage() {
                      const { jsPDF } = await import('jspdf');
                      const { getStoreSettings } = await import('@/app/actions/settings');
                      const store = await getStoreSettings();
-                     const canvas = buildBoletaCanvas(selectedCustomer, history, store);
+                     const canvas = buildBoletaCanvas(selectedCustomer, [...history].reverse(), store);
                      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                      const pageW = pdf.internal.pageSize.getWidth();
                      const pageH = pdf.internal.pageSize.getHeight();
@@ -564,7 +566,7 @@ export default function CustomersPage() {
               try {
                      const { getStoreSettings } = await import('@/app/actions/settings');
                      const store = await getStoreSettings();
-                     const canvas = buildBoletaCanvas(selectedCustomer, history, store);
+                     const canvas = buildBoletaCanvas(selectedCustomer, [...history].reverse(), store);
                      const link = document.createElement('a');
                      link.download = `${selectedCustomer.name.replace(/\s+/g, '_')}_cuenta_corriente.jpg`;
                      link.href = canvas.toDataURL('image/jpeg', 0.97);
