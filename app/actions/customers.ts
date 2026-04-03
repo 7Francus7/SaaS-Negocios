@@ -128,16 +128,157 @@ export async function registerPayment(
                                    throw new Error("No hay turno de caja abierto para registrar el pago en EFECTIVO. Por favor, abra la caja primero.");
                             }
                      }
-                     // For other methods (TRANSFERENCIA, DEBITO, etc.), we don't touch the cash box.
+                      // Read updated customer balances
+                      const updatedCustomer = await tx.customer.findUnique({
+                             where: { id: customerId },
+                      });
 
-                     return customer;
-              });
+                      return {
+                             customerName: customer.name,
+                             customerDni: customer.dni,
+                             customerPhone: customer.phone,
+                             previousClosedBalance: closedBal,
+                             previousCurrentBalance: currentBal,
+                             paidAmount: amount,
+                             paymentMethod,
+                             deductedFromClosed: deductFromClosed,
+                             deductedFromCurrent: deductFromCurrent,
+                             remainingClosedBalance: Number(updatedCustomer?.closedBalance || 0),
+                             remainingCurrentBalance: Number(updatedCustomer?.currentBalance || 0),
+                             timestamp: new Date().toISOString(),
+                      };
+               });
 
-              return { success: true, count: 1 };
+               return { success: true, count: 1, receiptData: result };
        } catch (error: any) {
               console.error("registerPayment error:", error);
               return { error: error.message || "Error procesando el pago." };
        }
+}
+
+/**
+ * Returns customer history grouped by month periods.
+ * Each month group contains movements between MONTH_CLOSE events.
+ * The current (open) month is always the first group.
+ */
+export async function getCustomerHistoryByMonth(customerId: number) {
+       const storeId = await getStoreId();
+
+       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+       if (!customer || customer.storeId !== storeId) return { months: [], customer: null };
+
+       // Get ALL movements (no limit) sorted chronologically
+       const allMovements = await prisma.accountMovement.findMany({
+              where: { customerId },
+              orderBy: { timestamp: "asc" },
+       });
+
+       // Extract sale IDs for product details
+       const saleIds: number[] = [];
+       for (const h of allMovements) {
+              const match = h.description?.match(/Venta #(\d+)/);
+              if (match) saleIds.push(parseInt(match[1]));
+       }
+
+       const salesWithItems = saleIds.length > 0
+              ? await prisma.sale.findMany({
+                     where: { id: { in: saleIds }, storeId },
+                     include: { items: true }
+              })
+              : [];
+
+       const salesMap = new Map(salesWithItems.map(s => [s.id, s]));
+
+       const enrichMovement = (h: any) => {
+              const match = h.description?.match(/Venta #(\d+)/);
+              const sale = match ? salesMap.get(parseInt(match[1])) : undefined;
+              return {
+                     ...h,
+                     amount: Number(h.amount),
+                     saleItems: (sale?.items || []).map((item: any) => ({
+                            id: item.id,
+                            productNameSnapshot: item.productNameSnapshot,
+                            quantity: Number(item.quantity),
+                            unitPrice: Number(item.unitPrice),
+                            subtotal: Number(item.subtotal),
+                     }))
+              };
+       };
+
+       // Group movements by month using MONTH_CLOSE as boundary
+       const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+       interface MonthGroup {
+              label: string;
+              monthKey: string; // "YYYY-MM" 
+              movements: any[];
+              total: number;
+              isCurrent: boolean;
+       }
+
+       const months: MonthGroup[] = [];
+       let currentGroupMovements: any[] = [];
+       let currentGroupStartDate: Date | null = null;
+
+       for (const mov of allMovements) {
+              if (mov.movementType === "MONTH_CLOSE") {
+                     // Save the accumulated group as a closed month
+                     if (currentGroupMovements.length > 0 || true) {
+                            const closeDate = new Date(mov.timestamp);
+                            const monthLabel = `${monthNames[closeDate.getMonth()]} ${closeDate.getFullYear()}`;
+                            const monthKey = `${closeDate.getFullYear()}-${String(closeDate.getMonth() + 1).padStart(2, '0')}`;
+                            
+                            const enrichedMovements = currentGroupMovements.map(enrichMovement);
+                            const total = enrichedMovements.reduce((sum: number, m: any) => sum + m.amount, 0);
+
+                            months.push({
+                                   label: monthLabel,
+                                   monthKey,
+                                   movements: enrichedMovements,
+                                   total,
+                                   isCurrent: false,
+                            });
+                     }
+                     currentGroupMovements = [];
+                     currentGroupStartDate = new Date(mov.timestamp);
+              } else {
+                     currentGroupMovements.push(mov);
+              }
+       }
+
+       // The remaining movements are the "current" open month
+       const now = new Date();
+       const currentMonthLabel = `${monthNames[now.getMonth()]} ${now.getFullYear()} (Actual)`;
+       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+       
+       const enrichedCurrent = currentGroupMovements.map(enrichMovement);
+       const currentTotal = enrichedCurrent.reduce((sum: number, m: any) => sum + m.amount, 0);
+
+       months.push({
+              label: currentMonthLabel,
+              monthKey: currentMonthKey,
+              movements: enrichedCurrent,
+              total: currentTotal,
+              isCurrent: true,
+       });
+
+       // Reverse so current month is first, oldest months last
+       months.reverse();
+
+       return {
+              months,
+              customer: {
+                     id: customer.id,
+                     name: customer.name,
+                     dni: customer.dni,
+                     phone: customer.phone,
+                     address: customer.address,
+                     currentBalance: Number(customer.currentBalance),
+                     closedBalance: Number(customer.closedBalance || 0),
+                     creditLimit: Number(customer.creditLimit),
+              }
+       };
 }
 
 export async function getCustomerHistory(customerId: number) {

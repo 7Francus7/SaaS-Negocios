@@ -3,9 +3,8 @@
 import React from "react";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale } from "@/app/actions/customers";
-import { Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus } from "lucide-react";
+import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare, Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus, Printer, FileText, Receipt } from "lucide-react";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale, getCustomerHistoryByMonth } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
@@ -47,10 +46,19 @@ export default function CustomersPage() {
               address: "",
               creditLimit: 0
        });
-       const [paymentAmount, setPaymentAmount] = useState("");
-       const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("EFECTIVO");
+        const [paymentAmount, setPaymentAmount] = useState("");
+        const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("EFECTIVO");
 
-       const [error, setError] = useState("");
+        // Payment Receipt
+        const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+        const [receiptData, setReceiptData] = useState<any>(null);
+
+        // Month-by-month history
+        const [isMonthHistoryOpen, setIsMonthHistoryOpen] = useState(false);
+        const [monthGroups, setMonthGroups] = useState<any[]>([]);
+        const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+
+        const [error, setError] = useState("");
 
        const fetchCustomers = useCallback(async () => {
               setLoading(true);
@@ -85,7 +93,7 @@ export default function CustomersPage() {
               if (!selectedCustomer) return;
               const amountNum = Number(paymentAmount);
               if (isNaN(amountNum) || amountNum === 0) {
-                     alert("Ingrese un monto válido a abonar (distinto de 0).");
+                     alert("Ingrese un monto vÃ¡lido a abonar (distinto de 0).");
                      return;
               }
               try {
@@ -94,10 +102,16 @@ export default function CustomersPage() {
                             alert(res.error);
                             return;
                      }
+                     // Store receipt data and show receipt modal
+                     if (res?.receiptData) {
+                            setReceiptData(res.receiptData);
+                            setIsPaymentOpen(false);
+                            setIsReceiptOpen(true);
+                     } else {
+                            setIsPaymentOpen(false);
+                     }
                      setPaymentAmount("");
                      setSelectedPaymentMethod("EFECTIVO");
-                     setIsPaymentOpen(false);
-                     setSelectedCustomer(null);
                      fetchCustomers();
               } catch (e: any) { alert(e.message); }
        };
@@ -116,7 +130,7 @@ export default function CustomersPage() {
        };
 
        const handleDelete = async (customer: Customer) => {
-              if (!confirm(`¿Estás seguro de eliminar a "${customer.name}"? Sus movimientos de cuenta se conservarán.`)) return;
+              if (!confirm(`Â¿EstÃ¡s seguro de eliminar a "${customer.name}"? Sus movimientos de cuenta se conservarÃ¡n.`)) return;
               try {
                      await deleteCustomer(customer.id);
                      fetchCustomers();
@@ -159,7 +173,7 @@ export default function CustomersPage() {
        };
 
        const handleRemoveItem = async (movementId: number, saleId: number, itemId: number, itemName: string) => {
-              if (!confirm(`¿Seguro que deseas eliminar/devolver el producto ${itemName} de esta cuenta?`)) return;
+              if (!confirm(`Â¿Seguro que deseas eliminar/devolver el producto ${itemName} de esta cuenta?`)) return;
               try {
                      await removeProductFromAccountSale(movementId, saleId, itemId);
                      if (selectedCustomer) {
@@ -175,7 +189,7 @@ export default function CustomersPage() {
                      alert("El cliente no tiene deuda actual para cerrar.");
                      return;
               }
-              if (!confirm(`¿Cerrar el mes para ${customer.name}? Esto separará la deuda actual y comenzará un nuevo mes en 0.`)) return;
+              if (!confirm(`Â¿Cerrar el mes para ${customer.name}? Esto separarÃ¡ la deuda actual y comenzarÃ¡ un nuevo mes en 0.`)) return;
 
               try {
                      await closeCustomerMonth(customer.id);
@@ -207,7 +221,7 @@ export default function CustomersPage() {
               URL.revokeObjectURL(url);
        };
 
-       // ─── Boleta builder (pure Canvas, no DOM capture) ───────────────────
+       // â”€â”€â”€ Boleta builder (pure Canvas, no DOM capture) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
        const buildBoletaCanvas = (
               customer: Customer,
               movements: any[],
@@ -237,7 +251,7 @@ export default function CustomersPage() {
               ctx.scale(SC, SC);
               ctx.imageSmoothingEnabled = true;
 
-              // ── Helpers ──────────────────────────────────────────────────
+              // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               const fmtCurrency = (n: number) =>
                      new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n);
 
@@ -260,13 +274,13 @@ export default function CustomersPage() {
                      ctx.closePath();
               };
 
-              // ── Background ───────────────────────────────────────────────
+              // â”€â”€ Background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               ctx.fillStyle = '#f1f5f9';
               ctx.fillRect(0, 0, W, TOTAL_H);
 
               let y = 0;
 
-              // ── HEADER ───────────────────────────────────────────────────
+              // â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               ctx.fillStyle = '#1e3a5f';
               ctx.fillRect(0, 0, W, H_HEADER);
 
@@ -280,7 +294,7 @@ export default function CustomersPage() {
 
               ctx.font = `13px Arial`;
               ctx.fillStyle = '#93c5fd';
-              const headerLine2Parts = [store.address, store.phone ? `Tel: ${store.phone}` : '', store.cuit ? `CUIT: ${store.cuit}` : ''].filter(Boolean).join('   •   ');
+              const headerLine2Parts = [store.address, store.phone ? `Tel: ${store.phone}` : '', store.cuit ? `CUIT: ${store.cuit}` : ''].filter(Boolean).join('   â€¢   ');
               ctx.fillText(headerLine2Parts, PAD, 62);
 
               // Title right-aligned
@@ -298,7 +312,7 @@ export default function CustomersPage() {
 
               y = H_HEADER + SECTION_GAP;
 
-              // ── CLIENT CARD ──────────────────────────────────────────────
+              // â”€â”€ CLIENT CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               roundRect(PAD, y, W - PAD * 2, H_CLIENT, 8);
               ctx.fillStyle = '#ffffff';
               ctx.fill();
@@ -324,11 +338,11 @@ export default function CustomersPage() {
                      customer.phone ? `Tel: ${customer.phone}` : '',
                      customer.address ? `Dir: ${customer.address}` : '',
               ].filter(Boolean).join('     ');
-              ctx.fillText(clientInfoParts || 'Sin información adicional', PAD + 14, y + 68);
+              ctx.fillText(clientInfoParts || 'Sin informaciÃ³n adicional', PAD + 14, y + 68);
 
               y += H_CLIENT + SECTION_GAP;
 
-              // ── SUMMARY CARDS ────────────────────────────────────────────
+              // â”€â”€ SUMMARY CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               const cardW = (W - PAD * 2 - 12) / 3;
 
               const drawSummaryCard = (x: number, label: string, value: string, bg: string, textColor: string) => {
@@ -357,7 +371,7 @@ export default function CustomersPage() {
 
               y += H_SUMMARY + SECTION_GAP;
 
-              // ── MOVEMENTS TABLE ──────────────────────────────────────────
+              // â”€â”€ MOVEMENTS TABLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               const tableW = W - PAD * 2;
               const colWidths = [110, tableW - 110 - 130 - 120, 130, 120];
               const colX = [PAD, PAD + colWidths[0], PAD + colWidths[0] + colWidths[1], PAD + colWidths[0] + colWidths[1] + colWidths[2]];
@@ -369,7 +383,7 @@ export default function CustomersPage() {
 
               ctx.font = `bold 10px Arial`;
               ctx.fillStyle = '#ffffff';
-              ['FECHA', 'DESCRIPCIÓN / CONCEPTO', 'IMPORTE', 'SALDO ACUMULADO'].forEach((header, i) => {
+              ['FECHA', 'DESCRIPCIÃ“N / CONCEPTO', 'IMPORTE', 'SALDO ACUMULADO'].forEach((header, i) => {
                      const align = i >= 2 ? 'right' : 'left';
                      if (align === 'right') {
                             const tw = ctx.measureText(header).width;
@@ -433,7 +447,7 @@ export default function CustomersPage() {
                             while (ctx.measureText(desc).width > maxDescW && desc.length > 0) {
                                    desc = desc.slice(0, -1);
                             }
-                            if (desc !== mov.description) desc += '…';
+                            if (desc !== mov.description) desc += 'â€¦';
                             ctx.fillText(desc, colX[1] + 6, cellY);
 
                             // Amount
@@ -467,13 +481,13 @@ export default function CustomersPage() {
                                    while (ctx.measureText(itemName).width > itemNameMaxW && itemName.length > 0) {
                                           itemName = itemName.slice(0, -1);
                                    }
-                                   if (itemName !== item.productNameSnapshot) itemName += '…';
+                                   if (itemName !== item.productNameSnapshot) itemName += 'â€¦';
                                    ctx.fillText(itemName, colX[1] + 14, itemCellY);
 
-                                   // Qty × unit price (right-aligned in amount col)
+                                   // Qty Ã— unit price (right-aligned in amount col)
                                    ctx.font = `10px Arial`;
                                    ctx.fillStyle = '#64748b';
-                                   const qtyText = `${item.quantity} × ${fmtCurrency(item.unitPrice)}`;
+                                   const qtyText = `${item.quantity} Ã— ${fmtCurrency(item.unitPrice)}`;
                                    const qtyW = ctx.measureText(qtyText).width;
                                    ctx.fillText(qtyText, colX[2] + colWidths[2] - 10 - qtyW, itemCellY);
 
@@ -492,7 +506,7 @@ export default function CustomersPage() {
 
               y += SECTION_GAP;
 
-              // ── FOOTER ───────────────────────────────────────────────────
+              // â”€â”€ FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               ctx.fillStyle = '#1e3a5f';
               ctx.fillRect(0, y, W, H_FOOTER);
               ctx.fillStyle = '#2563eb';
@@ -501,10 +515,10 @@ export default function CustomersPage() {
               ctx.font = `13px Arial`;
               ctx.fillStyle = '#93c5fd';
               ctx.textAlign = 'center';
-              ctx.fillText(store.ticketFooter || '¡Gracias por su preferencia!', W / 2, y + 28);
+              ctx.fillText(store.ticketFooter || 'Â¡Gracias por su preferencia!', W / 2, y + 28);
               ctx.font = `11px Arial`;
               ctx.fillStyle = '#60a5fa';
-              ctx.fillText('Este documento es un resumen de cuenta corriente — No es comprobante fiscal', W / 2, y + 46);
+              ctx.fillText('Este documento es un resumen de cuenta corriente â€” No es comprobante fiscal', W / 2, y + 46);
               ctx.textAlign = 'left';
 
               return canvas;
@@ -557,7 +571,7 @@ export default function CustomersPage() {
                      pdf.save(`${selectedCustomer.name.replace(/\s+/g, '_')}_cuenta_corriente.pdf`);
               } catch (e) {
                      console.error('Error al generar PDF:', e);
-                     alert('No se pudo generar el PDF. Intentá de nuevo.');
+                     alert('No se pudo generar el PDF. IntentÃ¡ de nuevo.');
               }
        };
 
@@ -575,7 +589,7 @@ export default function CustomersPage() {
                      document.body.removeChild(link);
               } catch (e) {
                      console.error('Error al generar JPG:', e);
-                     alert('No se pudo generar la imagen. Intentá de nuevo.');
+                     alert('No se pudo generar la imagen. IntentÃ¡ de nuevo.');
               }
        };
 
@@ -590,6 +604,248 @@ export default function CustomersPage() {
                      console.error(e);
               } finally {
                      setLoading(false);
+              }
+       };
+
+       // â”€â”€â”€ Month-by-month history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       const handleViewMonthHistory = async (customer: Customer) => {
+              setSelectedCustomer(customer);
+              setLoading(true);
+              try {
+                     const result = await getCustomerHistoryByMonth(customer.id);
+                     setMonthGroups(result.months || []);
+                     setExpandedMonth(null);
+                     setIsMonthHistoryOpen(true);
+              } catch (e) {
+                     console.error(e);
+              } finally {
+                     setLoading(false);
+              }
+       };
+
+       const downloadMonthPDF = async (monthGroup: any) => {
+              if (!selectedCustomer) return;
+              try {
+                     const { jsPDF } = await import('jspdf');
+                     const { getStoreSettings } = await import('@/app/actions/settings');
+                     const store = await getStoreSettings();
+                     const canvas = buildBoletaCanvas(selectedCustomer, monthGroup.movements, store);
+                     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                     const pageW = pdf.internal.pageSize.getWidth();
+                     const pageH = pdf.internal.pageSize.getHeight();
+                     const canvasPageH = Math.floor(canvas.width * pageH / pageW);
+                     let pageStartPx = 0;
+                     let isFirst = true;
+                     while (pageStartPx < canvas.height) {
+                            const cutPx = Math.min(pageStartPx + canvasPageH, canvas.height);
+                            if (!isFirst) pdf.addPage();
+                            isFirst = false;
+                            const sliceH = cutPx - pageStartPx;
+                            const sliceCanvas = document.createElement('canvas');
+                            sliceCanvas.width = canvas.width;
+                            sliceCanvas.height = sliceH;
+                            const sliceCtx = sliceCanvas.getContext('2d')!;
+                            sliceCtx.drawImage(canvas, 0, pageStartPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+                            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.97);
+                            pdf.addImage(sliceData, 'JPEG', 0, 0, pageW, pageW * sliceH / canvas.width);
+                            pageStartPx = cutPx;
+                     }
+                     const safeName = selectedCustomer.name.replace(/\s+/g, '_');
+                     pdf.save(`${safeName}_${monthGroup.monthKey}.pdf`);
+              } catch (e) {
+                     console.error('Error al generar PDF del mes:', e);
+                     alert('No se pudo generar el PDF. IntentÃ¡ de nuevo.');
+              }
+       };
+
+       const downloadMonthJPG = async (monthGroup: any) => {
+              if (!selectedCustomer) return;
+              try {
+                     const { getStoreSettings } = await import('@/app/actions/settings');
+                     const store = await getStoreSettings();
+                     const canvas = buildBoletaCanvas(selectedCustomer, monthGroup.movements, store);
+                     const link = document.createElement('a');
+                     const safeName = selectedCustomer.name.replace(/\s+/g, '_');
+                     link.download = `${safeName}_${monthGroup.monthKey}.jpg`;
+                     link.href = canvas.toDataURL('image/jpeg', 0.97);
+                     document.body.appendChild(link);
+                     link.click();
+                     document.body.removeChild(link);
+              } catch (e) {
+                     console.error('Error al generar JPG del mes:', e);
+                     alert('No se pudo generar la imagen. IntentÃ¡ de nuevo.');
+              }
+       };
+
+       // â”€â”€â”€ Payment Receipt Printer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       const printPaymentReceipt = async () => {
+              if (!receiptData) return;
+              try {
+                     const { getStoreSettings } = await import('@/app/actions/settings');
+                     const store = await getStoreSettings();
+                     const paperWidthMm = Number(localStorage.getItem("paperWidthMm") || "58");
+                     const PAPER_PROFILES: Record<number, { fontSize: number }> = {
+                            30: { fontSize: 9 },
+                            50: { fontSize: 10 },
+                            58: { fontSize: 11 },
+                            80: { fontSize: 12 }
+                     };
+                     const profile = PAPER_PROFILES[paperWidthMm] || PAPER_PROFILES[58];
+                     const fs = profile.fontSize;
+
+                     const fmtCurr = (n: number) =>
+                            new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n);
+                     const fmtDate2 = (ts: string) => {
+                            const d = new Date(ts);
+                            return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                     };
+
+                     const totalPreviousDebt = receiptData.previousClosedBalance + receiptData.previousCurrentBalance;
+                     const totalRemainingDebt = receiptData.remainingClosedBalance + receiptData.remainingCurrentBalance;
+
+                     const printWindow = window.open('', '_blank', 'width=400,height=600');
+                     if (!printWindow) {
+                            alert('No se pudo abrir la ventana de impresiÃ³n.');
+                            return;
+                     }
+
+                     printWindow.document.write(`
+                     <!DOCTYPE html>
+                     <html>
+                     <head>
+                            <meta charset="utf-8">
+                            <title>Comprobante de Pago</title>
+                            <style>
+                                   @page { margin: 0; }
+                                   * { margin: 0; padding: 0; box-sizing: border-box; }
+                                   body { 
+                                          font-family: Arial, sans-serif; 
+                                          font-size: ${fs}px; 
+                                          padding: 2mm 4mm;
+                                          color: #000;
+                                          max-width: 100%;
+                                   }
+                                   .center { text-align: center; }
+                                   .bold { font-weight: bold; }
+                                   .sep { border-top: 1px dashed #000; margin: 4px 0; }
+                                   .sep-double { border-top: 2px solid #000; margin: 6px 0; }
+                                   .row { display: flex; justify-content: space-between; padding: 1px 0; }
+                                   .big { font-size: ${fs + 4}px; font-weight: 900; }
+                                   .small { font-size: ${fs - 2}px; color: #555; }
+                                   .amount-paid { 
+                                          font-size: ${fs + 6}px; 
+                                          font-weight: 900; 
+                                          text-align: center;
+                                          padding: 6px;
+                                          background: #000;
+                                          color: #fff;
+                                          margin: 4px 0;
+                                   }
+                                   .remaining {
+                                          text-align: center;
+                                          padding: 4px;
+                                          border: 2px solid #000;
+                                          margin: 4px 0;
+                                   }
+                            </style>
+                     </head>
+                     <body>
+                            <div class="center bold" style="font-size: ${fs + 6}px; text-transform: uppercase; letter-spacing: 1px;">
+                                   ${store.name || 'MI NEGOCIO'}
+                            </div>
+                            <div class="center small">
+                                   ${store.address ? store.address + '<br>' : ''}
+                                   ${store.phone ? 'Tel: ' + store.phone : ''}
+                                   ${store.cuit ? ' â€¢ CUIT: ' + store.cuit : ''}
+                            </div>
+                            
+                            <div class="sep-double"></div>
+                            
+                            <div class="center bold" style="font-size: ${fs + 2}px; text-transform: uppercase; letter-spacing: 3px;">
+                                   COMPROBANTE DE PAGO
+                            </div>
+                            
+                            <div class="sep"></div>
+                            
+                            <div class="row small">
+                                   <span>FECHA:</span>
+                                   <span class="bold">${fmtDate2(receiptData.timestamp)}</span>
+                            </div>
+                            
+                            <div class="sep"></div>
+                            
+                            <div class="row">
+                                   <span class="bold">CLIENTE:</span>
+                                   <span class="bold">${receiptData.customerName}</span>
+                            </div>
+                            ${receiptData.customerDni ? `<div class="row small"><span>DNI:</span><span>${receiptData.customerDni}</span></div>` : ''}
+                            
+                            <div class="sep"></div>
+                            
+                            <div class="row small">
+                                   <span>DEUDA ANTERIOR:</span>
+                                   <span>${fmtCurr(receiptData.previousClosedBalance)}</span>
+                            </div>
+                            <div class="row small">
+                                   <span>DEUDA MES ACTUAL:</span>
+                                   <span>${fmtCurr(receiptData.previousCurrentBalance)}</span>
+                            </div>
+                            <div class="row bold">
+                                   <span>TOTAL ADEUDADO:</span>
+                                   <span>${fmtCurr(totalPreviousDebt)}</span>
+                            </div>
+                            
+                            <div class="sep-double"></div>
+                            
+                            <div class="row small">
+                                   <span>MÃ‰TODO DE PAGO:</span>
+                                   <span class="bold">${receiptData.paymentMethod}</span>
+                            </div>
+                            
+                            <div class="amount-paid">
+                                   ABONÃ“: ${fmtCurr(receiptData.paidAmount)}
+                            </div>
+                            
+                            ${receiptData.deductedFromClosed > 0 ? `
+                            <div class="row small">
+                                   <span>Aplicado a deuda anterior:</span>
+                                   <span>-${fmtCurr(receiptData.deductedFromClosed)}</span>
+                            </div>
+                            ` : ''}
+                            ${receiptData.deductedFromCurrent > 0 ? `
+                            <div class="row small">
+                                   <span>Aplicado a deuda actual:</span>
+                                   <span>-${fmtCurr(receiptData.deductedFromCurrent)}</span>
+                            </div>
+                            ` : ''}
+                            
+                            <div class="sep"></div>
+                            
+                            <div class="remaining">
+                                   <div class="small bold" style="text-transform: uppercase; letter-spacing: 2px;">SALDO RESTANTE</div>
+                                   <div class="big">${fmtCurr(totalRemainingDebt)}</div>
+                                   <div class="small">Anterior: ${fmtCurr(receiptData.remainingClosedBalance)} â€¢ Actual: ${fmtCurr(receiptData.remainingCurrentBalance)}</div>
+                            </div>
+                            
+                            <div class="sep-double"></div>
+                            
+                            <div class="center bold" style="margin-top: 6px; font-size: ${fs}px;">
+                                   ${store.ticketFooter || 'Â¡Gracias por su pago!'}
+                            </div>
+                            <div class="center small" style="margin-top: 4px;">
+                                   Este comprobante certifica el pago recibido
+                            </div>
+                     </body>
+                     </html>
+                     `);
+                     printWindow.document.close();
+                     setTimeout(() => {
+                            printWindow.print();
+                            printWindow.close();
+                     }, 300);
+              } catch (e) {
+                     console.error('Error al imprimir comprobante:', e);
+                     alert('No se pudo imprimir el comprobante.');
               }
        };
 
@@ -618,7 +874,7 @@ export default function CustomersPage() {
                      <div className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center gap-3 shadow-sm">
                             <Search className="text-gray-400 h-5 w-5" />
                             <input
-                                   placeholder="Buscar por nombre, DNI o teléfono..."
+                                   placeholder="Buscar por nombre, DNI o telÃ©fono..."
                                    className="flex-1 outline-none text-gray-700 font-medium"
                                    value={searchQuery}
                                    onChange={e => setSearchQuery(e.target.value)}
@@ -639,7 +895,7 @@ export default function CustomersPage() {
                                    </div>
                             ) : filtered.length === 0 ? (
                                    <div className="col-span-full py-20 text-center text-gray-400 font-medium">
-                                          {searchQuery ? "No se encontraron clientes con esa búsqueda." : "No hay clientes registrados."}
+                                          {searchQuery ? "No se encontraron clientes con esa bÃºsqueda." : "No hay clientes registrados."}
                                    </div>
                             ) : filtered.map(customer => (
                                    <div key={customer.id} className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group">
@@ -669,7 +925,7 @@ export default function CustomersPage() {
                                                                <Hash className="h-3 w-3" />
                                                                <span>DNI: {customer.dni || "---"}</span>
                                                         </div>
-                                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{customer.phone || "Sin teléfono"}</p>
+                                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{customer.phone || "Sin telÃ©fono"}</p>
                                                  </div>
                                                  <div className="text-right">
                                                         <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Deuda Anterior</p>
@@ -692,12 +948,12 @@ export default function CustomersPage() {
                                           <div className="space-y-3 mb-6">
                                                  <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
                                                         <MapPin className="h-3.5 w-3.5" />
-                                                        <span className="truncate">{customer.address || "Dirección no registrada"}</span>
+                                                        <span className="truncate">{customer.address || "DirecciÃ³n no registrada"}</span>
                                                  </div>
                                                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
                                                         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest">
                                                                <Shield className="h-3.5 w-3.5" />
-                                                               Límite de Crédito
+                                                               LÃ­mite de CrÃ©dito
                                                         </div>
                                                         <span className="text-sm font-bold text-gray-700">{formatCurrency(customer.creditLimit || 0)}</span>
                                                  </div>
@@ -722,9 +978,16 @@ export default function CustomersPage() {
                                                         HISTORIAL
                                                  </button>
                                                  <button
+                                                        onClick={() => handleViewMonthHistory(customer)}
+                                                        className="flex-[1_1_30%] bg-violet-50 text-violet-700 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-violet-100 transition-colors flex items-center justify-center gap-1.5"
+                                                 >
+                                                        <FileText className="h-4 w-4" />
+                                                        PDFs x MES
+                                                 </button>
+                                                 <button
                                                         onClick={() => {
                                                                const totalDeuda = Number(customer.currentBalance) + Number(customer.closedBalance);
-                                                               const text = `🧾 *RESUMEN DE CUENTA*\n👤 Cliente: ${customer.name}\n\nDeuda Anterior: ${formatCurrency(customer.closedBalance)}\nDeuda Actual: ${formatCurrency(customer.currentBalance)}\n\n💰 *Total a pagar: ${formatCurrency(totalDeuda)}*`;
+                                                               const text = `ðŸ§¾ *RESUMEN DE CUENTA*\nðŸ‘¤ Cliente: ${customer.name}\n\nDeuda Anterior: ${formatCurrency(customer.closedBalance)}\nDeuda Actual: ${formatCurrency(customer.currentBalance)}\n\nðŸ’° *Total a pagar: ${formatCurrency(totalDeuda)}*`;
                                                                let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
                                                                if (customer.phone) {
                                                                       const cleanPhone = customer.phone.replace(/[^0-9]/g, '');
@@ -782,7 +1045,7 @@ export default function CustomersPage() {
                                                  <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-500">
                                                         <tr>
                                                                <th className="p-4">Fecha</th>
-                                                               <th className="p-4">Descripción / Concepto</th>
+                                                               <th className="p-4">DescripciÃ³n / Concepto</th>
                                                                <th className="p-4 text-right">Monto</th>
                                                         </tr>
                                                  </thead>
@@ -895,7 +1158,7 @@ export default function CustomersPage() {
                                                  />
                                           </div>
                                           <div>
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Teléfono</label>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">TelÃ©fono</label>
                                                  <input
                                                         className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
                                                         placeholder="+54 9 ..."
@@ -904,16 +1167,16 @@ export default function CustomersPage() {
                                                  />
                                           </div>
                                           <div className="col-span-2">
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Dirección</label>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">DirecciÃ³n</label>
                                                  <input
                                                         className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
-                                                        placeholder="Calle, Número, Ciudad"
+                                                        placeholder="Calle, NÃºmero, Ciudad"
                                                         value={newCustomer.address}
                                                         onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })}
                                                  />
                                           </div>
                                           <div className="col-span-2">
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Límite de Crédito ($)</label>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">LÃ­mite de CrÃ©dito ($)</label>
                                                  <div className="relative">
                                                         <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                                                         <input
@@ -923,7 +1186,7 @@ export default function CustomersPage() {
                                                                onChange={e => setNewCustomer({ ...newCustomer, creditLimit: Number(e.target.value) })}
                                                         />
                                                  </div>
-                                                 <p className="text-[9px] text-gray-400 mt-2 font-bold uppercase">Monto máximo que el cliente puede adeudar.</p>
+                                                 <p className="text-[9px] text-gray-400 mt-2 font-bold uppercase">Monto mÃ¡ximo que el cliente puede adeudar.</p>
                                           </div>
                                    </div>
                                    <button
@@ -956,7 +1219,7 @@ export default function CustomersPage() {
                                                  />
                                           </div>
                                           <div>
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Teléfono</label>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">TelÃ©fono</label>
                                                  <input
                                                         className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
                                                         value={editForm.phone}
@@ -964,7 +1227,7 @@ export default function CustomersPage() {
                                                  />
                                           </div>
                                           <div className="col-span-2">
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Dirección</label>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">DirecciÃ³n</label>
                                                  <input
                                                         className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold outline-none"
                                                         value={editForm.address}
@@ -972,7 +1235,7 @@ export default function CustomersPage() {
                                                  />
                                           </div>
                                           <div className="col-span-2">
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Límite de Crédito ($)</label>
+                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">LÃ­mite de CrÃ©dito ($)</label>
                                                  <div className="relative">
                                                         <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                                                         <input
@@ -993,63 +1256,128 @@ export default function CustomersPage() {
                             </div>
                      </Modal>
 
-                     {/* Payment Modal */}
-                     <Modal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} title={`CARGAR PAGO: ${selectedCustomer?.name || 'Cliente'}`}>
-                            <div className="space-y-6">
-                                   <div className="bg-red-50 p-6 rounded-[2rem] text-center border border-red-100 flex flex-col gap-2">
-                                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Deuda Pendiente</p>
-                                          <p className="text-4xl font-black text-red-700">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
-                                          <button
-                                                 onClick={() => selectedCustomer && setPaymentAmount(Number(selectedCustomer.currentBalance).toString())}
-                                                 className="mx-auto mt-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1"
-                                          >
-                                                 <Wallet className="w-3 h-3" />
-                                                 Saldar Total
-                                          </button>
-                                   </div>
 
-                                   <div className="space-y-4">
-                                          <div>
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Monto a abonar ($)</label>
-                                                 <input
-                                                        type="number"
-                                                        className="w-full border-2 border-gray-100 p-6 rounded-2xl font-black text-4xl text-center text-gray-900 outline-none focus:border-emerald-500 transition-all shadow-inner"
-                                                        value={paymentAmount}
-                                                        onChange={e => setPaymentAmount(e.target.value)}
-                                                        placeholder="0.00"
-                                                        autoFocus
-                                                 />
-                                          </div>
+                      {/* Payment Modal - Enhanced with debt breakdown */}
+                      <Modal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} title={`CARGAR PAGO: ${selectedCustomer?.name || 'Cliente'}`}>
+                             <div className="space-y-6">
+                                    {Number(selectedCustomer?.closedBalance || 0) > 0 && (
+                                           <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200">
+                                                  <div className="flex items-center justify-between mb-2">
+                                                         <p className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-700">DEUDA MESES ANTERIORES</p>
+                                                         <button onClick={() => selectedCustomer && setPaymentAmount(Number(selectedCustomer.closedBalance).toString())} className="bg-amber-200 hover:bg-amber-300 text-amber-800 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors">Saldar Anterior</button>
+                                                  </div>
+                                                  <p className="text-2xl font-black text-amber-800">{formatCurrency(selectedCustomer?.closedBalance || 0)}</p>
+                                           </div>
+                                    )}
+                                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
+                                           <div className="flex items-center justify-between mb-2">
+                                                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-red-600">DEUDA MES ACTUAL</p>
+                                                  <button onClick={() => selectedCustomer && setPaymentAmount(Number(selectedCustomer.currentBalance).toString())} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors">Saldar Actual</button>
+                                           </div>
+                                           <p className="text-2xl font-black text-red-700">{formatCurrency(selectedCustomer?.currentBalance || 0)}</p>
+                                    </div>
+                                    <div className="bg-gray-900 p-4 rounded-2xl text-center">
+                                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">TOTAL A PAGAR</p>
+                                           <p className="text-3xl font-black text-white">{formatCurrency((selectedCustomer?.closedBalance || 0) + (selectedCustomer?.currentBalance || 0))}</p>
+                                           <button onClick={() => selectedCustomer && setPaymentAmount((Number(selectedCustomer.closedBalance || 0) + Number(selectedCustomer.currentBalance || 0)).toString())} className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1 mx-auto"><Wallet className="w-3 h-3" />Saldar Todo</button>
+                                    </div>
+                                    <div className="space-y-4">
+                                           <div>
+                                                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Monto a abonar ($)</label>
+                                                  <input type="number" className="w-full border-2 border-gray-100 p-6 rounded-2xl font-black text-4xl text-center text-gray-900 outline-none focus:border-emerald-500 transition-all shadow-inner" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" autoFocus />
+                                           </div>
+                                           <div>
+                                                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">MÃ©todo de Pago</label>
+                                                  <div className="grid grid-cols-2 gap-3">
+                                                         {['EFECTIVO', 'TRANSFERENCIA', 'DEBITO', 'CREDITO'].map((method) => (<button key={method} onClick={() => setSelectedPaymentMethod(method)} className={cn("p-3 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all", selectedPaymentMethod === method ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-100 text-gray-400 hover:border-gray-200")}>{method}</button>))}
+                                                  </div>
+                                           </div>
+                                    </div>
+                                    <button onClick={handlePayment} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 flex justify-center items-center gap-3 transition-all"><CheckCircle className="h-6 w-6" />CONFIRMAR COBRO</button>
+                             </div>
+                      </Modal>
 
-                                          <div>
-                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Método de Pago</label>
-                                                 <div className="grid grid-cols-2 gap-3">
-                                                        {['EFECTIVO', 'TRANSFERENCIA', 'DEBITO', 'CREDITO'].map((method) => (
-                                                               <button
-                                                                      key={method}
-                                                                      onClick={() => setSelectedPaymentMethod(method)}
-                                                                      className={cn(
-                                                                             "p-3 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all",
-                                                                             selectedPaymentMethod === method ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-100 text-gray-400 hover:border-gray-200"
-                                                                      )}
-                                                               >
-                                                                      {method}
-                                                               </button>
-                                                        ))}
-                                                 </div>
-                                          </div>
-                                   </div>
+                      {/* Payment Receipt Modal */}
+                      <Modal isOpen={isReceiptOpen} onClose={() => { setIsReceiptOpen(false); setReceiptData(null); setSelectedCustomer(null); }} title="COMPROBANTE DE PAGO">
+                             {receiptData && (<div className="space-y-4">
+                                    <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-2xl space-y-3">
+                                           <div className="text-center">
+                                                  <p className="text-xl font-black text-gray-900 uppercase tracking-wide">COMPROBANTE DE PAGO</p>
+                                                  <p className="text-xs text-gray-500 mt-1">{new Date(receiptData.timestamp).toLocaleString("es-AR")}</p>
+                                           </div>
+                                           <div className="border-t border-dashed border-gray-300 pt-3">
+                                                  <div className="flex justify-between text-sm"><span className="font-bold text-gray-600">Cliente:</span><span className="font-black text-gray-900">{receiptData.customerName}</span></div>
+                                                  {receiptData.customerDni && (<div className="flex justify-between text-xs text-gray-500"><span>DNI:</span><span>{receiptData.customerDni}</span></div>)}
+                                           </div>
+                                           <div className="border-t border-dashed border-gray-300 pt-3 space-y-1">
+                                                  <div className="flex justify-between text-xs text-gray-500"><span>Deuda anterior:</span><span>{formatCurrency(receiptData.previousClosedBalance)}</span></div>
+                                                  <div className="flex justify-between text-xs text-gray-500"><span>Deuda mes actual:</span><span>{formatCurrency(receiptData.previousCurrentBalance)}</span></div>
+                                                  <div className="flex justify-between text-sm font-bold text-gray-700 pt-1"><span>Total adeudado:</span><span>{formatCurrency(receiptData.previousClosedBalance + receiptData.previousCurrentBalance)}</span></div>
+                                           </div>
+                                           <div className="bg-emerald-100 p-4 rounded-xl text-center border border-emerald-200">
+                                                  <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">Monto Abonado</p>
+                                                  <p className="text-3xl font-black text-emerald-700">{formatCurrency(receiptData.paidAmount)}</p>
+                                                  <p className="text-xs text-emerald-600 mt-1 uppercase font-bold">{receiptData.paymentMethod}</p>
+                                           </div>
+                                           {(receiptData.deductedFromClosed > 0 || receiptData.deductedFromCurrent > 0) && (<div className="space-y-1 text-xs text-gray-500">
+                                                  {receiptData.deductedFromClosed > 0 && (<div className="flex justify-between"><span>â†’ Aplicado a deuda anterior:</span><span className="text-emerald-600 font-bold">-{formatCurrency(receiptData.deductedFromClosed)}</span></div>)}
+                                                  {receiptData.deductedFromCurrent > 0 && (<div className="flex justify-between"><span>â†’ Aplicado a deuda actual:</span><span className="text-emerald-600 font-bold">-{formatCurrency(receiptData.deductedFromCurrent)}</span></div>)}
+                                           </div>)}
+                                           <div className="border-t-2 border-gray-300 pt-3 text-center">
+                                                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Saldo Restante</p>
+                                                  <p className={cn("text-2xl font-black", (receiptData.remainingClosedBalance + receiptData.remainingCurrentBalance) > 0 ? "text-red-600" : "text-emerald-600")}>{formatCurrency(receiptData.remainingClosedBalance + receiptData.remainingCurrentBalance)}</p>
+                                                  <div className="flex justify-center gap-4 text-[10px] text-gray-400 mt-1"><span>Anterior: {formatCurrency(receiptData.remainingClosedBalance)}</span><span>Actual: {formatCurrency(receiptData.remainingCurrentBalance)}</span></div>
+                                           </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                           <button onClick={printPaymentReceipt} className="flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all"><Printer className="h-5 w-5" />IMPRIMIR</button>
+                                           <button onClick={() => { setIsReceiptOpen(false); setReceiptData(null); setSelectedCustomer(null); }} className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all">CERRAR</button>
+                                    </div>
+                             </div>)}
+                      </Modal>
 
-                                   <button
-                                          onClick={handlePayment}
-                                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 flex justify-center items-center gap-3 transition-all"
-                                   >
-                                          <CheckCircle className="h-6 w-6" />
-                                          CONFIRMAR COBRO
-                                   </button>
-                            </div>
-                     </Modal>
-              </div>
+                      {/* Month-by-Month History Modal */}
+                      <Modal isOpen={isMonthHistoryOpen} onClose={() => setIsMonthHistoryOpen(false)} title={`BOLETAS POR MES: ${selectedCustomer?.name || ''}`} className="sm:max-w-3xl">
+                             <div className="space-y-4">
+                                    <p className="text-xs text-gray-500 font-medium">Cada mes tiene su propio PDF separado. DescargÃ¡ el que necesites para enviarle al cliente.</p>
+                                    {monthGroups.length === 0 ? (<div className="py-12 text-center text-gray-400 font-bold uppercase text-xs">Sin movimientos registrados</div>) : monthGroups.map((mg: any) => (
+                                           <div key={mg.monthKey} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                                                  <button onClick={() => setExpandedMonth(expandedMonth === mg.monthKey ? null : mg.monthKey)} className={cn("w-full flex items-center justify-between p-4 transition-colors text-left", mg.isCurrent ? "bg-blue-50 hover:bg-blue-100" : "bg-gray-50 hover:bg-gray-100")}>
+                                                         <div className="flex items-center gap-3">
+                                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", mg.isCurrent ? "bg-blue-500 text-white" : "bg-gray-300 text-white")}><FileText className="h-5 w-5" /></div>
+                                                                <div><p className="font-black text-gray-900 uppercase tracking-wide text-sm">{mg.label}</p><p className="text-[10px] text-gray-500 font-bold">{mg.movements.length} movimiento{mg.movements.length !== 1 ? 's' : ''}</p></div>
+                                                         </div>
+                                                         <div className="flex items-center gap-3">
+                                                                <span className={cn("text-lg font-black", mg.total > 0 ? "text-red-600" : mg.total < 0 ? "text-emerald-600" : "text-gray-400")}>{formatCurrency(mg.total)}</span>
+                                                                {expandedMonth === mg.monthKey ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                                                         </div>
+                                                  </button>
+                                                  {expandedMonth === mg.monthKey && (<div className="border-t border-gray-200">
+                                                         <div className="flex gap-2 p-3 bg-white border-b border-gray-100">
+                                                                <button onClick={() => downloadMonthPDF(mg)} className="flex-1 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-3 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"><Download className="h-4 w-4" /> PDF</button>
+                                                                <button onClick={() => downloadMonthJPG(mg)} className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-3 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"><Download className="h-4 w-4" /> JPG</button>
+                                                         </div>
+                                                         <div className="max-h-64 overflow-y-auto">
+                                                                <table className="w-full text-xs">
+                                                                       <thead className="bg-gray-50 sticky top-0"><tr><th className="p-2 text-left text-[9px] uppercase text-gray-400 font-black">Fecha</th><th className="p-2 text-left text-[9px] uppercase text-gray-400 font-black">Concepto</th><th className="p-2 text-right text-[9px] uppercase text-gray-400 font-black">Monto</th></tr></thead>
+                                                                       <tbody className="divide-y divide-gray-50">
+                                                                              {mg.movements.length === 0 ? (<tr><td colSpan={3} className="p-6 text-center text-gray-400">Sin movimientos</td></tr>) : mg.movements.map((mov: any) => (
+                                                                                     <tr key={mov.id} className="hover:bg-gray-50">
+                                                                                            <td className="p-2 font-bold text-gray-700">{formatDate(mov.timestamp)}</td>
+                                                                                            <td className="p-2 text-gray-600 uppercase text-[10px]">{mov.description}</td>
+                                                                                            <td className={cn("p-2 text-right font-black", mov.amount > 0 ? "text-red-500" : "text-emerald-500")}>{mov.amount > 0 ? '+' : ''}{formatCurrency(mov.amount)}</td>
+                                                                                     </tr>
+                                                                              ))}
+                                                                       </tbody>
+                                                                </table>
+                                                         </div>
+                                                  </div>)}
+                                           </div>
+                                    ))}
+                                    <div className="pt-4 border-t border-gray-100 flex justify-end"><button onClick={() => setIsMonthHistoryOpen(false)} className="px-8 py-3 bg-gray-900 text-white font-black rounded-xl hover:bg-gray-800 uppercase text-xs tracking-widest">Cerrar</button></div>
+                             </div>
+                      </Modal>
+               </div>
        );
 }
 
