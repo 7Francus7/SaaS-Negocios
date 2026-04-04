@@ -213,6 +213,7 @@ export async function getCustomerHistoryByMonth(customerId: number) {
               label: string;
               monthKey: string; // "YYYY-MM" 
               movements: any[];
+              startBalance: number;
               total: number;
               isCurrent: boolean;
        }
@@ -220,6 +221,7 @@ export async function getCustomerHistoryByMonth(customerId: number) {
        const months: MonthGroup[] = [];
        let currentGroupMovements: any[] = [];
        let currentGroupStartDate: Date | null = null;
+       let runningBalance = 0; // Maintain the accumulating balance
 
        for (const mov of allMovements) {
               if (mov.movementType === "MONTH_CLOSE") {
@@ -230,15 +232,19 @@ export async function getCustomerHistoryByMonth(customerId: number) {
                             const monthKey = `${closeDate.getFullYear()}-${String(closeDate.getMonth() + 1).padStart(2, '0')}`;
                             
                             const enrichedMovements = currentGroupMovements.map(enrichMovement);
-                            const total = enrichedMovements.reduce((sum: number, m: any) => sum + m.amount, 0);
+                            const groupNet = enrichedMovements.reduce((sum: number, m: any) => sum + m.amount, 0);
+                            const total = runningBalance + groupNet;
 
                             months.push({
                                    label: monthLabel,
                                    monthKey,
                                    movements: enrichedMovements,
                                    total,
+                                   startBalance: runningBalance,
                                    isCurrent: false,
                             });
+                            // Update running balance with this month's net
+                            runningBalance = total;
                      }
                      currentGroupMovements = [];
                      currentGroupStartDate = new Date(mov.timestamp);
@@ -253,13 +259,15 @@ export async function getCustomerHistoryByMonth(customerId: number) {
        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
        
        const enrichedCurrent = currentGroupMovements.map(enrichMovement);
-       const currentTotal = enrichedCurrent.reduce((sum: number, m: any) => sum + m.amount, 0);
+       const currentNet = enrichedCurrent.reduce((sum: number, m: any) => sum + m.amount, 0);
+       const currentTotal = runningBalance + currentNet;
 
        months.push({
               label: currentMonthLabel,
               monthKey: currentMonthKey,
               movements: enrichedCurrent,
               total: currentTotal,
+              startBalance: runningBalance,
               isCurrent: true,
        });
 

@@ -225,7 +225,8 @@ export default function CustomersPage() {
        const buildBoletaCanvas = (
               customer: Customer,
               movements: any[],
-              store: { name: string; address: string; phone: string; cuit: string; ticketFooter: string }
+              store: { name: string; address: string; phone: string; cuit: string; ticketFooter: string },
+              startBalance?: number
        ): HTMLCanvasElement => {
               const SC = 2;
               const W = 794;
@@ -356,10 +357,17 @@ export default function CustomersPage() {
                      ctx.fillText(value, x + 14, y + 56);
               };
 
-              const totalDebt = (customer.closedBalance || 0) + (customer.currentBalance || 0);
-              drawSummaryCard(PAD, 'MESES ANTERIORES', fmtCurrency(customer.closedBalance || 0), '#ffffff', '#64748b');
-              drawSummaryCard(PAD + cardW + 6, 'DEUDA DEL MES', fmtCurrency(customer.currentBalance || 0), '#fff1f2', '#e11d48');
-              drawSummaryCard(PAD + (cardW + 6) * 2, 'TOTAL A PAGAR', fmtCurrency(totalDebt), '#eff6ff', '#1d4ed8');
+              if (startBalance !== undefined) {
+                     const monthNet = movements.reduce((sum, m) => sum + m.amount, 0);
+                     drawSummaryCard(PAD, 'SALDO ANTERIOR', fmtCurrency(startBalance), '#ffffff', '#64748b');
+                     drawSummaryCard(PAD + cardW + 6, 'NETO DEL MES', fmtCurrency(monthNet), '#fff1f2', '#e11d48');
+                     drawSummaryCard(PAD + (cardW + 6) * 2, 'SALDO DEL PERIODO', fmtCurrency(startBalance + monthNet), '#eff6ff', '#1d4ed8');
+              } else {
+                     const totalDebt = (customer.closedBalance || 0) + (customer.currentBalance || 0);
+                     drawSummaryCard(PAD, 'MESES ANTERIORES', fmtCurrency(customer.closedBalance || 0), '#ffffff', '#64748b');
+                     drawSummaryCard(PAD + cardW + 6, 'DEUDA DEL MES', fmtCurrency(customer.currentBalance || 0), '#fff1f2', '#e11d48');
+                     drawSummaryCard(PAD + (cardW + 6) * 2, 'TOTAL A PAGAR', fmtCurrency(totalDebt), '#eff6ff', '#1d4ed8');
+              }
 
               // Add borders
               [PAD, PAD + cardW + 6, PAD + (cardW + 6) * 2].forEach((x, i) => {
@@ -396,9 +404,7 @@ export default function CustomersPage() {
               y += H_TABLE_HEAD;
 
               // Table rows
-              // Start from 0 because MONTH_CLOSE movements already carry over
-              // the old balance. Starting from closedBalance would double-count.
-              let runningBalance = 0;
+              let runningBalance = startBalance !== undefined ? startBalance : 0;
 
               if (movements.length === 0) {
                      roundRect(PAD, y, tableW, ROW_H * 2, 0);
@@ -629,7 +635,7 @@ export default function CustomersPage() {
                      const { jsPDF } = await import('jspdf');
                      const { getStoreSettings } = await import('@/app/actions/settings');
                      const store = await getStoreSettings();
-                     const canvas = buildBoletaCanvas(selectedCustomer, monthGroup.movements, store);
+                     const canvas = buildBoletaCanvas(selectedCustomer, monthGroup.movements, store, monthGroup.startBalance);
                      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                      const pageW = pdf.internal.pageSize.getWidth();
                      const pageH = pdf.internal.pageSize.getHeight();
@@ -663,7 +669,7 @@ export default function CustomersPage() {
               try {
                      const { getStoreSettings } = await import('@/app/actions/settings');
                      const store = await getStoreSettings();
-                     const canvas = buildBoletaCanvas(selectedCustomer, monthGroup.movements, store);
+                     const canvas = buildBoletaCanvas(selectedCustomer, monthGroup.movements, store, monthGroup.startBalance);
                      const link = document.createElement('a');
                      const safeName = selectedCustomer.name.replace(/\s+/g, '_');
                      link.download = `${safeName}_${monthGroup.monthKey}.jpg`;
