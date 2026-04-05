@@ -7,8 +7,8 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 
 export async function login(prevState: any, formData: FormData) {
-       const email = formData.get("email") as string;
-       const password = formData.get("password") as string;
+       const email = (formData.get("email") as string || "").trim();
+       const password = (formData.get("password") as string || "").trim();
 
        if (!email || !password) {
               return { error: "Por favor ingrese email y contraseña" };
