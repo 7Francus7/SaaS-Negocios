@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp } from "lucide-react";
-import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices } from "@/app/actions/products";
+import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp, Star } from "lucide-react";
+import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { EditProductModal } from "@/components/products/edit-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
@@ -339,6 +339,20 @@ export default function ProductsPage() {
                                                                       </td>
                                                                       <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                                                                              <div className="flex items-center justify-end gap-2 lg:gap-3">
+                                                                                    <button
+                                                                                           onClick={async () => {
+                                                                                                  try {
+                                                                                                         await toggleQuickAccess(variant.id);
+                                                                                                         fetchProducts();
+                                                                                                  } catch (e: any) {
+                                                                                                         alert(e.message);
+                                                                                                  }
+                                                                                           }}
+                                                                                           className={`inline-flex items-center gap-1 transition-colors ${(variant as any).isQuickAccess ? 'text-amber-500 hover:text-amber-600' : 'text-gray-300 hover:text-amber-400'}`}
+                                                                                           title={(variant as any).isQuickAccess ? 'Quitar de Acceso Rápido' : 'Marcar como Acceso Rápido'}
+                                                                                    >
+                                                                                           <Star className={`h-4 w-4 ${(variant as any).isQuickAccess ? 'fill-amber-400' : ''}`} />
+                                                                                    </button>
                                                                                     <button
                                                                                            onClick={() => openStockModal(variant)}
                                                                                            className="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1"

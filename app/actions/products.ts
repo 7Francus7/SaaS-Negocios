@@ -534,3 +534,57 @@ export async function updateProductDetails(
               return { error: error.message || "Error al actualizar el producto" };
        }
 }
+
+export async function toggleQuickAccess(variantId: number) {
+       const storeId = await getStoreId();
+
+       const variant = await prisma.productVariant.findUnique({
+              where: { id: variantId },
+       });
+
+       if (!variant || variant.storeId !== storeId) {
+              throw new Error("Variante no encontrada.");
+       }
+
+       const updated = await prisma.productVariant.update({
+              where: { id: variantId },
+              data: { isQuickAccess: !variant.isQuickAccess },
+       });
+
+       return {
+              ...updated,
+              costPrice: Number(updated.costPrice),
+              salePrice: Number(updated.salePrice),
+       };
+}
+
+export async function getQuickAccessProducts() {
+       const storeId = await getStoreId();
+
+       const variants = await prisma.productVariant.findMany({
+              where: {
+                     storeId,
+                     active: true,
+                     isQuickAccess: true,
+              },
+              include: {
+                     product: {
+                            include: { category: true },
+                     },
+              },
+              orderBy: [
+                     { product: { name: "asc" } },
+                     { variantName: "asc" },
+              ],
+       });
+
+       return variants.map(v => ({
+              ...v,
+              costPrice: Number(v.costPrice),
+              salePrice: Number(v.salePrice),
+              product: {
+                     ...v.product,
+                     description: v.product.description || ""
+              }
+       }));
+}

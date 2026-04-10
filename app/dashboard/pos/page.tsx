@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, MessageSquare, Tag, QrCode } from "lucide-react";
-import { getProducts, findProductByBarcode, type ProductFilter } from "@/app/actions/products";
+import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, MessageSquare, Tag, QrCode, Zap } from "lucide-react";
+import { getProducts, findProductByBarcode, getQuickAccessProducts, type ProductFilter } from "@/app/actions/products";
 import { processSale, type SaleItemInput } from "@/app/actions/sales";
 import { getCustomers } from "@/app/actions/customers";
 import { getOpenSession } from "@/app/actions/cash";
@@ -64,6 +64,7 @@ interface CartItem {
 export default function POSPage() {
        const [query, setQuery] = useState("");
        const [searchResults, setSearchResults] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
+       const [quickAccessProducts, setQuickAccessProducts] = useState<Awaited<ReturnType<typeof getQuickAccessProducts>>>([]);
        const [cart, setCart] = useState<CartItem[]>([]);
        const [loadingSearch, setLoadingSearch] = useState(false);
        const { toast } = useToast();
@@ -206,6 +207,7 @@ export default function POSPage() {
        useEffect(() => {
               getCustomers().then(setCustomers);
               getOpenSession().then(setSession);
+              getQuickAccessProducts().then(setQuickAccessProducts);
               import("@/app/actions/settings").then(mod => {
                      mod.getStoreSettings().then(setStoreSettings);
               });
@@ -443,6 +445,29 @@ export default function POSPage() {
                                    />
                                    {loadingSearch && <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin"><RotateCcw className="h-5 w-5 text-blue-500" /></div>}
                             </div>
+
+                            {/* ── QUICK ACCESS BAR ── */}
+                            {quickAccessProducts.length > 0 && (
+                                   <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                          <div className="flex items-center gap-1 shrink-0 text-amber-500 mr-1">
+                                                 <Zap className="h-4 w-4 fill-amber-400" />
+                                                 <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Rápido</span>
+                                          </div>
+                                          {quickAccessProducts.map((qp: any) => (
+                                                 <button
+                                                        key={qp.id}
+                                                        onClick={() => addToCart(qp)}
+                                                        className="shrink-0 px-3 py-2 rounded-xl text-xs font-bold border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 text-amber-800 transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
+                                                 >
+                                                        <span className="w-6 h-6 rounded-md bg-amber-200 text-amber-700 flex items-center justify-center text-[10px] font-black shrink-0">
+                                                               {qp.product.name.slice(0, 2).toUpperCase()}
+                                                        </span>
+                                                        <span className="truncate max-w-[120px]">{qp.product.name}</span>
+                                                        {qp.isWeighable && <span className="text-[9px] bg-amber-200 text-amber-700 px-1 rounded">⚖️</span>}
+                                                 </button>
+                                          ))}
+                                   </div>
+                            )}
 
                             <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-0">
                                    <div className="p-3 lg:p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50 shrink-0">

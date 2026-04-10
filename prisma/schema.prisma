@@ -93,6 +93,7 @@ model ProductVariant {
   active         Boolean         @default(true)
   storeId        String
   isWeighable    Boolean         @default(false)
+  isQuickAccess  Boolean         @default(false)
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
   barcodes       ProductBarcode[]
