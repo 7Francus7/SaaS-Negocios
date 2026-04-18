@@ -5,22 +5,27 @@ import {
        BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
-import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon, Printer, Download } from "lucide-react";
-import { getAdvancedReports, type AdvancedReportData, type ReportRange } from "@/app/actions/reports";
+import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon, Printer, Download, Tag } from "lucide-react";
+import { getAdvancedReports, getSalesByCategory, type AdvancedReportData, type CategorySalesItem, type ReportRange } from "@/app/actions/reports";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function ReportsPage() {
        const [range, setRange] = useState<ReportRange>('today');
        const [data, setData] = useState<AdvancedReportData | null>(null);
+       const [categoryData, setCategoryData] = useState<CategorySalesItem[]>([]);
        const [loading, setLoading] = useState(true);
 
        useEffect(() => {
               async function fetch() {
                      setLoading(true);
                      try {
-                            const report = await getAdvancedReports(range);
+                            const [report, cats] = await Promise.all([
+                                   getAdvancedReports(range),
+                                   getSalesByCategory(range)
+                            ]);
                             setData(report);
+                            setCategoryData(cats);
                      } catch (e) {
                             console.error(e);
                      } finally {
@@ -62,6 +67,15 @@ export default function ReportsPage() {
               csvContent += "Cliente,Total Gastado\n";
               data.topCustomers.forEach(tc => {
                      csvContent += `"${tc.name}",${tc.value}\n`;
+              });
+              csvContent += "\n";
+
+              // 4. Ventas por Categoría
+              csvContent += "--- VENTAS POR CATEGORIA ---\n";
+              csvContent += "Categoria,Cantidad Vendida,Total Facturado,Costo Total,Ganancia\n";
+              categoryData.forEach(c => {
+                     const ganancia = c.totalRevenue - c.totalCost;
+                     csvContent += `"${c.categoryName}",${c.totalQuantity},${c.totalRevenue},${c.totalCost},${ganancia}\n`;
               });
 
               // Generate CSV file
@@ -225,6 +239,74 @@ export default function ReportsPage() {
                                           </div>
                                    </div>
                             </div>
+                     </div>
+
+                     {/* Ventas por Categoría */}
+                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                   <div className="flex items-center gap-3">
+                                          <div className="p-2 bg-violet-50 text-violet-600 rounded-lg">
+                                                 <Tag className="h-6 w-6" />
+                                          </div>
+                                          <div>
+                                                 <h3 className="font-bold text-gray-900">Ventas por Categoría</h3>
+                                                 <p className="text-xs text-gray-400 font-medium">Fiambrería · Pollería · Panadería · y más</p>
+                                          </div>
+                                   </div>
+                                   <span className="text-xs font-bold uppercase tracking-wider text-violet-600 bg-violet-50 px-2 py-1 rounded">
+                                          {categoryData.length} rubros
+                                   </span>
+                            </div>
+
+                            {categoryData.length === 0 ? (
+                                   <p className="text-center text-gray-400 py-8">No hay datos para este período</p>
+                            ) : (
+                                   <div className="space-y-3">
+                                          {categoryData.map((cat, i) => {
+                                                 const maxRevenue = categoryData[0]?.totalRevenue || 1;
+                                                 const ganancia = cat.totalRevenue - cat.totalCost;
+                                                 const margen = cat.totalRevenue > 0 ? (ganancia / cat.totalRevenue) * 100 : 0;
+                                                 return (
+                                                        <div key={cat.categoryId ?? 'sin-cat'} className="p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-violet-50/50 transition-colors">
+                                                               <div className="flex items-center justify-between mb-2">
+                                                                      <div className="flex items-center gap-2">
+                                                                             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                                                                                    style={{ backgroundColor: COLORS[i % COLORS.length] + '20', color: COLORS[i % COLORS.length] }}>
+                                                                                    {i + 1}
+                                                                             </div>
+                                                                             <span className="font-bold text-gray-900">{cat.categoryName}</span>
+                                                                      </div>
+                                                                      <div className="flex items-center gap-4 text-right">
+                                                                             <div>
+                                                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Cantidad</p>
+                                                                                    <p className="font-bold text-gray-700">{cat.totalQuantity % 1 === 0 ? cat.totalQuantity : cat.totalQuantity.toFixed(2)}</p>
+                                                                             </div>
+                                                                             <div>
+                                                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Facturado</p>
+                                                                                    <p className="font-bold text-gray-900">{formatCurrency(cat.totalRevenue)}</p>
+                                                                             </div>
+                                                                             {cat.totalCost > 0 && (
+                                                                                    <div>
+                                                                                           <p className="text-[10px] uppercase font-bold text-gray-400">Margen</p>
+                                                                                           <p className={`font-bold ${margen >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{margen.toFixed(1)}%</p>
+                                                                                    </div>
+                                                                             )}
+                                                                      </div>
+                                                               </div>
+                                                               <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                                                      <div
+                                                                             className="h-full rounded-full transition-all duration-500"
+                                                                             style={{
+                                                                                    width: `${(cat.totalRevenue / maxRevenue) * 100}%`,
+                                                                                    backgroundColor: COLORS[i % COLORS.length]
+                                                                             }}
+                                                                      />
+                                                               </div>
+                                                        </div>
+                                                 );
+                                          })}
+                                   </div>
+                            )}
                      </div>
 
                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

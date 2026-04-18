@@ -18,6 +18,14 @@ export type TopItem = {
        subtext?: string;
 };
 
+export type CategorySalesItem = {
+       categoryId: number | null;
+       categoryName: string;
+       totalRevenue: number;
+       totalQuantity: number;
+       totalCost: number;
+};
+
 export type AdvancedReportData = {
        salesByHour: SalesByHour[];
        topProducts: TopItem[];
@@ -169,4 +177,68 @@ export async function getAdvancedReports(range: ReportRange = 'today'): Promise<
               topCustomers,
               paymentMethods
        });
+}
+
+export async function getSalesByCategory(range: ReportRange = 'today'): Promise<CategorySalesItem[]> {
+       const storeId = await getStoreId();
+
+       const now = new Date();
+       let startDate = new Date();
+       let endDate: Date | undefined = undefined;
+
+       if (range === 'today') {
+              startDate.setHours(0, 0, 0, 0);
+              endDate = new Date(); endDate.setHours(23, 59, 59, 999);
+       } else if (range === 'yesterday') {
+              startDate.setDate(now.getDate() - 1); startDate.setHours(0, 0, 0, 0);
+              endDate = new Date(startDate); endDate.setHours(23, 59, 59, 999);
+       } else if (range === '7d') {
+              startDate.setDate(now.getDate() - 7); startDate.setHours(0, 0, 0, 0);
+       } else if (range === '30d') {
+              startDate.setDate(now.getDate() - 30); startDate.setHours(0, 0, 0, 0);
+       } else if (range === 'this_month') {
+              startDate = new Date(now.getFullYear(), now.getMonth(), 1); startDate.setHours(0, 0, 0, 0);
+       } else if (range === 'last_month') {
+              startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); startDate.setHours(0, 0, 0, 0);
+              endDate = new Date(now.getFullYear(), now.getMonth(), 0); endDate.setHours(23, 59, 59, 999);
+       } else if (range === 'this_year') {
+              startDate = new Date(now.getFullYear(), 0, 1); startDate.setHours(0, 0, 0, 0);
+       } else if (range === 'all') {
+              startDate = new Date(now.getFullYear() - 10, 0, 1);
+       }
+
+       const items = await prisma.saleItem.findMany({
+              where: {
+                     sale: {
+                            storeId,
+                            timestamp: { gte: startDate, ...(endDate ? { lte: endDate } : {}) }
+                     }
+              },
+              include: {
+                     variant: {
+                            include: {
+                                   product: { include: { category: true } }
+                            }
+                     }
+              }
+       });
+
+       const map = new Map<string, CategorySalesItem>();
+
+       items.forEach(item => {
+              const cat = item.variant.product.category;
+              const key = cat ? String(cat.id) : 'sin-categoria';
+              const name = cat ? cat.name : 'Sin categoría';
+              const current = map.get(key) ?? { categoryId: cat?.id ?? null, categoryName: name, totalRevenue: 0, totalQuantity: 0, totalCost: 0 };
+              map.set(key, {
+                     ...current,
+                     totalRevenue: current.totalRevenue + Number(item.subtotal),
+                     totalQuantity: current.totalQuantity + item.quantity,
+                     totalCost: current.totalCost + Number(item.subtotalCost)
+              });
+       });
+
+       return safeSerialize(
+              Array.from(map.values()).sort((a, b) => b.totalRevenue - a.totalRevenue)
+       );
 }
