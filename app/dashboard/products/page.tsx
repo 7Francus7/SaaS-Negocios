@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp, Star } from "lucide-react";
-import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess } from "@/app/actions/products";
+import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess, getInventoryValue } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { EditProductModal } from "@/components/products/edit-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
@@ -27,6 +27,7 @@ interface Category {
 export default function ProductsPage() {
        const [products, setProducts] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
        const [loading, setLoading] = useState(true);
+       const [inventoryValue, setInventoryValue] = useState<number>(0);
        const [isModalOpen, setIsModalOpen] = useState(false);
        const [isEditModalOpen, setIsEditModalOpen] = useState(false);
        const [editingVariant, setEditingVariant] = useState<any>(null);
@@ -34,6 +35,7 @@ export default function ProductsPage() {
        const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
        const [searchQuery, setSearchQuery] = useState("");
        const [filterCategory, setFilterCategory] = useState<string>("");
+       const [filterStock, setFilterStock] = useState<string>("");
 
        // Categories
        const [categories, setCategories] = useState<Category[]>([]);
@@ -56,8 +58,9 @@ export default function ProductsPage() {
        const fetchProducts = useCallback(async () => {
               setLoading(true);
               try {
-                     const data = await getProducts();
+                     const [data, value] = await Promise.all([getProducts(), getInventoryValue()]);
                      setProducts(data);
+                     setInventoryValue(value);
               } catch (e) {
                      console.error(e);
               } finally {
@@ -185,7 +188,9 @@ export default function ProductsPage() {
                      (v.barcodes && v.barcodes.some((bc: string) => bc.includes(searchQuery)));
               const matchesCategory = filterCategory === "" ||
                      (filterCategory === "none" ? !v.product.categoryId : v.product.categoryId?.toString() === filterCategory);
-              return matchesSearch && matchesCategory;
+              const matchesStock = filterStock === "" ||
+                     (filterStock === "sin_stock" ? v.stockQuantity <= 0 : true);
+              return matchesSearch && matchesCategory && matchesStock;
        });
 
        return (
@@ -265,11 +270,19 @@ export default function ProductsPage() {
                                           <option key={cat.id} value={cat.id.toString()}>{cat.name}</option>
                                    ))}
                             </select>
+                            <select
+                                   value={filterStock}
+                                   onChange={e => setFilterStock(e.target.value)}
+                                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                   <option value="">Todo el stock</option>
+                                   <option value="sin_stock">Sin stock (0)</option>
+                            </select>
                      </div>
 
                      {/* Summary */}
                      {!loading && (
-                            <div className="flex gap-3">
+                            <div className="flex gap-3 flex-wrap">
                                    <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 text-sm">
                                           <span className="text-blue-400 font-bold text-[10px] uppercase">Productos: </span>
                                           <span className="font-black text-blue-700">{filtered.length}</span>
@@ -280,65 +293,91 @@ export default function ProductsPage() {
                                                  {filtered.filter((v: any) => v.stockQuantity <= v.minStock).length}
                                           </span>
                                    </div>
+                                   <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 text-sm">
+                                          <span className="text-emerald-400 font-bold text-[10px] uppercase">Valor en Mercadería: </span>
+                                          <span className="font-black text-emerald-700">
+                                                 {formatCurrency(inventoryValue)}
+                                          </span>
+                                   </div>
                             </div>
                      )}
 
                      {/* Table */}
-                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
-                                   <table className="min-w-full divide-y divide-gray-200">
-                                          <thead className="bg-gray-50">
-                                                 <tr>
-                                                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                                                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">SKU / Barras</th>
-                                                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Categoría</th>
-                                                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Costo</th>
-                                                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                                                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                   <table className="min-w-full">
+                                          <thead>
+                                                 <tr className="bg-gray-50 border-b border-gray-200">
+                                                        <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Producto</th>
+                                                        <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden md:table-cell">Código</th>
+                                                        <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Categoría</th>
+                                                        <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden lg:table-cell">Costo</th>
+                                                        <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest">Precio</th>
+                                                        <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Stock</th>
+                                                        <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest">Acciones</th>
                                                  </tr>
                                           </thead>
-                                          <tbody className="bg-white divide-y divide-gray-200">
+                                          <tbody className="divide-y divide-gray-100">
                                                  {loading ? (
-                                                        <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">Cargando inventario...</td></tr>
+                                                        <tr><td colSpan={7} className="px-6 py-16 text-center text-gray-400 text-sm">Cargando inventario...</td></tr>
                                                  ) : filtered.length === 0 ? (
-                                                        <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                                        <tr><td colSpan={7} className="px-6 py-16 text-center text-gray-400 text-sm">
                                                                {searchQuery ? "No se encontraron productos." : "No hay productos registrados."}
                                                         </td></tr>
                                                  ) : (
-                                                        filtered.map((variant: any) => (
-                                                               <tr key={variant.id} className="hover:bg-gray-50 transition-colors">
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap">
-                                                                             <div className="text-sm font-medium text-gray-900">{variant.product.name}</div>
-                                                                             <div className="text-xs text-gray-500">{variant.variantName}</div>
+                                                        filtered.map((variant: any) => {
+                                                               const noTracking = variant.trackStock === false;
+                                                               const isOutOfStock = !noTracking && variant.stockQuantity <= 0;
+                                                               const isLowStock = !noTracking && !isOutOfStock && variant.stockQuantity <= variant.minStock;
+                                                               return (
+                                                               <tr key={variant.id} className={`group transition-colors hover:bg-blue-50/30 ${isOutOfStock ? 'bg-red-50/40' : ''}`}>
+                                                                      <td className="px-5 py-3">
+                                                                             <div className="flex items-center gap-2.5">
+                                                                                    {isOutOfStock && <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />}
+                                                                                    {isLowStock && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
+                                                                                    {!isOutOfStock && !isLowStock && <span className="w-1.5 h-1.5 rounded-full bg-transparent shrink-0" />}
+                                                                                    <div>
+                                                                                           <div className="text-sm font-semibold text-gray-900 leading-tight">{variant.product.name}</div>
+                                                                                           <div className="text-[11px] text-gray-400 mt-0.5 font-medium">{variant.variantName}</div>
+                                                                                    </div>
+                                                                             </div>
                                                                       </td>
-                                                                       <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
-                                                                              <div>{variant.barcode || "-"}</div>
-                                                                              {variant.barcodes && variant.barcodes.length > 0 && (
-                                                                                     <div className="text-[10px] text-gray-400 mt-0.5 max-w-[150px] truncate">
-                                                                                            +{variant.barcodes.length} adicionales
-                                                                                     </div>
-                                                                              )}
-                                                                       </td>
-
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
-                                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-800">
+                                                                      <td className="px-5 py-3 hidden md:table-cell">
+                                                                             {variant.barcode
+                                                                                    ? <span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md tracking-wider">{variant.barcode}</span>
+                                                                                    : <span className="text-gray-300 text-xs">—</span>
+                                                                             }
+                                                                      </td>
+                                                                      <td className="px-5 py-3 hidden sm:table-cell">
+                                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
                                                                                     {variant.product.category?.name || "General"}
                                                                              </span>
                                                                       </td>
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right hidden lg:table-cell">
-                                                                             {formatCurrency(variant.costPrice)}
+                                                                      <td className="px-5 py-3 text-right hidden lg:table-cell">
+                                                                             <span className="text-xs text-gray-400 font-medium">{formatCurrency(variant.costPrice)}</span>
                                                                       </td>
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                                                             {formatCurrency(variant.salePrice)}
+                                                                      <td className="px-5 py-3 text-right">
+                                                                             <span className="text-sm font-bold text-gray-900">{formatCurrency(variant.salePrice)}</span>
                                                                       </td>
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-center">
-                                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variant.stockQuantity <= variant.minStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                                                                    {variant.stockQuantity}
-                                                                             </span>
+                                                                      <td className="px-5 py-3 text-center">
+                                                                             {noTracking ? (
+                                                                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-lg text-xs font-bold border bg-gray-100 text-gray-400 border-gray-200">
+                                                                                           —
+                                                                                    </span>
+                                                                             ) : (
+                                                                                    <span className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-lg text-xs font-bold border ${
+                                                                                           isOutOfStock
+                                                                                                  ? 'bg-red-100 text-red-700 border-red-200'
+                                                                                                  : isLowStock
+                                                                                                         ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                                                                                         : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                                                                    }`}>
+                                                                                           {variant.stockQuantity}
+                                                                                    </span>
+                                                                             )}
                                                                       </td>
-                                                                      <td className="px-4 lg:px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                                                             <div className="flex items-center justify-end gap-2 lg:gap-3">
+                                                                      <td className="px-5 py-3">
+                                                                             <div className="flex items-center justify-end gap-1">
                                                                                     <button
                                                                                            onClick={async () => {
                                                                                                   try {
@@ -348,39 +387,37 @@ export default function ProductsPage() {
                                                                                                          alert(e.message);
                                                                                                   }
                                                                                            }}
-                                                                                           className={`inline-flex items-center gap-1 transition-colors ${(variant as any).isQuickAccess ? 'text-amber-500 hover:text-amber-600' : 'text-gray-300 hover:text-amber-400'}`}
+                                                                                           className={`p-1.5 rounded-lg transition-colors ${(variant as any).isQuickAccess ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'}`}
                                                                                            title={(variant as any).isQuickAccess ? 'Quitar de Acceso Rápido' : 'Marcar como Acceso Rápido'}
                                                                                     >
-                                                                                           <Star className={`h-4 w-4 ${(variant as any).isQuickAccess ? 'fill-amber-400' : ''}`} />
+                                                                                           <Star className={`h-3.5 w-3.5 ${(variant as any).isQuickAccess ? 'fill-amber-400' : ''}`} />
                                                                                     </button>
                                                                                     <button
                                                                                            onClick={() => openStockModal(variant)}
-                                                                                           className="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1"
+                                                                                           className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
                                                                                            title="Ajustar stock"
                                                                                     >
                                                                                            <PackagePlus className="h-3.5 w-3.5" />
-                                                                                           <span className="text-xs hidden sm:inline">Stock</span>
                                                                                     </button>
                                                                                     <button
                                                                                            onClick={() => { setEditingVariant(variant); setIsEditModalOpen(true); }}
-                                                                                           className="text-blue-500 hover:text-blue-700 inline-flex items-center gap-1"
+                                                                                           className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
                                                                                            title="Editar producto"
                                                                                     >
                                                                                            <Pencil className="h-3.5 w-3.5" />
-                                                                                           <span className="text-xs hidden sm:inline">Editar</span>
                                                                                     </button>
                                                                                     <button
                                                                                            onClick={() => handleDeleteProduct(variant.product.id, variant.product.name)}
-                                                                                           className="text-red-500 hover:text-red-700 inline-flex items-center gap-1"
+                                                                                           className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
                                                                                            title="Eliminar producto"
                                                                                     >
                                                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                                                           <span className="text-xs hidden sm:inline">Eliminar</span>
                                                                                     </button>
                                                                              </div>
                                                                       </td>
                                                                </tr>
-                                                        ))
+                                                               );
+                                                        })
                                                  )}
                                           </tbody>
                                    </table>

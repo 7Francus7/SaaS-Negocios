@@ -30,6 +30,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
               stock: "0",
               minStock: "5",
               isWeighable: false,
+              trackStock: true,
               categoryId: ""
        });
 
@@ -48,6 +49,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                      stock: String(variant.stockQuantity || 0),
                      minStock: String(variant.minStock || 5),
                      isWeighable: variant.isWeighable || false,
+                     trackStock: variant.trackStock !== false,
                      categoryId: variant.product.categoryId ? String(variant.product.categoryId) : ""
               });
               setAdditionalBarcodes(variant.barcodes || []);
@@ -130,6 +132,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                             salePrice: Number(formData.salePrice) || 0,
                             minStock: Number(formData.minStock),
                             isWeighable: formData.isWeighable,
+                            trackStock: formData.trackStock,
                      });
 
                      if (res.error) {
@@ -149,6 +152,7 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                             stock: "0",
                             minStock: "5",
                             isWeighable: false,
+                            trackStock: true,
                             categoryId: ""
                      });
                      setAdditionalBarcodes([]);
@@ -335,31 +339,49 @@ export function EditProductModal({ isOpen, onClose, onSuccess, variant, categori
                                           </div>
                                    </div>
 
-                                   <div className="grid grid-cols-2 gap-4">
+                                   {/* trackStock toggle */}
+                                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                                           <div>
-                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
-                                                 <input
-                                                        name="stock"
-                                                        type="number"
-                                                        disabled
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                        value={formData.stock}
-                                                        onChange={handleChange}
-                                                 />
+                                                 <p className="text-sm font-semibold text-gray-800">Controlar stock</p>
+                                                 <p className="text-xs text-gray-400 mt-0.5">Desactivar para productos a granel o sin inventario fijo</p>
                                           </div>
-                                          <div>
-                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Min. Alerta</label>
-                                                 <input
-                                                        name="minStock"
-                                                        type="number"
-                                                        required
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                        value={formData.minStock}
-                                                        onChange={handleChange}
-                                                 />
-                                          </div>
+                                          <button
+                                                 type="button"
+                                                 onClick={() => setFormData((p: any) => ({ ...p, trackStock: !p.trackStock }))}
+                                                 className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${formData.trackStock ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                          >
+                                                 <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${formData.trackStock ? 'translate-x-5' : 'translate-x-0'}`} />
+                                          </button>
                                    </div>
-                                   <div className="flex items-center gap-2 mt-2">
+
+                                   {formData.trackStock && (
+                                          <div className="grid grid-cols-2 gap-4">
+                                                 <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
+                                                        <input
+                                                               name="stock"
+                                                               type="number"
+                                                               disabled
+                                                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500"
+                                                               value={formData.stock}
+                                                               onChange={handleChange}
+                                                        />
+                                                 </div>
+                                                 <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Min. Alerta</label>
+                                                        <input
+                                                               name="minStock"
+                                                               type="number"
+                                                               min="0"
+                                                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                               value={formData.minStock}
+                                                               onChange={handleChange}
+                                                        />
+                                                 </div>
+                                          </div>
+                                   )}
+
+                                   <div className="flex items-center gap-2">
                                           <input
                                                  type="checkbox"
                                                  id="isWeighable"

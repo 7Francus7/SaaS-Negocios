@@ -37,6 +37,7 @@ export async function getDashboardStats() {
                             where: {
                                    storeId,
                                    active: true,
+                                   trackStock: true,
                                    stockQuantity: { lte: 5 }
                             }
                      }),
@@ -65,7 +66,7 @@ export async function getDashboardStats() {
 
               // Find critical Low Stock items for list
               const criticalStockItems = await prisma.productVariant.findMany({
-                     where: { storeId, active: true, stockQuantity: { lte: 5 } },
+                     where: { storeId, active: true, trackStock: true, stockQuantity: { lte: 5 } },
                      take: 5,
                      include: { product: true },
                      orderBy: { stockQuantity: 'asc' }

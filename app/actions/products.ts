@@ -462,6 +462,7 @@ export async function updateProductDetails(
               salePrice: number;
               minStock: number;
               isWeighable: boolean;
+              trackStock: boolean;
               categoryId?: number;
        }
 ) {
@@ -510,6 +511,7 @@ export async function updateProductDetails(
                                    salePrice: data.salePrice,
                                    minStock: data.minStock,
                                    isWeighable: data.isWeighable,
+                                   trackStock: data.trackStock,
                                    barcodes: data.barcodes ? {
                                           deleteMany: {},
                                           create: data.barcodes.map(b => ({
@@ -556,6 +558,16 @@ export async function toggleQuickAccess(variantId: number) {
               costPrice: Number(updated.costPrice),
               salePrice: Number(updated.salePrice),
        };
+}
+
+export async function getInventoryValue(): Promise<number> {
+       const storeId = await getStoreId();
+       const result = await prisma.$queryRaw<Array<{ total: string }>>`
+              SELECT COALESCE(SUM("costPrice"::numeric * "stockQuantity"::numeric), 0)::text AS total
+              FROM product_variants
+              WHERE "storeId" = ${storeId} AND active = true
+       `;
+       return parseFloat(result[0]?.total || '0');
 }
 
 export async function getQuickAccessProducts() {

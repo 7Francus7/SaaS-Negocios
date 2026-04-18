@@ -188,8 +188,8 @@ export default function ReportsPage() {
                                           </div>
                                           <h3 className="font-bold text-gray-900">Métodos de Pago</h3>
                                    </div>
-                                   <div className="flex flex-col md:flex-row items-center gap-8 h-[300px]">
-                                          <div className="h-full w-full md:w-1/2">
+                                   <div className="flex flex-col md:flex-row items-center gap-8">
+                                          <div className="h-[300px] w-full md:w-1/2 shrink-0">
                                                  <ResponsiveContainer width="100%" height="100%">
                                                         <PieChart>
                                                                <Pie
@@ -209,7 +209,7 @@ export default function ReportsPage() {
                                                         </PieChart>
                                                  </ResponsiveContainer>
                                           </div>
-                                          <div className="w-full md:w-1/2 space-y-4">
+                                          <div className="w-full md:w-1/2 space-y-3 max-h-[300px] overflow-y-auto pr-1">
                                                  {data.paymentMethods.map((method, idx) => (
                                                         <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
                                                                <div className="flex items-center gap-3">
