@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp, Star } from "lucide-react";
-import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess, getInventoryValue } from "@/app/actions/products";
+import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { EditProductModal } from "@/components/products/edit-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
@@ -27,7 +27,6 @@ interface Category {
 export default function ProductsPage() {
        const [products, setProducts] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
        const [loading, setLoading] = useState(true);
-       const [inventoryValue, setInventoryValue] = useState<number>(0);
        const [isModalOpen, setIsModalOpen] = useState(false);
        const [isEditModalOpen, setIsEditModalOpen] = useState(false);
        const [editingVariant, setEditingVariant] = useState<any>(null);
@@ -55,12 +54,16 @@ export default function ProductsPage() {
        const [bulkPriceCategoryId, setBulkPriceCategoryId] = useState<string>("all");
        const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
 
+       const inventoryValue = useMemo(
+              () => products.reduce((sum, v: any) => sum + v.costPrice * v.stockQuantity, 0),
+              [products]
+       );
+
        const fetchProducts = useCallback(async () => {
               setLoading(true);
               try {
-                     const [data, value] = await Promise.all([getProducts(), getInventoryValue()]);
+                     const data = await getProducts();
                      setProducts(data);
-                     setInventoryValue(value);
               } catch (e) {
                      console.error(e);
               } finally {
