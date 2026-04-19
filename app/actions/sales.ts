@@ -118,7 +118,13 @@ export async function processSale(
                      include: { items: true, payments: true },
               });
 
-              // 5. Handle Payment Logics (Cash Session, Customer Balance)
+              // 5. Handle Payment Logics (Cash Session, Customer Balance, Cashbook)
+              const cashbookMethodMap: Record<string, string> = {
+                     EFECTIVO: "EFECTIVO",
+                     TRANSFERENCIA: "TRANSFERENCIA",
+                     TARJETA: "TARJETA",
+              };
+
               for (const payment of payments) {
                      if (payment.method === "EFECTIVO") {
                             const session = await tx.cashSession.findFirst({
@@ -155,6 +161,23 @@ export async function processSale(
                                           description: `Compra Mixta Venta #${sale.id}`,
                                           timestamp: new Date(),
                                           paymentMethod: "CTA_CTE"
+                                   },
+                            });
+                     }
+
+                     // Auto-register income in cashbook for cash payments (skip CTA_CTE - deferred payment)
+                     const cashbookMethod = cashbookMethodMap[payment.method];
+                     if (cashbookMethod) {
+                            await tx.cashBookEntry.create({
+                                   data: {
+                                          storeId,
+                                          date: sale.timestamp,
+                                          type: "INGRESO",
+                                          category: "VENTA",
+                                          amount: payment.amount,
+                                          method: cashbookMethod,
+                                          description: `Venta #${sale.id}`,
+                                          reference: `VENTA-${sale.id}`,
                                    },
                             });
                      }
