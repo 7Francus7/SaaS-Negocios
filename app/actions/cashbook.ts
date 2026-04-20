@@ -135,38 +135,22 @@ export async function getDashboardStats() {
     999
   );
 
-  const [todayIn, todayOut, monthIn, monthOut, allIn, allOut] =
+  const [todayIn, todayOut, monthIn, monthOut, allIn, allOut, allMethodBreakdown, todayMethodBreakdown] =
     await Promise.all([
       prisma.cashBookEntry.aggregate({
-        where: {
-          storeId,
-          type: "INGRESO",
-          date: { gte: todayStart, lte: todayEnd },
-        },
+        where: { storeId, type: "INGRESO", date: { gte: todayStart, lte: todayEnd } },
         _sum: { amount: true },
       }),
       prisma.cashBookEntry.aggregate({
-        where: {
-          storeId,
-          type: "EGRESO",
-          date: { gte: todayStart, lte: todayEnd },
-        },
+        where: { storeId, type: "EGRESO", date: { gte: todayStart, lte: todayEnd } },
         _sum: { amount: true },
       }),
       prisma.cashBookEntry.aggregate({
-        where: {
-          storeId,
-          type: "INGRESO",
-          date: { gte: monthStart, lte: monthEnd },
-        },
+        where: { storeId, type: "INGRESO", date: { gte: monthStart, lte: monthEnd } },
         _sum: { amount: true },
       }),
       prisma.cashBookEntry.aggregate({
-        where: {
-          storeId,
-          type: "EGRESO",
-          date: { gte: monthStart, lte: monthEnd },
-        },
+        where: { storeId, type: "EGRESO", date: { gte: monthStart, lte: monthEnd } },
         _sum: { amount: true },
       }),
       prisma.cashBookEntry.aggregate({
@@ -177,10 +161,26 @@ export async function getDashboardStats() {
         where: { storeId, type: "EGRESO" },
         _sum: { amount: true },
       }),
+      prisma.cashBookEntry.groupBy({
+        by: ["method", "type"],
+        where: { storeId },
+        _sum: { amount: true },
+      }),
+      prisma.cashBookEntry.groupBy({
+        by: ["method", "type"],
+        where: { storeId, date: { gte: todayStart, lte: todayEnd } },
+        _sum: { amount: true },
+      }),
     ]);
 
   const ingresosHoy = Number(todayIn._sum.amount || 0);
   const egresosHoy = Number(todayOut._sum.amount || 0);
+
+  const methodBalance = (method: string, breakdown: typeof allMethodBreakdown) => {
+    const income = breakdown.find(r => r.method === method && r.type === "INGRESO")?._sum.amount ?? 0;
+    const expense = breakdown.find(r => r.method === method && r.type === "EGRESO")?._sum.amount ?? 0;
+    return Number(income) - Number(expense);
+  };
 
   return {
     ingresosHoy,
@@ -188,8 +188,13 @@ export async function getDashboardStats() {
     balanceDia: ingresosHoy - egresosHoy,
     ingresosMes: Number(monthIn._sum.amount || 0),
     egresosMes: Number(monthOut._sum.amount || 0),
-    balanceTotal:
-      Number(allIn._sum.amount || 0) - Number(allOut._sum.amount || 0),
+    balanceTotal: Number(allIn._sum.amount || 0) - Number(allOut._sum.amount || 0),
+    saldoEfectivo: methodBalance("EFECTIVO", allMethodBreakdown),
+    saldoTarjeta: methodBalance("TARJETA", allMethodBreakdown),
+    saldoTransferencia: methodBalance("TRANSFERENCIA", allMethodBreakdown),
+    saldoOtro: methodBalance("OTRO", allMethodBreakdown),
+    ingresosHoyEfectivo: Number(todayMethodBreakdown.find(r => r.method === "EFECTIVO" && r.type === "INGRESO")?._sum.amount ?? 0),
+    egresosHoyEfectivo: Number(todayMethodBreakdown.find(r => r.method === "EFECTIVO" && r.type === "EGRESO")?._sum.amount ?? 0),
   };
 }
 

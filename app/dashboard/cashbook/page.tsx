@@ -14,6 +14,9 @@ import {
   X,
   BookOpen,
   Lock,
+  CreditCard,
+  Smartphone,
+  CircleDollarSign,
 } from "lucide-react";
 import {
   BarChart,
@@ -65,6 +68,12 @@ type Stats = {
   ingresosMes: number;
   egresosMes: number;
   balanceTotal: number;
+  saldoEfectivo: number;
+  saldoTarjeta: number;
+  saldoTransferencia: number;
+  saldoOtro: number;
+  ingresosHoyEfectivo: number;
+  egresosHoyEfectivo: number;
 };
 
 const todayStr = () => new Date().toISOString().split("T")[0];
@@ -278,7 +287,7 @@ export default function CashbookPage() {
   const hasFilters =
     filterDateFrom || filterDateTo || filterType || filterCategory;
 
-  const saldoCajaFuerte = stats?.balanceTotal ?? 0;
+  const saldoCajaFuerte = stats?.saldoEfectivo ?? 0;
 
   if (loading) {
     return (
@@ -323,7 +332,7 @@ export default function CashbookPage() {
         </div>
       </div>
 
-      {/* HERO — Saldo Caja Fuerte */}
+      {/* HERO — Saldo Caja Fuerte (Efectivo) */}
       <div
         className={`rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm border ${
           saldoCajaFuerte >= 0
@@ -337,23 +346,23 @@ export default function CashbookPage() {
           </div>
           <div>
             <p className="text-emerald-100 text-sm font-bold uppercase tracking-wider">
-              Saldo Caja Fuerte
+              Caja Fuerte — Efectivo
             </p>
             <p className="text-white text-4xl font-black tracking-tight mt-0.5">
               {formatCurrency(saldoCajaFuerte)}
             </p>
             <p className="text-white/70 text-xs font-medium mt-1">
-              Este es el dinero que debería haber en tu caja fuerte ahora mismo
+              Dinero en efectivo acumulado en caja
             </p>
           </div>
         </div>
         <div className="flex gap-6 sm:text-right">
           <div>
             <p className="text-white/70 text-xs font-bold uppercase tracking-wider">
-              Ingresos hoy
+              Efectivo hoy
             </p>
             <p className="text-white font-black text-lg">
-              {formatCurrency(stats?.ingresosHoy ?? 0)}
+              +{formatCurrency(stats?.ingresosHoyEfectivo ?? 0)}
             </p>
           </div>
           <div>
@@ -361,9 +370,57 @@ export default function CashbookPage() {
               Egresos hoy
             </p>
             <p className="text-white font-black text-lg">
-              {formatCurrency(stats?.egresosHoy ?? 0)}
+              -{formatCurrency(stats?.egresosHoyEfectivo ?? 0)}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Otros Métodos de Cobro */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              Tarjeta
+            </p>
+            <div className="p-2 bg-violet-50 rounded-lg">
+              <CreditCard className="h-4 w-4 text-violet-600" />
+            </div>
+          </div>
+          <p className={`text-2xl font-black ${(stats?.saldoTarjeta ?? 0) >= 0 ? "text-violet-600" : "text-red-600"}`}>
+            {formatCurrency(stats?.saldoTarjeta ?? 0)}
+          </p>
+          <p className="text-xs text-gray-400 font-medium mt-1">Saldo acumulado tarjeta</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              Transferencia
+            </p>
+            <div className="p-2 bg-sky-50 rounded-lg">
+              <Smartphone className="h-4 w-4 text-sky-600" />
+            </div>
+          </div>
+          <p className={`text-2xl font-black ${(stats?.saldoTransferencia ?? 0) >= 0 ? "text-sky-600" : "text-red-600"}`}>
+            {formatCurrency(stats?.saldoTransferencia ?? 0)}
+          </p>
+          <p className="text-xs text-gray-400 font-medium mt-1">Saldo acumulado transferencias</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              Otros
+            </p>
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <CircleDollarSign className="h-4 w-4 text-orange-500" />
+            </div>
+          </div>
+          <p className={`text-2xl font-black ${(stats?.saldoOtro ?? 0) >= 0 ? "text-orange-500" : "text-red-600"}`}>
+            {formatCurrency(stats?.saldoOtro ?? 0)}
+          </p>
+          <p className="text-xs text-gray-400 font-medium mt-1">Saldo acumulado otros métodos</p>
         </div>
       </div>
 
@@ -604,8 +661,8 @@ export default function CashbookPage() {
                   <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-400">
                     Monto
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-emerald-600">
-                    Saldo Caja
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-400">
+                    Saldo Total
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-400">
                     Acc.
