@@ -732,10 +732,11 @@ export default function CashbookPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openEdit(entry)}
-                            className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold"
                             title="Editar"
                           >
                             <Pencil className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Editar</span>
                           </button>
                           <button
                             onClick={() => setDeleteId(entry.id)}
