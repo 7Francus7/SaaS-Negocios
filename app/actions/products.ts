@@ -313,13 +313,15 @@ export async function bulkUpdatePrices(data: {
 export async function adjustStock(
        variantId: number,
        delta: number,
-       reason: string = "MANUAL"
+       reason: string = "MANUAL",
+       purchaseCostPerUnit?: number,
+       purchasePaymentMethod: string = "EFECTIVO"
 ) {
        const storeId = await getStoreId();
 
-       // Validate
        const variant = await prisma.productVariant.findUnique({
-              where: { id: variantId }
+              where: { id: variantId },
+              include: { product: true },
        });
        if (!variant || variant.storeId !== storeId) {
               throw new Error("Variante no encontrada.");
@@ -327,7 +329,6 @@ export async function adjustStock(
 
        const newStock = variant.stockQuantity + delta;
 
-       // Determine Type
        let type = "ADJUSTMENT";
        if (delta > 0) {
               if (reason === "COMPRA") type = "BUY";
@@ -336,22 +337,62 @@ export async function adjustStock(
               else if (reason === "VENTA") type = "SALE";
        }
 
-       const [updatedVariant] = await prisma.$transaction([
-              prisma.productVariant.update({
+       const updatedVariant = await prisma.$transaction(async (tx) => {
+              const updated = await tx.productVariant.update({
                      where: { id: variantId },
-                     data: { stockQuantity: newStock }
-              }),
-              prisma.stockMovement.create({
+                     data: { stockQuantity: newStock },
+              });
+
+              await tx.stockMovement.create({
                      data: {
-                            variantId: variantId,
+                            variantId,
                             movementType: type,
                             quantity: delta,
-                            reason: reason,
+                            reason,
                             balanceSnapshot: newStock,
-                            timestamp: new Date()
+                            timestamp: new Date(),
+                     },
+              });
+
+              // Registrar costo de compra automáticamente en contabilidad
+              if (reason === "COMPRA" && purchaseCostPerUnit && purchaseCostPerUnit > 0 && delta > 0) {
+                     const totalCost = delta * purchaseCostPerUnit;
+                     const productName = `${variant.product?.name || ""} ${variant.variantName}`.trim();
+
+                     await tx.cashBookEntry.create({
+                            data: {
+                                   storeId,
+                                   date: new Date(),
+                                   type: "EGRESO",
+                                   category: "COMPRA",
+                                   amount: totalCost,
+                                   method: purchasePaymentMethod as any,
+                                   description: `Compra: ${productName} x${delta}`,
+                            },
+                     });
+
+                     // Si paga en efectivo, registrar salida en la sesión de caja
+                     if (purchasePaymentMethod === "EFECTIVO") {
+                            const session = await tx.cashSession.findFirst({
+                                   where: { storeId, status: "OPEN" },
+                                   orderBy: { startTime: "desc" },
+                            });
+                            if (session) {
+                                   await tx.cashMovement.create({
+                                          data: {
+                                                 cashSessionId: session.id,
+                                                 type: "OUT",
+                                                 amount: totalCost,
+                                                 description: `Compra: ${productName} x${delta}`,
+                                                 timestamp: new Date(),
+                                          },
+                                   });
+                            }
                      }
-              })
-       ]);
+              }
+
+              return updated;
+       });
 
        return {
               ...updatedVariant,

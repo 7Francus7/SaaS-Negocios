@@ -47,6 +47,8 @@ export default function ProductsPage() {
        const [stockVariant, setStockVariant] = useState<any>(null);
        const [stockDelta, setStockDelta] = useState("");
        const [stockReason, setStockReason] = useState("COMPRA");
+       const [stockCostPerUnit, setStockCostPerUnit] = useState("");
+       const [stockPaymentMethod, setStockPaymentMethod] = useState("EFECTIVO");
 
        // Bulk Price Update
        const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
@@ -148,16 +150,19 @@ export default function ProductsPage() {
               setStockVariant(variant);
               setStockDelta("");
               setStockReason("COMPRA");
+              setStockCostPerUnit("");
+              setStockPaymentMethod("EFECTIVO");
               setIsStockModalOpen(true);
        };
 
        const handleAdjustStock = async () => {
               if (!stockVariant || !stockDelta) return;
               try {
-                     await adjustStock(stockVariant.id, Number(stockDelta), stockReason);
+                     const cost = stockReason === "COMPRA" && stockCostPerUnit ? Number(stockCostPerUnit) : undefined;
+                     await adjustStock(stockVariant.id, Number(stockDelta), stockReason, cost, stockPaymentMethod);
                      setIsStockModalOpen(false);
                      setStockVariant(null);
-                     fetchProducts();
+                     await fetchProducts();
               } catch (e: any) {
                      alert(e.message);
               }
@@ -283,27 +288,25 @@ export default function ProductsPage() {
                             </select>
                      </div>
 
-                     {/* Summary */}
-                     {!loading && (
-                            <div className="flex gap-3 flex-wrap">
-                                   <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 text-sm">
-                                          <span className="text-blue-400 font-bold text-[10px] uppercase">Productos: </span>
-                                          <span className="font-black text-blue-700">{filtered.length}</span>
-                                   </div>
-                                   <div className="bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 text-sm">
-                                          <span className="text-amber-400 font-bold text-[10px] uppercase">Stock Bajo: </span>
-                                          <span className="font-black text-amber-700">
-                                                 {filtered.filter((v: any) => v.stockQuantity <= v.minStock).length}
-                                          </span>
-                                   </div>
-                                   <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 text-sm">
-                                          <span className="text-emerald-400 font-bold text-[10px] uppercase">Valor en Mercadería: </span>
-                                          <span className="font-black text-emerald-700">
-                                                 {formatCurrency(inventoryValue)}
-                                          </span>
-                                   </div>
+                     {/* Summary — always visible, even during refresh */}
+                     <div className="flex gap-3 flex-wrap">
+                            <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 text-sm">
+                                   <span className="text-blue-400 font-bold text-[10px] uppercase">Productos: </span>
+                                   <span className="font-black text-blue-700">{loading ? "—" : filtered.length}</span>
                             </div>
-                     )}
+                            <div className="bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 text-sm">
+                                   <span className="text-amber-400 font-bold text-[10px] uppercase">Stock Bajo: </span>
+                                   <span className="font-black text-amber-700">
+                                          {loading ? "—" : filtered.filter((v: any) => v.stockQuantity <= v.minStock).length}
+                                   </span>
+                            </div>
+                            <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 text-sm">
+                                   <span className="text-emerald-400 font-bold text-[10px] uppercase">Valor en Mercadería: </span>
+                                   <span className={`font-black text-emerald-700 ${loading ? "opacity-50" : ""}`}>
+                                          {formatCurrency(inventoryValue)}
+                                   </span>
+                            </div>
+                     </div>
 
                      {/* Table */}
                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -579,6 +582,59 @@ export default function ProductsPage() {
                                                         ))}
                                                  </div>
                                           </div>
+
+                                          {/* Costo de compra — solo cuando el motivo es COMPRA y se suma stock */}
+                                          {stockReason === "COMPRA" && Number(stockDelta) > 0 && (
+                                                 <div className="space-y-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Registrar en Contabilidad (opcional)</p>
+                                                        <div>
+                                                               <label className="block text-xs font-bold text-gray-600 mb-1">Precio de compra por unidad</label>
+                                                               <div className="relative">
+                                                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                                      <input
+                                                                             type="number"
+                                                                             min="0"
+                                                                             step="0.01"
+                                                                             value={stockCostPerUnit}
+                                                                             onChange={e => setStockCostPerUnit(e.target.value)}
+                                                                             placeholder="0.00"
+                                                                             className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                      />
+                                                               </div>
+                                                               {stockCostPerUnit && Number(stockCostPerUnit) > 0 && (
+                                                                      <p className="text-xs text-blue-600 font-bold mt-1">
+                                                                             Total: {formatCurrency(Number(stockDelta) * Number(stockCostPerUnit))}
+                                                                      </p>
+                                                               )}
+                                                        </div>
+                                                        {stockCostPerUnit && Number(stockCostPerUnit) > 0 && (
+                                                               <div>
+                                                                      <label className="block text-xs font-bold text-gray-600 mb-1">Método de pago</label>
+                                                                      <div className="grid grid-cols-3 gap-2">
+                                                                             {[
+                                                                                    { value: "EFECTIVO", label: "Efectivo" },
+                                                                                    { value: "TRANSFERENCIA", label: "Transferencia" },
+                                                                                    { value: "TARJETA", label: "Tarjeta" },
+                                                                             ].map(m => (
+                                                                                    <button
+                                                                                           key={m.value}
+                                                                                           type="button"
+                                                                                           onClick={() => setStockPaymentMethod(m.value)}
+                                                                                           className={cn(
+                                                                                                  "py-2 rounded-xl text-xs font-bold border-2 transition-all",
+                                                                                                  stockPaymentMethod === m.value
+                                                                                                         ? "border-blue-500 bg-blue-100 text-blue-700"
+                                                                                                         : "border-gray-100 text-gray-500 hover:border-gray-200"
+                                                                                           )}
+                                                                                    >
+                                                                                           {m.label}
+                                                                                    </button>
+                                                                             ))}
+                                                                      </div>
+                                                               </div>
+                                                        )}
+                                                 </div>
+                                          )}
 
                                           <div className="pt-2">
                                                  <button

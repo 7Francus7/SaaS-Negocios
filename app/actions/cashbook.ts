@@ -135,43 +135,56 @@ export async function getDashboardStats() {
     999
   );
 
-  const [todayIn, todayOut, monthIn, monthOut, allIn, allOut, allMethodBreakdown, todayMethodBreakdown] =
-    await Promise.all([
-      prisma.cashBookEntry.aggregate({
-        where: { storeId, type: "INGRESO", date: { gte: todayStart, lte: todayEnd } },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.aggregate({
-        where: { storeId, type: "EGRESO", date: { gte: todayStart, lte: todayEnd } },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.aggregate({
-        where: { storeId, type: "INGRESO", date: { gte: monthStart, lte: monthEnd } },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.aggregate({
-        where: { storeId, type: "EGRESO", date: { gte: monthStart, lte: monthEnd } },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.aggregate({
-        where: { storeId, type: "INGRESO" },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.aggregate({
-        where: { storeId, type: "EGRESO" },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.groupBy({
-        by: ["method", "type"],
-        where: { storeId },
-        _sum: { amount: true },
-      }),
-      prisma.cashBookEntry.groupBy({
-        by: ["method", "type"],
-        where: { storeId, date: { gte: todayStart, lte: todayEnd } },
-        _sum: { amount: true },
-      }),
-    ]);
+  const [
+    todayIn, todayOut, monthIn, monthOut, allIn, allOut,
+    allMethodBreakdown, todayMethodBreakdown,
+    openSession, lastClosedSession,
+  ] = await Promise.all([
+    prisma.cashBookEntry.aggregate({
+      where: { storeId, type: "INGRESO", date: { gte: todayStart, lte: todayEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.aggregate({
+      where: { storeId, type: "EGRESO", date: { gte: todayStart, lte: todayEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.aggregate({
+      where: { storeId, type: "INGRESO", date: { gte: monthStart, lte: monthEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.aggregate({
+      where: { storeId, type: "EGRESO", date: { gte: monthStart, lte: monthEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.aggregate({
+      where: { storeId, type: "INGRESO" },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.aggregate({
+      where: { storeId, type: "EGRESO" },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.groupBy({
+      by: ["method", "type"],
+      where: { storeId },
+      _sum: { amount: true },
+    }),
+    prisma.cashBookEntry.groupBy({
+      by: ["method", "type"],
+      where: { storeId, date: { gte: todayStart, lte: todayEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.cashSession.findFirst({
+      where: { storeId, status: "OPEN" },
+      orderBy: { startTime: "desc" },
+      select: { id: true, initialCash: true, startTime: true },
+    }),
+    prisma.cashSession.findFirst({
+      where: { storeId, status: "CLOSED" },
+      orderBy: { endTime: "desc" },
+      select: { finalCashReal: true },
+    }),
+  ]);
 
   const ingresosHoy = Number(todayIn._sum.amount || 0);
   const egresosHoy = Number(todayOut._sum.amount || 0);
@@ -182,6 +195,31 @@ export async function getDashboardStats() {
     return Number(income) - Number(expense);
   };
 
+  // Caja fuerte = saldo real de la caja (sesión actual o último cierre verificado)
+  let saldoEfectivo = 0;
+  if (openSession) {
+    const [cashSales, cashMovements] = await Promise.all([
+      prisma.salePayment.aggregate({
+        where: {
+          paymentMethod: "EFECTIVO",
+          sale: { storeId, timestamp: { gte: openSession.startTime } },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.groupBy({
+        by: ["type"],
+        where: { cashSessionId: openSession.id },
+        _sum: { amount: true },
+      }),
+    ]);
+    const totalSales = Number(cashSales._sum.amount || 0);
+    const totalIn = Number(cashMovements.find(m => m.type === "IN")?._sum.amount || 0);
+    const totalOut = Number(cashMovements.find(m => m.type === "OUT")?._sum.amount || 0);
+    saldoEfectivo = Number(openSession.initialCash) + totalSales + totalIn - totalOut;
+  } else if (lastClosedSession?.finalCashReal != null) {
+    saldoEfectivo = Number(lastClosedSession.finalCashReal);
+  }
+
   return {
     ingresosHoy,
     egresosHoy,
@@ -189,7 +227,7 @@ export async function getDashboardStats() {
     ingresosMes: Number(monthIn._sum.amount || 0),
     egresosMes: Number(monthOut._sum.amount || 0),
     balanceTotal: Number(allIn._sum.amount || 0) - Number(allOut._sum.amount || 0),
-    saldoEfectivo: methodBalance("EFECTIVO", allMethodBreakdown),
+    saldoEfectivo,
     saldoTarjeta: methodBalance("TARJETA", allMethodBreakdown),
     saldoTransferencia: methodBalance("TRANSFERENCIA", allMethodBreakdown),
     saldoOtro: methodBalance("OTRO", allMethodBreakdown),
