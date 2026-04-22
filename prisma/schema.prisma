@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      String   @default("OWNER")
+  storeId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store     Store?   @relation(fields: [storeId], references: [id])
+
+  @@map("users")
+}
+
+model Store {
+  id                     String           @id @default(cuid())
+  name                   String
+  slug                   String           @unique
+  isActive               Boolean          @default(true)
+  hasCompletedOnboarding Boolean          @default(false)
+  onboardingCompletedAt  DateTime?
+  address                String?
+  phone                  String?
+  cuit                   String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  
+  // SaaS Subscription
+  plan                   String           @default("FREE")
+  subscriptionStatus     String           @default("ACTIVE") // ACTIVE, PENDING, CANCELLED, PAST_DUE
+  subscriptionId         String?          // MP Preapproval ID
+  nextBillingDate        DateTime?
+  cashSessions           CashSession[]
+  cashBookEntries        CashBookEntry[]
+  categories             Category[]
+  customers              Customer[]
+  productVariants        ProductVariant[]
+  productBarcodes        ProductBarcode[]
+  products               Product[]
+  promotions             Promotion[]
+  purchases              Purchase[]
+  sales                  Sale[]
+  settings               StoreSetting[]
+  suppliers              Supplier[]
+  users                  User[]
+
+  @@map("stores")
+}
+
+model Category {
+  id             Int             @id @default(autoincrement())
+  name           String
+  storeId        String
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products       Product[]
+  promotionItems PromotionItem[]
+
+  @@unique([storeId, name])
+  @@map("categories")
+}
+
+model Product {
+  id          Int              @id @default(autoincrement())
+  name        String
+  description String?
+  categoryId  Int?
+  active      Boolean          @default(true)
+  storeId     String
+  variants    ProductVariant[]
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id             Int             @id @default(autoincrement())
+  productId      Int
+  variantName    String
+  barcode        String?
+  costPrice      Decimal         @default(0.00)
+  salePrice      Decimal         @default(0.00)
+  stockQuantity  Float           @default(0)
+  minStock       Float           @default(5)
+  active         Boolean         @default(true)
+  storeId        String
+  isWeighable    Boolean         @default(false)
+  isQuickAccess  Boolean         @default(false)
+  trackStock     Boolean         @default(true)
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  barcodes       ProductBarcode[]
+  promotionItems PromotionItem[]
+  purchaseItems  PurchaseItem[]
+  saleItems      SaleItem[]
+  stockMovements StockMovement[]
+
+  @@unique([storeId, barcode])
+  @@map("product_variants")
+}
+
+model ProductBarcode {
+  id        Int            @id @default(autoincrement())
+  barcode   String
+  variantId Int
+  storeId   String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, barcode])
+  @@map("product_barcodes")
+}
+
+
+model Customer {
+  id               Int               @id @default(autoincrement())
+  name             String
+  dni              String?
+  phone            String?
+  address          String?
+  creditLimit      Decimal           @default(0.00)
+  currentBalance   Decimal           @default(0.00)
+  closedBalance    Decimal           @default(0.00)
+  active           Boolean           @default(true)
+  storeId          String
+  accountMovements AccountMovement[]
+  store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sales            Sale[]
+
+  @@map("customers")
+}
+
+model Sale {
+  id             Int           @id @default(autoincrement())
+  timestamp      DateTime      @default(now())
+  customerId     Int?
+  paymentMethod  String        @default("EFECTIVO")
+  subtotal       Decimal       @default(0.00)
+  discountAmount Decimal       @default(0.00)
+  totalAmount    Decimal       @default(0.00)
+  storeId        String
+  items          SaleItem[]
+  payments       SalePayment[]
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("sales")
+}
+
+model SalePayment {
+  id            Int      @id @default(autoincrement())
+  saleId        Int
+  paymentMethod String
+  amount        Decimal
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_payments")
+}
+
+
+model SaleItem {
+  id                  Int            @id @default(autoincrement())
+  saleId              Int
+  variantId           Int
+  productNameSnapshot String
+  quantity            Float          @default(1.0)
+  unitPrice           Decimal
+  unitCost            Decimal        @default(0.00)
+  subtotal            Decimal
+  subtotalCost        Decimal        @default(0.00)
+  sale                Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variant             ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@map("sale_items")
+}
+
+model AccountMovement {
+  id            Int      @id @default(autoincrement())
+  customerId    Int
+  timestamp     DateTime @default(now())
+  movementType  String
+  amount        Decimal
+  description   String?
+  paymentMethod String?
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("account_movements")
+}
+
+model StockMovement {
+  id              Int            @id @default(autoincrement())
+  variantId       Int
+  userId          String?
+  timestamp       DateTime       @default(now())
+  movementType    String
+  quantity        Float
+  reason          String?
+  referenceId     String?
+  balanceSnapshot Float?
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@map("stock_movements")
+}
+
+model CashSession {
+  id              Int            @id @default(autoincrement())
+  startTime       DateTime       @default(now())
+  endTime         DateTime?
+  initialCash     Decimal        @default(0.00)
+  finalCashSystem Decimal?
+  finalCashReal   Decimal?
+  status          String         @default("OPEN")
+  summary         Json?
+  notes           String?
+  storeId         String
+  userId          String?
+  movements       CashMovement[]
+  store           Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("cash_sessions")
+}
+
+model CashMovement {
+  id            Int         @id @default(autoincrement())
+  cashSessionId Int
+  type          String
+  amount        Decimal
+  description   String?
+  timestamp     DateTime    @default(now())
+  userId        String?
+  cashSession   CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+
+  @@map("cash_movements")
+}
+
+model StoreSetting {
+  id          Int     @id @default(autoincrement())
+  key         String
+  value       String
+  description String?
+  storeId     String
+  store       Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key])
+  @@map("store_settings")
+}
+
+model Supplier {
+  id        Int        @id @default(autoincrement())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  active    Boolean    @default(true)
+  storeId   String
+  purchases Purchase[]
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("suppliers")
+}
+
+model Purchase {
+  id          Int            @id @default(autoincrement())
+  date        DateTime       @default(now())
+  supplierId  Int?
+  totalAmount Decimal        @default(0.00)
+  status      String         @default("COMPLETED")
+  storeId     String
+  items       PurchaseItem[]
+  store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier    Supplier?      @relation(fields: [supplierId], references: [id])
+
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id         Int            @id @default(autoincrement())
+  purchaseId Int
+  variantId  Int
+  quantity   Float
+  unitCost   Decimal
+  subtotal   Decimal
+  purchase   Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  variant    ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@map("purchase_items")
+}
+
+model Promotion {
+  id            Int             @id @default(autoincrement())
+  name          String
+  description   String?
+  type          String
+  value         Decimal         @default(0.00)
+  buyQuantity   Int?
+  payQuantity   Int?
+  paymentMethod String?
+  active        Boolean         @default(true)
+  startDate     DateTime?
+  endDate       DateTime?
+  storeId       String
+  allProducts   Boolean         @default(false)
+  items         PromotionItem[]
+  store         Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("promotions")
+}
+
+model PromotionItem {
+  id          Int             @id @default(autoincrement())
+  promotionId Int
+  variantId   Int?
+  categoryId  Int?
+  category    Category?       @relation(fields: [categoryId], references: [id])
+  promotion   Promotion       @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@map("promotion_items")
+}
+
+model CashBookEntry {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  type        String   // INGRESO | EGRESO
+  category    String   // VENTA | INGRESO_EXTRA | COMPRA | GASTO | PROVEEDOR | SUELDO | OTRO
+  amount      Decimal
+  description String?
+  method      String   @default("EFECTIVO") // EFECTIVO | TRANSFERENCIA | TARJETA | OTRO
+  reference   String?
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("cash_book_entries")
+}

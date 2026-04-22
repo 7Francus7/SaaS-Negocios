@@ -1,0 +1,379 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+       BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell
+} from "recharts";
+import { formatCurrency } from "@/lib/utils";
+import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon, Printer, Download, Tag } from "lucide-react";
+import { getAdvancedReports, getSalesByCategory, type AdvancedReportData, type CategorySalesItem, type ReportRange } from "@/app/actions/reports";
+
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+export default function ReportsPage() {
+       const [range, setRange] = useState<ReportRange>('today');
+       const [data, setData] = useState<AdvancedReportData | null>(null);
+       const [categoryData, setCategoryData] = useState<CategorySalesItem[]>([]);
+       const [loading, setLoading] = useState(true);
+
+       useEffect(() => {
+              async function fetch() {
+                     setLoading(true);
+                     try {
+                            const [report, cats] = await Promise.all([
+                                   getAdvancedReports(range),
+                                   getSalesByCategory(range)
+                            ]);
+                            setData(report);
+                            setCategoryData(cats);
+                     } catch (e) {
+                            console.error(e);
+                     } finally {
+                            setLoading(false);
+                     }
+              }
+              fetch();
+       }, [range]);
+
+       const downloadCSV = () => {
+              if (!data) return;
+
+              const rangeLabels: Record<string, string> = {
+                     today: 'Hoy', yesterday: 'Ayer', '7d': 'Ultimos_7_Dias', '30d': 'Ultimos_30_Dias',
+                     this_month: 'Este_Mes', last_month: 'Mes_Pasado', this_year: 'Este_Ano', all: 'Historico'
+              };
+
+              // Build CSV Content
+              let csvContent = "";
+
+              // 1. Métodos de Pago
+              csvContent += "--- METODOS DE PAGO ---\n";
+              csvContent += "Metodo,Cantidad Ventas,Total Facturado\n";
+              data.paymentMethods.forEach(pm => {
+                     csvContent += `${pm.method},${pm.count},${pm.total}\n`;
+              });
+              csvContent += "\n";
+
+              // 2. Top Productos
+              csvContent += "--- TOP PRODUCTOS VENDIDOS ---\n";
+              csvContent += "Producto,Unidades Vendidas\n";
+              data.topProducts.forEach(tp => {
+                     csvContent += `"${tp.name}",${tp.value}\n`;
+              });
+              csvContent += "\n";
+
+              // 3. Top Clientes
+              csvContent += "--- MEJORES CLIENTES ---\n";
+              csvContent += "Cliente,Total Gastado\n";
+              data.topCustomers.forEach(tc => {
+                     csvContent += `"${tc.name}",${tc.value}\n`;
+              });
+              csvContent += "\n";
+
+              // 4. Ventas por Categoría
+              csvContent += "--- VENTAS POR CATEGORIA ---\n";
+              csvContent += "Categoria,Cantidad Vendida,Total Facturado,Costo Total,Ganancia\n";
+              categoryData.forEach(c => {
+                     const ganancia = c.totalRevenue - c.totalCost;
+                     csvContent += `"${c.categoryName}",${c.totalQuantity},${c.totalRevenue},${c.totalCost},${ganancia}\n`;
+              });
+
+              // Generate CSV file
+              const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.setAttribute("href", url);
+              link.setAttribute("download", `Reporte_Contable_${rangeLabels[range] || range}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+       };
+
+       if (loading) return <div className="p-12 text-center text-gray-500 animate-pulse">Generando reportes de inteligencia...</div>;
+       if (!data) return <div className="p-12 text-center text-red-500">Error al cargar reportes.</div>;
+
+       return (
+              <div className="space-y-8 max-w-[1600px] mx-auto">
+                     {/* Header */}
+                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                   <h1 className="text-3xl font-black text-gray-900 tracking-tight">Reportes Avanzados</h1>
+                                   <p className="text-gray-500 font-medium mt-1">Análisis profundo del rendimiento de tu negocio.</p>
+                            </div>
+
+                            <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl self-start md:self-auto gap-1 print:hidden">
+                                   {(['today', 'yesterday', '7d', '30d', 'this_month', 'last_month', 'this_year', 'all'] as ReportRange[]).map((r) => (
+                                          <button
+                                                 key={r}
+                                                 onClick={() => setRange(r)}
+                                                 className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${range === r
+                                                        ? 'bg-white text-blue-600 shadow-sm'
+                                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                                        }`}
+                                          >
+                                                 {r === 'today' && 'Hoy'}
+                                                 {r === 'yesterday' && 'Ayer'}
+                                                 {r === '7d' && '7 Días'}
+                                                 {r === '30d' && '30 Días'}
+                                                 {r === 'this_month' && 'Este Mes'}
+                                                 {r === 'last_month' && 'Mes Pasado'}
+                                                 {r === 'this_year' && 'Este Año'}
+                                                 {r === 'all' && 'Histórico'}
+                                          </button>
+                                   ))}
+                            </div>
+                            <div className="flex items-center gap-2 mt-4 md:mt-0 print:hidden self-start md:self-auto">
+                                   <button
+                                          onClick={downloadCSV}
+                                          className="flex items-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 font-bold rounded-xl hover:bg-green-100 transition-colors shadow-sm text-sm border border-green-200"
+                                   >
+                                          <Download className="h-4 w-4" /> CSV / Excel
+                                   </button>
+                                   <button
+                                          onClick={() => window.print()}
+                                          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-sm text-sm"
+                                   >
+                                          <Printer className="h-4 w-4" /> PDF
+                                   </button>
+                            </div>
+                     </div>
+
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:block print:space-y-8">
+
+                            {/* Sales by Hour Chart */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                   <div className="flex items-center justify-between mb-8">
+                                          <div className="flex items-center gap-3">
+                                                 <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                                        <Clock className="h-6 w-6" />
+                                                 </div>
+                                                 <h3 className="font-bold text-gray-900">Actividad por Hora</h3>
+                                          </div>
+                                          <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                 Pico: {data.salesByHour.reduce((max, curr) => curr.salesCount > max.salesCount ? curr : max, { salesCount: 0 }).salesCount} ventas
+                                          </span>
+                                   </div>
+                                   <div className="h-[300px] w-full">
+                                          <ResponsiveContainer width="100%" height="100%">
+                                                 <AreaChart data={data.salesByHour}>
+                                                        <defs>
+                                                               <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                                                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                                                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                               </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                                        <XAxis
+                                                               dataKey="hour"
+                                                               axisLine={false}
+                                                               tickLine={false}
+                                                               tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                                               dy={10}
+                                                        />
+                                                        <YAxis
+                                                               axisLine={false}
+                                                               tickLine={false}
+                                                               tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                                               tickFormatter={(value) => `${value}`}
+                                                        />
+                                                        <Tooltip
+                                                               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                               formatter={(value: any) => [`${value} ventas`, 'Volumen']}
+                                                        />
+                                                        <Area
+                                                               type="monotone"
+                                                               dataKey="salesCount"
+                                                               stroke="#3b82f6"
+                                                               strokeWidth={3}
+                                                               fillOpacity={1}
+                                                               fill="url(#colorSales)"
+                                                        />
+                                                 </AreaChart>
+                                          </ResponsiveContainer>
+                                   </div>
+                            </div>
+
+                            {/* Payment Methods Pie */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                   <div className="flex items-center gap-3 mb-8">
+                                          <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                                                 <PieChartIcon className="h-6 w-6" />
+                                          </div>
+                                          <h3 className="font-bold text-gray-900">Métodos de Pago</h3>
+                                   </div>
+                                   <div className="flex flex-col md:flex-row items-center gap-8">
+                                          <div className="h-[300px] w-full md:w-1/2 shrink-0">
+                                                 <ResponsiveContainer width="100%" height="100%">
+                                                        <PieChart>
+                                                               <Pie
+                                                                      data={data.paymentMethods}
+                                                                      cx="50%"
+                                                                      cy="50%"
+                                                                      innerRadius={60}
+                                                                      outerRadius={80}
+                                                                      paddingAngle={5}
+                                                                      dataKey="count"
+                                                               >
+                                                                      {data.paymentMethods.map((entry, index) => (
+                                                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                                      ))}
+                                                               </Pie>
+                                                               <Tooltip wrapperStyle={{ outline: 'none' }} contentStyle={{ borderRadius: '8px' }} />
+                                                        </PieChart>
+                                                 </ResponsiveContainer>
+                                          </div>
+                                          <div className="w-full md:w-1/2 space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                                                 {data.paymentMethods.map((method, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
+                                                               <div className="flex items-center gap-3">
+                                                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                                                      <span className="font-bold text-sm text-gray-700 capitalize">{method.method.toLowerCase().replace('_', ' ')}</span>
+                                                               </div>
+                                                               <div className="text-right">
+                                                                      <p className="font-bold text-gray-900">{formatCurrency(method.total)}</p>
+                                                                      <p className="text-xs text-gray-500 font-medium">{method.count} ventas</p>
+                                                               </div>
+                                                        </div>
+                                                 ))}
+                                          </div>
+                                   </div>
+                            </div>
+                     </div>
+
+                     {/* Ventas por Categoría */}
+                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                   <div className="flex items-center gap-3">
+                                          <div className="p-2 bg-violet-50 text-violet-600 rounded-lg">
+                                                 <Tag className="h-6 w-6" />
+                                          </div>
+                                          <div>
+                                                 <h3 className="font-bold text-gray-900">Ventas por Categoría</h3>
+                                                 <p className="text-xs text-gray-400 font-medium">Fiambrería · Pollería · Panadería · y más</p>
+                                          </div>
+                                   </div>
+                                   <span className="text-xs font-bold uppercase tracking-wider text-violet-600 bg-violet-50 px-2 py-1 rounded">
+                                          {categoryData.length} rubros
+                                   </span>
+                            </div>
+
+                            {categoryData.length === 0 ? (
+                                   <p className="text-center text-gray-400 py-8">No hay datos para este período</p>
+                            ) : (
+                                   <div className="space-y-3">
+                                          {categoryData.map((cat, i) => {
+                                                 const maxRevenue = categoryData[0]?.totalRevenue || 1;
+                                                 const ganancia = cat.totalRevenue - cat.totalCost;
+                                                 const margen = cat.totalRevenue > 0 ? (ganancia / cat.totalRevenue) * 100 : 0;
+                                                 return (
+                                                        <div key={cat.categoryId ?? 'sin-cat'} className="p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-violet-50/50 transition-colors">
+                                                               <div className="flex items-center justify-between mb-2">
+                                                                      <div className="flex items-center gap-2">
+                                                                             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                                                                                    style={{ backgroundColor: COLORS[i % COLORS.length] + '20', color: COLORS[i % COLORS.length] }}>
+                                                                                    {i + 1}
+                                                                             </div>
+                                                                             <span className="font-bold text-gray-900">{cat.categoryName}</span>
+                                                                      </div>
+                                                                      <div className="flex items-center gap-4 text-right">
+                                                                             <div>
+                                                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Cantidad</p>
+                                                                                    <p className="font-bold text-gray-700">{cat.totalQuantity % 1 === 0 ? cat.totalQuantity : cat.totalQuantity.toFixed(2)}</p>
+                                                                             </div>
+                                                                             <div>
+                                                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Facturado</p>
+                                                                                    <p className="font-bold text-gray-900">{formatCurrency(cat.totalRevenue)}</p>
+                                                                             </div>
+                                                                             {cat.totalCost > 0 && (
+                                                                                    <div>
+                                                                                           <p className="text-[10px] uppercase font-bold text-gray-400">Margen</p>
+                                                                                           <p className={`font-bold ${margen >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{margen.toFixed(1)}%</p>
+                                                                                    </div>
+                                                                             )}
+                                                                      </div>
+                                                               </div>
+                                                               <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                                                      <div
+                                                                             className="h-full rounded-full transition-all duration-500"
+                                                                             style={{
+                                                                                    width: `${(cat.totalRevenue / maxRevenue) * 100}%`,
+                                                                                    backgroundColor: COLORS[i % COLORS.length]
+                                                                             }}
+                                                                      />
+                                                               </div>
+                                                        </div>
+                                                 );
+                                          })}
+                                   </div>
+                            )}
+                     </div>
+
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Top Products */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                   <div className="flex items-center gap-3 mb-6">
+                                          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                 <ShoppingBag className="h-6 w-6" />
+                                          </div>
+                                          <h3 className="font-bold text-gray-900">Top Productos</h3>
+                                   </div>
+                                   <div className="space-y-4">
+                                          {data.topProducts.map((p, i) => (
+                                                 <div key={i} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors group">
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 font-bold">
+                                                               {i + 1}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                               <p className="font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{p.name}</p>
+                                                               <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                                                                      <div
+                                                                             className="bg-indigo-500 h-full rounded-full"
+                                                                             style={{ width: `${(p.value / (data.topProducts[0]?.value || 1)) * 100}%` }}
+                                                                      />
+                                                               </div>
+                                                        </div>
+                                                        <div className="text-right shrink-0">
+                                                               <p className="font-bold text-gray-900">{p.value}</p>
+                                                               <p className="text-[10px] uppercase font-bold text-gray-400">Unidades</p>
+                                                        </div>
+                                                 </div>
+                                          ))}
+                                          {data.topProducts.length === 0 && (
+                                                 <p className="text-center text-gray-400 py-8">No hay datos suficientes</p>
+                                          )}
+                                   </div>
+                            </div>
+
+                            {/* Top Customers */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                   <div className="flex items-center gap-3 mb-6">
+                                          <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                                                 <Users className="h-6 w-6" />
+                                          </div>
+                                          <h3 className="font-bold text-gray-900">Mejores Clientes</h3>
+                                   </div>
+                                   <div className="space-y-4">
+                                          {data.topCustomers.map((c, i) => (
+                                                 <div key={i} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors group">
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 font-bold">
+                                                               {i + 1}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                               <p className="font-bold text-gray-900 truncate group-hover:text-amber-600 transition-colors">{c.name}</p>
+                                                               <p className="text-xs text-gray-500 font-medium">Cliente Frecuente</p>
+                                                        </div>
+                                                        <div className="text-right shrink-0 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                                               <p className="font-bold text-emerald-600">{formatCurrency(c.value)}</p>
+                                                        </div>
+                                                 </div>
+                                          ))}
+                                          {data.topCustomers.length === 0 && (
+                                                 <p className="text-center text-gray-400 py-8">No hay datos suficientes</p>
+                                          )}
+                                   </div>
+                            </div>
+                     </div>
+              </div >
+       );
+}

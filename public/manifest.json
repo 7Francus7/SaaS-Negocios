@@ -1,0 +1,17 @@
+{
+  "name": "SAAS Negocios",
+  "short_name": "SAAS",
+  "description": "Sistema de gestión para negocios y despensas",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
