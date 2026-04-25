@@ -22,47 +22,33 @@ export async function getDashboardStats() {
               const today = new Date();
               today.setHours(0, 0, 0, 0);
 
+              const todayFilter = { storeId, timestamp: { gte: today } };
+
               const [
                      productsCount,
                      lowStockCount,
                      customersCount,
-                     salesTodayDetailed
+                     salesAgg,
+                     costAgg,
               ] = await Promise.all([
-                     // Total Products
+                     prisma.productVariant.count({ where: { storeId, active: true } }),
                      prisma.productVariant.count({
-                            where: { storeId, active: true }
+                            where: { storeId, active: true, trackStock: true, stockQuantity: { lte: 5 } }
                      }),
-                     // Low Stock
-                     prisma.productVariant.count({
-                            where: {
-                                   storeId,
-                                   active: true,
-                                   trackStock: true,
-                                   stockQuantity: { lte: 5 }
-                            }
+                     prisma.customer.count({ where: { storeId, active: true } }),
+                     prisma.sale.aggregate({
+                            where: todayFilter,
+                            _sum: { totalAmount: true },
+                            _count: true,
                      }),
-                     // Customers
-                     prisma.customer.count({
-                            where: { storeId, active: true }
+                     prisma.saleItem.aggregate({
+                            where: { sale: todayFilter },
+                            _sum: { subtotalCost: true },
                      }),
-                     // Sales Today for specific logic
-                     prisma.sale.findMany({
-                            where: {
-                                   storeId,
-                                   timestamp: { gte: today }
-                            },
-                            include: {
-                                   items: true
-                            }
-                     }) as Promise<any[]>
               ]);
 
-              const salesTodayTotal = (salesTodayDetailed as any[]).reduce((sum: number, s: any) => sum + Number(s.totalAmount || 0), 0);
-
-              const profitToday = (salesTodayDetailed as any[]).reduce((acc: number, sale: any) => {
-                     const cost = (sale.items || []).reduce((sum: number, item: any) => sum + Number(item.subtotalCost || 0), 0);
-                     return acc + (Number(sale.totalAmount || 0) - cost);
-              }, 0);
+              const salesTodayTotal = Number(salesAgg._sum.totalAmount ?? 0);
+              const profitToday = salesTodayTotal - Number(costAgg._sum.subtotalCost ?? 0);
 
               // Find critical Low Stock items for list
               const criticalStockItems = await prisma.productVariant.findMany({
@@ -74,7 +60,7 @@ export async function getDashboardStats() {
 
               return safeSerialize({
                      salesTodayTotal,
-                     salesCount: salesTodayDetailed.length,
+                     salesCount: salesAgg._count,
                      profitToday,
                      productsCount,
                      lowStockCount,

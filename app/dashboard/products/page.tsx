@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp, Star } from "lucide-react";
 import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess, getInventoryValue } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
@@ -179,8 +179,7 @@ export default function ProductsPage() {
               }
        };
 
-       // Filter products
-       const filtered = products.filter((v: any) => {
+       const filtered = useMemo(() => products.filter((v: any) => {
               const matchesSearch = searchQuery === "" ||
                      v.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                      v.variantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -191,7 +190,12 @@ export default function ProductsPage() {
               const matchesStock = filterStock === "" ||
                      (filterStock === "sin_stock" ? v.stockQuantity <= 0 : true);
               return matchesSearch && matchesCategory && matchesStock;
-       });
+       }), [products, searchQuery, filterCategory, filterStock]);
+
+       const lowStockCount = useMemo(
+              () => filtered.filter((v: any) => v.stockQuantity <= v.minStock).length,
+              [filtered]
+       );
 
        return (
               <div className="space-y-5 lg:space-y-6">
@@ -290,7 +294,7 @@ export default function ProductsPage() {
                                    <div className="bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 text-sm">
                                           <span className="text-amber-400 font-bold text-[10px] uppercase">Stock Bajo: </span>
                                           <span className="font-black text-amber-700">
-                                                 {filtered.filter((v: any) => v.stockQuantity <= v.minStock).length}
+                                                 {lowStockCount}
                                           </span>
                                    </div>
                                    <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 text-sm">

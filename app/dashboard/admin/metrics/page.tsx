@@ -32,7 +32,7 @@ export default function MetricsPage() {
                             return newArray;
                      });
                      setPing(Math.floor(Math.random() * 10) + 8);
-              }, 3000);
+              }, 15000);
               return () => clearInterval(interval);
        }, []);
 
