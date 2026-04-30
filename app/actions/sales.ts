@@ -183,6 +183,28 @@ export async function processSale(
                      }
               }
 
+              // Raffle coupon logic
+              let raffleNumber: number | null = null;
+              const qualifiesForRaffle = totalAmount >= 10000 &&
+                     payments.every(p => p.method === "EFECTIVO" || p.method === "TRANSFERENCIA");
+              if (qualifiesForRaffle) {
+                     const raffleEnabled = await tx.storeSetting.findUnique({
+                            where: { storeId_key: { storeId, key: "raffle_enabled" } }
+                     });
+                     if (raffleEnabled?.value === "true") {
+                            const counterSetting = await tx.storeSetting.findUnique({
+                                   where: { storeId_key: { storeId, key: "raffle_counter" } }
+                            });
+                            const newCounter = parseInt(counterSetting?.value || "0") + 1;
+                            await tx.storeSetting.upsert({
+                                   where: { storeId_key: { storeId, key: "raffle_counter" } },
+                                   update: { value: String(newCounter) },
+                                   create: { storeId, key: "raffle_counter", value: String(newCounter), description: "Contador cupones sorteo" }
+                            });
+                            raffleNumber = newCounter;
+                     }
+              }
+
               return {
                      ...sale,
                      subtotal: Number(sale.subtotal),
@@ -198,7 +220,8 @@ export async function processSale(
                      payments: sale.payments.map(p => ({
                             ...p,
                             amount: Number(p.amount)
-                     }))
+                     })),
+                     raffleNumber
               } as any;
        });
 }

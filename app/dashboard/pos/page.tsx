@@ -183,6 +183,7 @@ export default function POSPage() {
               total: number;
               date: Date;
               paymentMethod: string;
+              raffleNumber?: number | null;
               customer?: any;
               store?: any;
        }
@@ -340,7 +341,7 @@ export default function POSPage() {
                             unitPrice: i.price
                      }));
 
-                     await processSale(
+                     const saleResult = await processSale(
                             itemsInput,
                             finalPayments,
                             selectedCustomerId || undefined,
@@ -352,6 +353,7 @@ export default function POSPage() {
                             total,
                             date: new Date(),
                             paymentMethod: isSplitPayment ? "MIXTO" : paymentMethod,
+                            raffleNumber: saleResult.raffleNumber ?? null,
                             store: {
                                    name: storeSettings?.name || session?.store?.name,
                                    address: storeSettings?.address || session?.store?.address,

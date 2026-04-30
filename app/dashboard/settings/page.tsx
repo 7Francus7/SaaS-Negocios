@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Store, Receipt, MapPin, Phone, Hash, Lock, Eye, EyeOff, Users } from "lucide-react";
-import { getStoreSettings, updateStoreSettings, changePassword } from "@/app/actions/settings";
+import { Save, Store, Receipt, MapPin, Phone, Hash, Lock, Eye, EyeOff, Users, Ticket } from "lucide-react";
+import { getStoreSettings, updateStoreSettings, changePassword, getRaffleSettings, toggleRaffle, resetRaffleCounter } from "@/app/actions/settings";
 
 export default function SettingsPage() {
        const [loading, setLoading] = useState(true);
@@ -17,6 +17,9 @@ export default function SettingsPage() {
               ticketInstagram: ""
        });
 
+       const [raffle, setRaffle] = useState({ enabled: false, counter: 0 });
+       const [savingRaffle, setSavingRaffle] = useState(false);
+
        // Password change
        const [passwordForm, setPasswordForm] = useState({
               current: "",
@@ -27,11 +30,33 @@ export default function SettingsPage() {
        const [showPasswords, setShowPasswords] = useState(false);
 
        useEffect(() => {
-              getStoreSettings().then(data => {
+              Promise.all([getStoreSettings(), getRaffleSettings()]).then(([data, raffleData]) => {
                      setFormData(data);
+                     setRaffle(raffleData);
                      setLoading(false);
               });
        }, []);
+
+       const handleToggleRaffle = async (enabled: boolean) => {
+              setSavingRaffle(true);
+              try {
+                     await toggleRaffle(enabled);
+                     setRaffle(prev => ({ ...prev, enabled }));
+              } finally {
+                     setSavingRaffle(false);
+              }
+       };
+
+       const handleResetCounter = async () => {
+              if (!confirm("¿Reiniciar el contador de cupones a 0?")) return;
+              setSavingRaffle(true);
+              try {
+                     await resetRaffleCounter();
+                     setRaffle(prev => ({ ...prev, counter: 0 }));
+              } finally {
+                     setSavingRaffle(false);
+              }
+       };
 
        const handleSave = async () => {
               setSaving(true);
@@ -194,6 +219,56 @@ export default function SettingsPage() {
                                                  </div>
                                           </div>
                                    </div>
+                            </div>
+
+                            {/* Raffle / Sorteo */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6 md:col-span-2">
+                                   <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+                                          <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                                                 <Ticket className="h-6 w-6" />
+                                          </div>
+                                          <div>
+                                                 <h2 className="text-lg font-bold text-gray-900">Sorteo / Cupones</h2>
+                                                 <p className="text-xs text-gray-500">Cupón impreso en ventas &ge; $10.000 pagadas en efectivo o transferencia</p>
+                                          </div>
+                                   </div>
+
+                                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                                          <div className="flex items-center gap-4">
+                                                 <span className="text-sm font-bold text-gray-700">Sorteo activo:</span>
+                                                 <button
+                                                        onClick={() => handleToggleRaffle(!raffle.enabled)}
+                                                        disabled={savingRaffle}
+                                                        className={`relative w-14 h-7 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${raffle.enabled ? "bg-emerald-500" : "bg-gray-300"}`}
+                                                 >
+                                                        <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${raffle.enabled ? "translate-x-7" : "translate-x-0"}`} />
+                                                 </button>
+                                                 <span className={`text-sm font-black uppercase ${raffle.enabled ? "text-emerald-600" : "text-gray-400"}`}>
+                                                        {raffle.enabled ? "ACTIVO" : "INACTIVO"}
+                                                 </span>
+                                          </div>
+
+                                          <div className="flex items-center gap-3 ml-auto">
+                                                 <div className="text-center px-5 py-3 bg-gray-50 rounded-xl border border-gray-200">
+                                                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Cupones emitidos</p>
+                                                        <p className="text-3xl font-black text-gray-900 tabular-nums">{raffle.counter}</p>
+                                                        <p className="text-xs text-gray-400 font-mono">Último: #{String(raffle.counter).padStart(6, '0')}</p>
+                                                 </div>
+                                                 <button
+                                                        onClick={handleResetCounter}
+                                                        disabled={savingRaffle || raffle.counter === 0}
+                                                        className="px-4 py-2 text-sm font-bold text-red-600 border-2 border-red-100 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-40"
+                                                 >
+                                                        Reiniciar contador
+                                                 </button>
+                                          </div>
+                                   </div>
+
+                                   {raffle.enabled && (
+                                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700 font-medium">
+                                                 Sorteo activo. Cada venta &ge; $10.000 en efectivo o transferencia imprimira un cupon numerado al pie del ticket.
+                                          </div>
+                                   )}
                             </div>
 
                             {/* Password Change */}

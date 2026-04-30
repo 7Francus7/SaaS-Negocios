@@ -4,6 +4,36 @@ import prisma from "@/lib/prisma";
 import { getStoreId } from "@/lib/store";
 import { revalidatePath } from "next/cache";
 
+export async function getRaffleSettings() {
+       const storeId = await getStoreId();
+       const settings = await prisma.storeSetting.findMany({
+              where: { storeId, key: { in: ["raffle_enabled", "raffle_counter"] } }
+       });
+       const enabled = settings.find(s => s.key === "raffle_enabled")?.value === "true";
+       const counter = parseInt(settings.find(s => s.key === "raffle_counter")?.value || "0");
+       return { enabled, counter };
+}
+
+export async function toggleRaffle(enabled: boolean) {
+       const storeId = await getStoreId();
+       await prisma.storeSetting.upsert({
+              where: { storeId_key: { storeId, key: "raffle_enabled" } },
+              update: { value: enabled ? "true" : "false" },
+              create: { storeId, key: "raffle_enabled", value: enabled ? "true" : "false", description: "Sorteo activo en POS" }
+       });
+       revalidatePath("/dashboard");
+}
+
+export async function resetRaffleCounter() {
+       const storeId = await getStoreId();
+       await prisma.storeSetting.upsert({
+              where: { storeId_key: { storeId, key: "raffle_counter" } },
+              update: { value: "0" },
+              create: { storeId, key: "raffle_counter", value: "0", description: "Contador cupones sorteo" }
+       });
+       revalidatePath("/dashboard");
+}
+
 export async function getStoreSettings() {
        const storeId = await getStoreId();
 

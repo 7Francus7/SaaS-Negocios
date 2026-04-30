@@ -426,18 +426,15 @@ export async function closeCustomerMonth(customerId: number) {
 export async function autoCloseMonthlyAccounts() {
         const storeId = await getStoreId();
         const now = new Date();
-        
-        // Calcular el último día del mes actual
-        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const currentDay = now.getDate();
-        
-        // Solo ejecutar el último día del mes
-        if (currentDay !== lastDayOfMonth) {
-                return { executed: false, reason: "No es el último día del mes." };
+
+        // Solo ejecutar el día 1 de cada mes (cierra el mes anterior)
+        if (now.getDate() !== 1) {
+                return { executed: false, reason: "No es el primer día del mes." };
         }
-        
-        // Verificar si ya se ejecutó este mes usando StoreSetting
-        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        // monthKey referencia el mes anterior (el que se está cerrando)
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const monthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
         const lastCloseRecord = await prisma.storeSetting.findUnique({
                 where: { storeId_key: { storeId, key: "last_auto_month_close" } }
         });

@@ -13,6 +13,7 @@ interface TicketData {
        items: TicketItem[];
        total: number;
        paymentMethod?: string;
+       raffleNumber?: number | null;
        store?: {
               name: string;
               address?: string | null;
@@ -170,6 +171,23 @@ export function Ticket({ data }: { data: TicketData | null }) {
 
                                    <p className="text-gray-500 mt-3 lowercase tracking-widest font-mono line-clamp-1" style={{ fontSize: `${profile.fontSize - 2}px` }}>saas-negocios.com</p>
                             </div>
+
+                            {/* RAFFLE COUPON */}
+                            {data.raffleNumber && (
+                                   <div className="mt-3 pt-3 border-t-2 border-dashed border-black">
+                                          <div className="border-2 border-dashed border-black p-2 text-center">
+                                                 <p className="font-black uppercase tracking-widest" style={{ fontSize: `${profile.fontSize + 1}px` }}>
+                                                        *** CUPON SORTEO ***
+                                                 </p>
+                                                 <p className="font-mono font-black mt-1 tracking-[0.3em]" style={{ fontSize: `${profile.fontSize + 5}px` }}>
+                                                        #{String(data.raffleNumber).padStart(6, '0')}
+                                                 </p>
+                                                 <p className="text-gray-700 mt-1 font-medium" style={{ fontSize: `${profile.fontSize - 2}px` }}>
+                                                        Guarda este ticket para participar
+                                                 </p>
+                                          </div>
+                                   </div>
+                            )}
                      </div>
               </>
        );
