@@ -12,13 +12,14 @@ import { Ticket } from "@/components/pos/ticket";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/components/providers/toast-provider";
 
-// Sounds (Base64 for reliability/speed in demo)
-const BEEP_SOUND = "data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"; // Tiny placeholder, will replace better or use simple osc?
-// Let's use a real beep base64 if possible, or just a simple function. 
-// Actually, simple Oscillator is better for "Beep" without large strings.
+let _audioCtx: AudioContext | null = null;
+const getAudioCtx = () => {
+       if (!_audioCtx) _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+       return _audioCtx;
+};
 
 const playBeep = () => {
-       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+       const ctx = getAudioCtx();
        const osc = ctx.createOscillator();
        const gain = ctx.createGain();
        osc.connect(gain);
@@ -31,11 +32,8 @@ const playBeep = () => {
 };
 
 const playCashSound = () => {
-       // Simple "Cha-Ching" simulation with oscillators or just silent if complex.
-       // Let's try a simple rising arpeggio for "Success"
-       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+       const ctx = getAudioCtx();
        const now = ctx.currentTime;
-
        [440, 554, 659, 880].forEach((freq, i) => {
               const osc = ctx.createOscillator();
               const gain = ctx.createGain();
@@ -214,30 +212,26 @@ export default function POSPage() {
               });
        }, []);
 
-       // Re-calculate promotions
-       useEffect(() => {
-              const updatePromos = async () => {
-                     if (cart.length === 0) {
-                            setPromotionInfo({ totalDiscount: 0, appliedPromos: [] });
-                            return;
-                     }
-                     try {
-                            const result = await calculatePromotions(cart, paymentMethod);
-                            setPromotionInfo({
-                                   totalDiscount: result.totalDiscount,
-                                   appliedPromos: result.appliedPromos
-                            });
-                     } catch (e) {
-                            console.error("Promo calc error:", e);
-                     }
-              };
-              updatePromos();
-       }, [cart, paymentMethod]);
+       const recalcPromotions = async (currentCart: CartItem[], method: string) => {
+              if (currentCart.length === 0) {
+                     setPromotionInfo({ totalDiscount: 0, appliedPromos: [] });
+                     return;
+              }
+              try {
+                     const result = await calculatePromotions(currentCart, method);
+                     setPromotionInfo({
+                            totalDiscount: result.totalDiscount,
+                            appliedPromos: result.appliedPromos
+                     });
+              } catch (e) {
+                     console.error("Promo calc error:", e);
+              }
+       };
 
        const handleSearch = async (q: string) => {
               setLoadingSearch(true);
               try {
-                     const results = await getProducts({ searchQuery: q });
+                     const results = await getProducts({ searchQuery: q, limit: 100, includeBarcodes: false });
                      setSearchResults(results);
               } finally {
                      setLoadingSearch(false);
@@ -610,7 +604,10 @@ export default function POSPage() {
 
                                    <button
                                           disabled={cart.length === 0}
-                                          onClick={() => setShowPayModal(true)}
+                                          onClick={() => {
+                                                 setShowPayModal(true);
+                                                 recalcPromotions(cart, paymentMethod);
+                                          }}
                                           className="w-full py-3.5 lg:py-4 text-base lg:text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2 active:scale-95"
                                    >
                                           <CreditCard className="h-5 w-5 lg:h-6 lg:w-6" />

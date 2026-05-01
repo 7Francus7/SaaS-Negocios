@@ -9,11 +9,13 @@ export type ProductFilter = {
        searchQuery?: string;
        categoryId?: number;
        activeOnly?: boolean;
+       limit?: number;
+       includeBarcodes?: boolean;
 };
 
 export async function getProducts(filter: ProductFilter = {}) {
        const storeId = await getStoreId();
-       const { searchQuery, categoryId, activeOnly = true } = filter;
+       const { searchQuery, categoryId, activeOnly = true, limit, includeBarcodes = true } = filter;
 
        const where: Prisma.ProductVariantWhereInput = {
               storeId: storeId,
@@ -40,19 +42,20 @@ export async function getProducts(filter: ProductFilter = {}) {
                                    category: true,
                             },
                      },
-                     barcodes: true,
+                     barcodes: includeBarcodes,
               },
               orderBy: [
                      { product: { name: "asc" } },
                      { variantName: "asc" },
               ],
+              ...(limit ? { take: limit } : {}),
        });
 
        const serializedVariants = variants.map(v => ({
               ...v,
               costPrice: Number(v.costPrice),
               salePrice: Number(v.salePrice),
-              barcodes: v.barcodes.map(b => b.barcode),
+              barcodes: includeBarcodes ? (v.barcodes as any[]).map((b: any) => b.barcode) : [],
               product: {
                      ...v.product,
                      description: v.product.description || ""

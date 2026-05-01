@@ -182,7 +182,11 @@ export function Ticket({ data }: { data: TicketData | null }) {
                                                  <p className="font-mono font-black mt-1 tracking-[0.3em]" style={{ fontSize: `${profile.fontSize + 5}px` }}>
                                                         #{String(data.raffleNumber).padStart(6, '0')}
                                                  </p>
-                                                 <p className="text-gray-700 mt-1 font-medium" style={{ fontSize: `${profile.fontSize - 2}px` }}>
+                                                 <div className="mt-2 text-left" style={{ fontSize: `${profile.fontSize - 1}px` }}>
+                                                        <p className="font-medium">Nombre: ____________________</p>
+                                                        <p className="font-medium mt-1">Apellido: ___________________</p>
+                                                 </div>
+                                                 <p className="text-gray-700 mt-2 font-medium" style={{ fontSize: `${profile.fontSize - 2}px` }}>
                                                         Guarda este ticket para participar
                                                  </p>
                                           </div>
