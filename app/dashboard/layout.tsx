@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { checkHasOpenSession } from "@/app/actions/cash";
+import { autoCloseMonthlyAccounts } from "@/app/actions/customers";
 import { Wallet, ShieldAlert } from "lucide-react";
 
 export default function DashboardLayout({
@@ -21,13 +22,21 @@ export default function DashboardLayout({
        const [userRole, setUserRole] = useState<string | null>(null);
 
        useEffect(() => {
+              // Auto-cierre siempre corre, sin importar en qué página estemos
+              autoCloseMonthlyAccounts().then((result) => {
+                     if (result?.executed && result?.closed && result.closed > 0) {
+                            console.log(`✅ Cierre automático de mes: ${result.closed} cuentas cerradas.`);
+                     }
+              }).catch(err => {
+                     console.error("Error en cierre automático de cuentas:", err);
+              });
+
               if (isAdminPage || isCashPage) {
                      setHasOpenCash(true);
                      return;
               }
 
               let isMounted = true;
-              // Background check without blocking UI
 
               import("@/app/actions/dashboard").then(m => m.getUserRole().then(r => setUserRole(r)));
               checkHasOpenSession().then((isOpen) => {
@@ -36,19 +45,8 @@ export default function DashboardLayout({
                      }
               }).catch(() => {
                      if (isMounted) {
-                            setHasOpenCash(true); // Fallback on error to avoid softlock
+                            setHasOpenCash(true);
                      }
-              });
-
-              // Auto-cierre de cuentas corrientes si es el último día del mes
-              import("@/app/actions/customers").then(mod => {
-                     mod.autoCloseMonthlyAccounts().then((result) => {
-                            if (result?.executed && result?.closed && result.closed > 0) {
-                                   console.log(`✅ Cierre automático de mes: ${result.closed} cuentas cerradas.`);
-                            }
-                     }).catch(err => {
-                            console.error("Error en cierre automático de cuentas:", err);
-                     });
               });
 
               return () => {

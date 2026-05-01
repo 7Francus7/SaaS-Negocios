@@ -4,7 +4,7 @@ import React from "react";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare, Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus, Printer, FileText, Receipt } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale, getCustomerHistoryByMonth } from "@/app/actions/customers";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale, getCustomerHistoryByMonth, autoCloseMonthlyAccounts } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
@@ -59,6 +59,7 @@ export default function CustomersPage() {
         const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
         const [error, setError] = useState("");
+        const [closingMonth, setClosingMonth] = useState(false);
 
        const fetchCustomers = useCallback(async () => {
               setLoading(true);
@@ -76,6 +77,26 @@ export default function CustomersPage() {
 
        // Initial load
        useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+       const handleManualMonthClose = async () => {
+              if (!confirm("¿Cerrar el mes anterior para TODOS los clientes con deuda? Esta acción mueve el saldo actual a 'deuda cerrada'.")) return;
+              setClosingMonth(true);
+              try {
+                     const result = await autoCloseMonthlyAccounts();
+                     if (result?.executed && result?.closed && result.closed > 0) {
+                            alert(`Cierre completado: ${result.closed} cuenta(s) cerradas.`);
+                            fetchCustomers();
+                     } else if (result?.executed) {
+                            alert("Cierre completado: no había clientes con deuda activa.");
+                     } else {
+                            alert(`No se ejecutó: ${result?.reason ?? "ya se cerró este mes."}`);
+                     }
+              } catch (e: any) {
+                     alert("Error al cerrar el mes: " + e.message);
+              } finally {
+                     setClosingMonth(false);
+              }
+       };
 
        const handleCreate = async () => {
               try {
@@ -868,13 +889,23 @@ export default function CustomersPage() {
                                    <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
                                    <p className="text-sm text-gray-500">Gestione sus clientes y cuentas corrientes</p>
                             </div>
-                            <button
-                                   onClick={() => setIsCreateOpen(true)}
-                                   className="bg-blue-600 text-white px-4 py-2 rounded-xl border-b-4 border-blue-800 flex items-center gap-2 hover:bg-blue-700 active:border-b-0 active:translate-y-[2px] transition-all font-bold"
-                            >
-                                   <UserPlus className="h-4 w-4" />
-                                   CREAR CUENTA / CLIENTE
-                            </button>
+                            <div className="flex gap-2">
+                                   <button
+                                          onClick={handleManualMonthClose}
+                                          disabled={closingMonth}
+                                          className="bg-amber-500 text-white px-4 py-2 rounded-xl border-b-4 border-amber-700 flex items-center gap-2 hover:bg-amber-600 active:border-b-0 active:translate-y-[2px] transition-all font-bold disabled:opacity-50"
+                                   >
+                                          <CalendarCheck className="h-4 w-4" />
+                                          {closingMonth ? "CERRANDO..." : "CERRAR MES"}
+                                   </button>
+                                   <button
+                                          onClick={() => setIsCreateOpen(true)}
+                                          className="bg-blue-600 text-white px-4 py-2 rounded-xl border-b-4 border-blue-800 flex items-center gap-2 hover:bg-blue-700 active:border-b-0 active:translate-y-[2px] transition-all font-bold"
+                                   >
+                                          <UserPlus className="h-4 w-4" />
+                                          CREAR CUENTA / CLIENTE
+                                   </button>
+                            </div>
                      </div>
 
                      <div className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center gap-3 shadow-sm">

@@ -468,7 +468,7 @@ export async function autoCloseMonthlyAccounts() {
                 
                 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-                const monthName = monthNames[now.getMonth()];
+                const monthName = monthNames[prevMonth.getMonth()];
                 
                 for (const customer of customersWithDebt) {
                         const amountToMove = customer.currentBalance;
