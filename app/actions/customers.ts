@@ -378,43 +378,47 @@ export async function deleteCustomer(customerId: number) {
 
 
 export async function closeCustomerMonth(customerId: number) {
-       const storeId = await getStoreId();
+       try {
+              const storeId = await getStoreId();
 
-       return await prisma.$transaction(async (tx) => {
-              const customer = await tx.customer.findUnique({
-                     where: { id: customerId }
-              });
+              await prisma.$transaction(async (tx) => {
+                     const customer = await tx.customer.findUnique({
+                            where: { id: customerId }
+                     });
 
-              if (!customer || customer.storeId !== storeId) {
-                     throw new Error("Cliente no encontrado.");
-              }
-
-              if (Number(customer.currentBalance) <= 0) {
-                     throw new Error("El cliente no tiene deuda actual para cerrar el mes.");
-              }
-
-              const amountToMove = customer.currentBalance;
-
-              await tx.customer.update({
-                     where: { id: customerId },
-                     data: {
-                            currentBalance: 0,
-                            closedBalance: { increment: amountToMove }
+                     if (!customer || customer.storeId !== storeId) {
+                            throw new Error("Cliente no encontrado.");
                      }
-              });
 
-              await tx.accountMovement.create({
-                     data: {
-                            customerId,
-                            movementType: "MONTH_CLOSE",
-                            amount: amountToMove, // Not negative, it's just a refactoring of debt
-                            description: "Separación de Cuenta / Cierre de Mes",
-                            timestamp: new Date()
+                     const amountToMove = Number(customer.currentBalance);
+                     if (amountToMove <= 0) {
+                            throw new Error("El cliente no tiene deuda actual para cerrar el mes.");
                      }
+
+                     await tx.customer.update({
+                            where: { id: customerId },
+                            data: {
+                                   currentBalance: 0,
+                                   closedBalance: { increment: amountToMove }
+                            }
+                     });
+
+                     await tx.accountMovement.create({
+                            data: {
+                                   customerId,
+                                   movementType: "MONTH_CLOSE",
+                                   amount: amountToMove,
+                                   description: "Separación de Cuenta / Cierre de Mes",
+                                   timestamp: new Date()
+                            }
+                     });
               });
 
-              return true;
-       });
+              return { success: true };
+       } catch (err: any) {
+              console.error("closeCustomerMonth error:", err);
+              return { success: false, error: err?.message ?? "Error al cerrar el mes." };
+       }
 }
 
 /**
@@ -424,87 +428,104 @@ export async function closeCustomerMonth(customerId: number) {
  * positiva, moviendo currentBalance → closedBalance.
  */
 export async function autoCloseMonthlyAccounts() {
-        const storeId = await getStoreId();
-        const now = new Date();
+        try {
+                const storeId = await getStoreId();
+                const now = new Date();
 
-        // Solo ejecutar el día 1 de cada mes (cierra el mes anterior)
-        if (now.getDate() !== 1) {
-                return { executed: false, reason: "No es el primer día del mes." };
-        }
-
-        // monthKey referencia el mes anterior (el que se está cerrando)
-        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const monthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-        const lastCloseRecord = await prisma.storeSetting.findUnique({
-                where: { storeId_key: { storeId, key: "last_auto_month_close" } }
-        });
-        
-        if (lastCloseRecord && lastCloseRecord.value === monthKey) {
-                return { executed: false, reason: "Ya se cerró este mes." };
-        }
-        
-        // Obtener todos los clientes con deuda actual positiva
-        const customersWithDebt = await prisma.customer.findMany({
-                where: {
-                        storeId,
-                        active: true,
-                        currentBalance: { gt: 0 }
+                // Solo ejecutar el día 1 de cada mes (cierra el mes anterior)
+                if (now.getDate() !== 1) {
+                        return { executed: false, reason: "No es el primer día del mes." };
                 }
-        });
-        
-        if (customersWithDebt.length === 0) {
-                // Marcar como cerrado aunque no haya deudas
-                await prisma.storeSetting.upsert({
-                        where: { storeId_key: { storeId, key: "last_auto_month_close" } },
-                        update: { value: monthKey },
-                        create: { storeId, key: "last_auto_month_close", value: monthKey, description: "Último cierre automático de cuentas corrientes" }
+
+                // monthKey referencia el mes anterior (el que se está cerrando)
+                const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const monthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+                const lastCloseRecord = await prisma.storeSetting.findUnique({
+                        where: { storeId_key: { storeId, key: "last_auto_month_close" } }
                 });
-                return { executed: true, closed: 0, reason: "No hay clientes con deuda para cerrar." };
-        }
-        
-        // Cerrar cada cuenta en una transacción
-        const closedCount = await prisma.$transaction(async (tx) => {
-                let count = 0;
-                
+
+                if (lastCloseRecord && lastCloseRecord.value === monthKey) {
+                        return { executed: false, reason: "Ya se cerró este mes." };
+                }
+
+                const customersWithDebt = await prisma.customer.findMany({
+                        where: {
+                                storeId,
+                                active: true,
+                                currentBalance: { gt: 0 }
+                        }
+                });
+
+                if (customersWithDebt.length === 0) {
+                        await prisma.storeSetting.upsert({
+                                where: { storeId_key: { storeId, key: "last_auto_month_close" } },
+                                update: { value: monthKey },
+                                create: { storeId, key: "last_auto_month_close", value: monthKey, description: "Último cierre automático de cuentas corrientes" }
+                        });
+                        return { executed: true, closed: 0, reason: "No hay clientes con deuda para cerrar." };
+                }
+
                 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-                const monthName = monthNames[prevMonth.getMonth()];
-                
+                const description = `Cierre Automático de ${monthNames[prevMonth.getMonth()]} ${now.getFullYear()}`;
+
+                // Procesar cada cliente en su propia transacción corta. Una sola
+                // transacción para N clientes excedía el timeout default (5s) y
+                // hacía fallar el cierre cuando había muchos clientes con deuda.
+                // Cada paso es idempotente: si re-ejecuta, los ya cerrados (currentBalance=0)
+                // se saltan dentro de la transacción.
+                let closedCount = 0;
+                const failed: number[] = [];
+
                 for (const customer of customersWithDebt) {
-                        const amountToMove = customer.currentBalance;
-                        
-                        await tx.customer.update({
-                                where: { id: customer.id },
-                                data: {
-                                        currentBalance: 0,
-                                        closedBalance: { increment: amountToMove }
-                                }
-                        });
-                        
-                        await tx.accountMovement.create({
-                                data: {
-                                        customerId: customer.id,
-                                        movementType: "MONTH_CLOSE",
-                                        amount: amountToMove,
-                                        description: `Cierre Automático de ${monthName} ${now.getFullYear()}`,
-                                        timestamp: new Date()
-                                }
-                        });
-                        
-                        count++;
+                        const amountToMove = Number(customer.currentBalance);
+                        if (amountToMove <= 0) continue;
+
+                        try {
+                                await prisma.$transaction(async (tx) => {
+                                        const fresh = await tx.customer.findUnique({ where: { id: customer.id } });
+                                        if (!fresh || Number(fresh.currentBalance) <= 0) return;
+
+                                        await tx.customer.update({
+                                                where: { id: customer.id },
+                                                data: {
+                                                        currentBalance: 0,
+                                                        closedBalance: { increment: amountToMove }
+                                                }
+                                        });
+
+                                        await tx.accountMovement.create({
+                                                data: {
+                                                        customerId: customer.id,
+                                                        movementType: "MONTH_CLOSE",
+                                                        amount: amountToMove,
+                                                        description,
+                                                        timestamp: new Date()
+                                                }
+                                        });
+                                });
+                                closedCount++;
+                        } catch (err) {
+                                console.error(`autoCloseMonthlyAccounts: falló cierre del cliente ${customer.id}`, err);
+                                failed.push(customer.id);
+                        }
                 }
-                
-                return count;
-        });
-        
-        // Registrar que ya se hizo el cierre de este mes
-        await prisma.storeSetting.upsert({
-                where: { storeId_key: { storeId, key: "last_auto_month_close" } },
-                update: { value: monthKey },
-                create: { storeId, key: "last_auto_month_close", value: monthKey, description: "Último cierre automático de cuentas corrientes" }
-        });
-        
-        return { executed: true, closed: closedCount };
+
+                // Marcar el mes como cerrado sólo si ningún cliente falló;
+                // si hubo fallos, dejamos el flag abierto para reintentar.
+                if (failed.length === 0) {
+                        await prisma.storeSetting.upsert({
+                                where: { storeId_key: { storeId, key: "last_auto_month_close" } },
+                                update: { value: monthKey },
+                                create: { storeId, key: "last_auto_month_close", value: monthKey, description: "Último cierre automático de cuentas corrientes" }
+                        });
+                }
+
+                return { executed: true, closed: closedCount, failed: failed.length };
+        } catch (err: any) {
+                console.error("autoCloseMonthlyAccounts error:", err);
+                return { executed: false, reason: err?.message ?? "Error inesperado al cerrar el mes.", error: true };
+        }
 }
 
 
