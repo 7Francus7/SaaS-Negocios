@@ -82,9 +82,12 @@ export default function CustomersPage() {
               if (!confirm("¿Cerrar el mes anterior para TODOS los clientes con deuda? Esta acción mueve el saldo actual a 'deuda cerrada'.")) return;
               setClosingMonth(true);
               try {
-                     const result = await autoCloseMonthlyAccounts();
-                     if (result?.executed && result?.closed && result.closed > 0) {
-                            alert(`Cierre completado: ${result.closed} cuenta(s) cerradas.`);
+                     const result: any = await autoCloseMonthlyAccounts();
+                     if (result?.error) {
+                            alert(`Error al cerrar el mes: ${result.reason}`);
+                     } else if (result?.executed && result?.closed && result.closed > 0) {
+                            const failedMsg = result?.failed > 0 ? `\n\n⚠ ${result.failed} cuenta(s) no pudieron cerrarse. Reintentá la operación.` : "";
+                            alert(`Cierre completado: ${result.closed} cuenta(s) cerradas.${failedMsg}`);
                             fetchCustomers();
                      } else if (result?.executed) {
                             alert("Cierre completado: no había clientes con deuda activa.");
@@ -213,7 +216,11 @@ export default function CustomersPage() {
               if (!confirm(`Â¿Cerrar el mes para ${customer.name}? Esto separarÃ¡ la deuda actual y comenzarÃ¡ un nuevo mes en 0.`)) return;
 
               try {
-                     await closeCustomerMonth(customer.id);
+                     const res = await closeCustomerMonth(customer.id);
+                     if (!res?.success) {
+                            alert(res?.error ?? "Error al cerrar el mes.");
+                            return;
+                     }
                      fetchCustomers();
                      alert("Mes cerrado correctamente.");
               } catch (e: any) {
