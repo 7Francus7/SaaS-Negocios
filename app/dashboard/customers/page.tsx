@@ -60,6 +60,7 @@ export default function CustomersPage() {
 
         const [error, setError] = useState("");
         const [closingMonth, setClosingMonth] = useState(false);
+        const [isPaying, setIsPaying] = useState(false);
 
        const fetchCustomers = useCallback(async () => {
               setLoading(true);
@@ -114,12 +115,13 @@ export default function CustomersPage() {
        };
 
        const handlePayment = async () => {
-              if (!selectedCustomer) return;
+              if (!selectedCustomer || isPaying) return;
               const amountNum = Number(paymentAmount);
               if (isNaN(amountNum) || amountNum === 0) {
                      alert("Ingrese un monto vÃ¡lido a abonar (distinto de 0).");
                      return;
               }
+              setIsPaying(true);
               try {
                      const res = await registerPayment(selectedCustomer.id, amountNum, "Pago a cuenta", selectedPaymentMethod);
                      if (res?.error) {
@@ -138,6 +140,7 @@ export default function CustomersPage() {
                      setSelectedPaymentMethod("EFECTIVO");
                      fetchCustomers();
               } catch (e: any) { alert(e.message); }
+              finally { setIsPaying(false); }
        };
 
        const handleEdit = async () => {
@@ -1337,7 +1340,7 @@ export default function CustomersPage() {
                                                   </div>
                                            </div>
                                     </div>
-                                    <button onClick={handlePayment} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 flex justify-center items-center gap-3 transition-all"><CheckCircle className="h-6 w-6" />CONFIRMAR COBRO</button>
+                                    <button onClick={handlePayment} disabled={isPaying} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 flex justify-center items-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed">{isPaying ? <><span className="h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin inline-block" />PROCESANDO...</> : <><CheckCircle className="h-6 w-6" />CONFIRMAR COBRO</>}</button>
                              </div>
                       </Modal>
 
