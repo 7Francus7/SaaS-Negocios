@@ -229,16 +229,56 @@ export default function POSPage() {
               await refreshOfflineMeta();
        }, [refreshOfflineMeta]);
 
+       const addToCart = useCallback((variant: any, customPrice?: number, customQuantity?: number, fromScanner = false) => {
+              if (variant.isWeighable && customPrice === undefined) {
+                     setWeighableProduct(variant);
+                     setWeighablePrice("");
+                     setWeighableQuantity("1");
+                     return;
+              }
+
+              setCart((prev) => {
+                     const existing = prev.find((item) => item.variantId === variant.id);
+                     const qtyToAdd = customQuantity || 1;
+
+                     if (existing && !variant.isWeighable) {
+                            return prev.map((item) =>
+                                   item.variantId === variant.id
+                                          ? { ...item, quantity: item.quantity + 1 }
+                                          : item
+                            );
+                     }
+                     return [
+                            ...prev,
+                            {
+                                   variantId: variant.id,
+                                   productName: variant.product?.name || variant.productName,
+                                   variantName: variant.variantName,
+                                   price: customPrice !== undefined ? customPrice : Number(variant.salePrice),
+                                   quantity: qtyToAdd,
+                                   maxStock: variant.isWeighable ? 999999 : variant.stockQuantity,
+                                   isWeighable: variant.isWeighable,
+                            },
+                     ];
+              });
+
+              if (variant.isWeighable) setWeighableProduct(null);
+              setQuery("");
+              if (!fromScanner) searchInputRef.current?.focus();
+              playBeep();
+       }, []);
+
        const handleBarcodeScan = useCallback(async (code: string) => {
               if (loadingBarcode) return;
               setLoadingBarcode(true);
+              setQuery(""); // cancela el debounce de búsqueda con el texto del barcode
               try {
                      if (isOfflineMode || !navigator.onLine) {
                             const localProduct = findOfflineProductByBarcode(catalogSnapshot, code);
                             if (localProduct) {
-                                   addToCart(localProduct);
+                                   addToCart(localProduct, undefined, undefined, true);
                                    toast(`Agregado: ${localProduct.product.name}`, "success");
-                                   if (window.innerWidth < 1024) setMobileTab("cart");
+                                   setMobileTab("cart");
                             } else {
                                    toast(`Código no encontrado: ${code}`, "warning");
                             }
@@ -247,9 +287,9 @@ export default function POSPage() {
 
                      const product = await findProductByBarcode(code);
                      if (product) {
-                            addToCart(product);
+                            addToCart(product, undefined, undefined, true);
                             toast(`Agregado: ${product.product.name}`, "success");
-                            if (window.innerWidth < 1024) setMobileTab("cart");
+                            setMobileTab("cart");
                      } else {
                             toast(`Código no encontrado: ${code}`, "warning");
                      }
@@ -258,8 +298,9 @@ export default function POSPage() {
                             setIsOfflineMode(true);
                             const localProduct = findOfflineProductByBarcode(catalogSnapshot, code);
                             if (localProduct) {
-                                   addToCart(localProduct);
+                                   addToCart(localProduct, undefined, undefined, true);
                                    toast(`Agregado sin internet: ${localProduct.product.name}`, "warning");
+                                   setMobileTab("cart");
                             } else {
                                    toast(`Código no encontrado: ${code}`, "warning");
                             }
@@ -270,27 +311,28 @@ export default function POSPage() {
               } finally {
                      setLoadingBarcode(false);
               }
-       }, [catalogSnapshot, isOfflineMode, loadingBarcode, toast]);
+       }, [addToCart, catalogSnapshot, isOfflineMode, loadingBarcode, toast]);
 
-       // Robust Barcode Scanner Listener
+       // Ref siempre actualizado — permite que el listener no se re-registre nunca
+       const handleBarcodeScanRef = useRef(handleBarcodeScan);
+       useEffect(() => { handleBarcodeScanRef.current = handleBarcodeScan; }, [handleBarcodeScan]);
+
+       // Barcode Scanner — se registra UNA SOLA VEZ (deps vacías)
+       // El buffer nunca se resetea por re-renders ni cambios de estado
        useEffect(() => {
               let buffer = "";
               let lastTime = 0;
 
               const handleKeyDown = (e: KeyboardEvent) => {
-                     // Ignore if it's a modifier key
                      if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
 
                      const now = Date.now();
                      const timeDiff = now - lastTime;
                      lastTime = now;
 
-                     // If the delay between keys is very short (< 50ms), it's likely a scanner
-                     const isScanner = timeDiff < 50;
-
                      if (e.key === 'Enter') {
                             if (buffer.length > 2) {
-                                   handleBarcodeScan(buffer);
+                                   handleBarcodeScanRef.current(buffer);
                                    buffer = "";
                                    e.preventDefault();
                                    e.stopPropagation();
@@ -300,10 +342,12 @@ export default function POSPage() {
                             return;
                      }
 
-                     // Append characters to buffer
                      if (e.key.length === 1) {
-                            if (!isScanner && buffer.length > 0 && timeDiff > 100) {
-                                   // If it's a slow key and we had a buffer, it was probably manual typing, so reset
+                            // Si es un caracter rápido (scanner) y ya hay buffer, evitar que vaya al input de búsqueda
+                            const isFastFollowUp = timeDiff < 50 && buffer.length > 0;
+                            if (isFastFollowUp) e.preventDefault();
+
+                            if (!isFastFollowUp && buffer.length > 0 && timeDiff > 100) {
                                    buffer = "";
                             }
                             buffer += e.key;
@@ -312,7 +356,7 @@ export default function POSPage() {
 
               window.addEventListener('keydown', handleKeyDown, true);
               return () => window.removeEventListener('keydown', handleKeyDown, true);
-       }, [handleBarcodeScan]);
+       }, []);
 
        // Weighable Modal State
        const [weighableProduct, setWeighableProduct] = useState<any>(null);
@@ -483,46 +527,6 @@ export default function POSPage() {
 
               return () => clearTimeout(timer);
        }, [handleSearch, query]);
-
-       const addToCart = (variant: any, customPrice?: number, customQuantity?: number) => {
-              if (variant.isWeighable && customPrice === undefined) {
-                     setWeighableProduct(variant);
-                     setWeighablePrice("");
-                     setWeighableQuantity("1");
-                     return;
-              }
-
-              setCart((prev) => {
-                     const existing = prev.find((item) => item.variantId === variant.id);
-                     const qtyToAdd = customQuantity || 1;
-
-                     if (existing && !variant.isWeighable) {
-                            // Allow bypass stock check
-                            return prev.map((item) =>
-                                   item.variantId === variant.id
-                                          ? { ...item, quantity: item.quantity + 1 }
-                                          : item
-                            );
-                     }
-                     return [
-                            ...prev,
-                            {
-                                   variantId: variant.id,
-                                   productName: variant.product?.name || variant.productName,
-                                   variantName: variant.variantName,
-                                   price: customPrice !== undefined ? customPrice : Number(variant.salePrice),
-                                   quantity: qtyToAdd,
-                                   maxStock: variant.isWeighable ? 999999 : variant.stockQuantity,
-                                   isWeighable: variant.isWeighable,
-                            },
-                     ];
-              });
-
-              if (variant.isWeighable) setWeighableProduct(null);
-              setQuery("");
-              searchInputRef.current?.focus();
-              playBeep();
-       };
 
        const handleWeighableSubmit = (e: React.FormEvent) => {
               e.preventDefault();
