@@ -1,6 +1,5 @@
 "use client";
 
-import { getDashboardShellInfo } from "@/app/actions/dashboard";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
@@ -82,6 +81,19 @@ const menuGroups: MenuGroup[] = [
 ];
 
 const cashierAllowed = ["Inicio", "Punto de Venta", "Caja y Turnos", "Historial Ventas", "Clientes"];
+const menuPrefetchHrefs = Array.from(
+       new Set(menuGroups.flatMap((group) => group.items.map((item) => item.href)).concat([
+              "/dashboard/admin",
+              "/dashboard/admin/metrics",
+              "/dashboard/admin/logs",
+              "/dashboard/admin/deployment",
+       ]))
+);
+
+export type SidebarProps = {
+       initialStoreName: string;
+       initialUserRole: string;
+};
 
 function StoreAvatar({ name }: { name: string }) {
        const initials = name
@@ -97,33 +109,27 @@ function StoreAvatar({ name }: { name: string }) {
        );
 }
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+function SidebarContent({
+       initialStoreName,
+       initialUserRole,
+       onClose,
+}: {
+       initialStoreName: string;
+       initialUserRole: string;
+       onClose?: () => void;
+}) {
        const pathname = usePathname();
        const router = useRouter();
        const searchParams = useSearchParams();
-       const [storeName, setStoreName] = useState("Mi Tienda");
-       const [userRole, setUserRole] = useState("ADMIN");
+       const [storeName] = useState(initialStoreName);
+       const [userRole] = useState(initialUserRole);
        const [godMode, setGodMode] = useState(false);
 
        useEffect(() => {
-              let isMounted = true;
-
-              getDashboardShellInfo()
-                     .then((data) => {
-                            if (!isMounted) return;
-                            setStoreName(data.storeName);
-                            setUserRole(data.userRole);
-                     })
-                     .catch(() => {
-                            if (!isMounted) return;
-                            setStoreName("Mi Tienda");
-                            setUserRole("ADMIN");
-                     });
-
-              return () => {
-                     isMounted = false;
-              };
-       }, []);
+              for (const href of menuPrefetchHrefs) {
+                     router.prefetch(href);
+              }
+       }, [router]);
 
        useEffect(() => {
               const isGod = searchParams.get("view") === "god";
@@ -237,6 +243,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                                                                              key={item.href}
                                                                              href={item.href}
                                                                              onClick={onClose}
+                                                                             onMouseEnter={() => router.prefetch(item.href)}
+                                                                             onFocus={() => router.prefetch(item.href)}
                                                                              className={cn(
                                                                                     "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 group relative",
                                                                                     isActive
@@ -278,7 +286,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
        );
 }
 
-function SidebarContentWrapper() {
+function SidebarContentWrapper({
+       initialStoreName,
+       initialUserRole,
+}: SidebarProps) {
        const [isOpen, setIsOpen] = useState(false);
 
        return (
@@ -303,23 +314,30 @@ function SidebarContentWrapper() {
                             <div className="lg:hidden fixed inset-0 z-50 flex print:hidden" onClick={() => setIsOpen(false)}>
                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
                                    <div className="relative h-full flex flex-col animate-in slide-in-from-left duration-300" onClick={(e) => e.stopPropagation()}>
-                                          <SidebarContent onClose={() => setIsOpen(false)} />
+                                          <SidebarContent
+                                                 initialStoreName={initialStoreName}
+                                                 initialUserRole={initialUserRole}
+                                                 onClose={() => setIsOpen(false)}
+                                          />
                                    </div>
                             </div>
                      )}
 
                      {/* Desktop Sidebar */}
                      <div className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:left-0 lg:top-0 lg:h-full print:hidden">
-                            <SidebarContent />
+                            <SidebarContent initialStoreName={initialStoreName} initialUserRole={initialUserRole} />
                      </div>
               </>
        );
 }
 
-export function Sidebar() {
+export const Sidebar = ({
+       initialStoreName,
+       initialUserRole,
+}: SidebarProps) => {
        return (
               <Suspense fallback={<div className="hidden lg:block w-72 bg-white border-r border-gray-100 h-full fixed" />}>
-                     <SidebarContentWrapper />
+                     <SidebarContentWrapper initialStoreName={initialStoreName} initialUserRole={initialUserRole} />
               </Suspense>
        );
-}
+};

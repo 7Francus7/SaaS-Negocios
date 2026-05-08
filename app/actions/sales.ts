@@ -9,54 +9,84 @@ export type SaleItemInput = {
        unitPrice?: number;
 };
 
-import { saleSchema } from "@/lib/validations";
-
 export type PaymentInput = {
        method: string;
        amount: number;
+};
+
+type LoadedVariant = {
+       id: number;
+       variantName: string;
+       salePrice: unknown;
+       costPrice: unknown;
+       stockQuantity: number;
+       product: {
+              name: string;
+       };
 };
 
 export async function processSale(
        items: SaleItemInput[],
        payments: PaymentInput[],
        customerId?: number,
-       discountAmount: number = 0
+       discountAmount = 0
 ) {
        const storeId = await getStoreId();
 
        if (items.length === 0) {
-              throw new Error("El carrito está vacío.");
+              throw new Error("El carrito esta vacio.");
        }
 
-       const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
-
-       // Transaction
        return await prisma.$transaction(async (tx) => {
-              // 1. Fetch all variants involved
-              const variantIds = items.map((i) => i.variantId);
+              const variantIds = items.map((item) => item.variantId);
               const variants = await tx.productVariant.findMany({
                      where: {
                             id: { in: variantIds },
-                            storeId: storeId,
-                      },
-                      include: { product: true },
+                            storeId,
+                     },
+                     select: {
+                            id: true,
+                            variantName: true,
+                            salePrice: true,
+                            costPrice: true,
+                            stockQuantity: true,
+                            product: {
+                                   select: {
+                                          name: true,
+                                   },
+                            },
+                     },
               });
 
-              const variantsMap = new Map(variants.map((v) => [v.id, v]));
+              const variantsMap = new Map<number, LoadedVariant>(
+                     variants.map((variant) => [variant.id, variant as LoadedVariant])
+              );
 
               let subtotal = 0;
-              const saleItemsData = [];
+              const saleItemsData: Array<{
+                     variantId: number;
+                     productNameSnapshot: string;
+                     quantity: number;
+                     unitPrice: number;
+                     unitCost: number;
+                     subtotal: number;
+                     subtotalCost: number;
+              }> = [];
+
               const stockOps: Promise<unknown>[] = [];
 
-              // 2. Validate & Calculate
               for (const item of items) {
                      const variant = variantsMap.get(item.variantId);
-                     if (!variant) throw new Error(`Producto ID ${item.variantId} no encontrado.`);
+                     if (!variant) {
+                            throw new Error(`Producto ID ${item.variantId} no encontrado.`);
+                     }
 
-                      const price = item.unitPrice !== undefined ? item.unitPrice : Number(variant.salePrice);
-                      const cost = Number(variant.costPrice);
-                      const lineTotal = price * item.quantity;
-                      const lineTotalCost = cost * item.quantity;
+                     const price = item.unitPrice !== undefined ? item.unitPrice : Number(variant.salePrice);
+                     const cost = Number(variant.costPrice);
+                     const lineTotal = price * item.quantity;
+                     const lineTotalCost = cost * item.quantity;
+                     const newStock = variant.stockQuantity - item.quantity;
+
                      subtotal += lineTotal;
 
                      saleItemsData.push({
@@ -69,19 +99,19 @@ export async function processSale(
                             subtotalCost: lineTotalCost,
                      });
 
-                     const newStock = variant.stockQuantity - item.quantity;
                      stockOps.push(
                             tx.productVariant.update({
                                    where: { id: variant.id },
-                                   data: { stockQuantity: newStock },
-                            }),
-                            tx.stockMovement.create({
                                    data: {
-                                          variantId: variant.id,
-                                          movementType: "SALE",
-                                          quantity: -item.quantity,
-                                          reason: "Venta POS",
-                                          balanceSnapshot: newStock,
+                                          stockQuantity: newStock,
+                                          stockMovements: {
+                                                 create: {
+                                                        movementType: "SALE",
+                                                        quantity: -item.quantity,
+                                                        reason: "Venta POS",
+                                                        balanceSnapshot: newStock,
+                                                 },
+                                          },
                                    },
                             })
                      );
@@ -89,15 +119,7 @@ export async function processSale(
 
               await Promise.all(stockOps);
 
-              // 3. Totals
               const totalAmount = Math.max(0, subtotal - discountAmount);
-
-              if (Math.abs(totalPayments - totalAmount) > 0.01) {
-                     // We allow overpayment (change) for cash, but total recorded should match. 
-                     // Actually, the payments array should reflect what is kept.
-              }
-
-              // 4. Create Sale
               const sale = await tx.sale.create({
                      data: {
                             storeId,
@@ -111,123 +133,135 @@ export async function processSale(
                                    create: saleItemsData,
                             },
                             payments: {
-                                   create: payments.map(p => ({
-                                          paymentMethod: p.method,
-                                          amount: p.amount
-                                   }))
-                            }
+                                   create: payments.map((payment) => ({
+                                          paymentMethod: payment.method,
+                                          amount: payment.amount,
+                                   })),
+                            },
                      },
-                     include: { items: true, payments: true },
+                     select: {
+                            id: true,
+                            timestamp: true,
+                     },
               });
 
-              // 5. Handle Payment Logics (Cash Session, Customer Balance, Cashbook)
               const cashbookMethodMap: Record<string, string> = {
                      EFECTIVO: "EFECTIVO",
                      TRANSFERENCIA: "TRANSFERENCIA",
                      TARJETA: "TARJETA",
               };
 
-              const hasEfectivo = payments.some(p => p.method === "EFECTIVO");
-              let cashSession: { id: number; finalCashSystem: any; initialCash: any } | null = null;
-              if (hasEfectivo) {
-                     cashSession = await tx.cashSession.findFirst({
+              const efectivoTotal = payments
+                     .filter((payment) => payment.method === "EFECTIVO")
+                     .reduce((sum, payment) => sum + payment.amount, 0);
+              const ctaCteTotal = payments
+                     .filter((payment) => payment.method === "CTA_CTE")
+                     .reduce((sum, payment) => sum + payment.amount, 0);
+
+              if (efectivoTotal > 0) {
+                     const cashSession = await tx.cashSession.findFirst({
                             where: { storeId, status: "OPEN" },
                             orderBy: { startTime: "desc" },
                             select: { id: true, finalCashSystem: true, initialCash: true },
                      });
-                     if (!cashSession) throw new Error("No hay caja abierta para procesar pago en efectivo.");
-              }
 
-              const paymentOps: Promise<unknown>[] = [];
-
-              for (const payment of payments) {
-                     if (payment.method === "EFECTIVO") {
-                            const currentFinalCash = Number(cashSession!.finalCashSystem || cashSession!.initialCash || 0);
-                            paymentOps.push(
-                                   tx.cashSession.update({
-                                          where: { id: cashSession!.id },
-                                          data: { finalCashSystem: currentFinalCash + payment.amount },
-                                   })
-                            );
-                     } else if (payment.method === "CTA_CTE") {
-                            if (!customerId) throw new Error("Debe seleccionar cliente para Cuenta Corriente.");
-                            paymentOps.push(
-                                   tx.customer.update({
-                                          where: { id: customerId },
-                                          data: { currentBalance: { increment: payment.amount } },
-                                   }),
-                                   tx.accountMovement.create({
-                                          data: {
-                                                 customerId,
-                                                 movementType: "PURCHASE",
-                                                 amount: payment.amount,
-                                                 description: `Compra Mixta Venta #${sale.id}`,
-                                                 timestamp: new Date(),
-                                                 paymentMethod: "CTA_CTE"
-                                          },
-                                   })
-                            );
+                     if (!cashSession) {
+                            throw new Error("No hay caja abierta para procesar pago en efectivo.");
                      }
 
-                     const cashbookMethod = cashbookMethodMap[payment.method];
-                     if (cashbookMethod) {
-                            paymentOps.push(
-                                   tx.cashBookEntry.create({
-                                          data: {
-                                                 storeId,
-                                                 date: sale.timestamp,
-                                                 type: "INGRESO",
-                                                 category: "VENTA",
-                                                 amount: payment.amount,
-                                                 method: cashbookMethod,
-                                                 description: `Venta #${sale.id}`,
-                                                 reference: `VENTA-${sale.id}`,
-                                          },
-                                   })
-                            );
-                     }
+                     const currentFinalCash = Number(cashSession.finalCashSystem || cashSession.initialCash || 0);
+                     await tx.cashSession.update({
+                            where: { id: cashSession.id },
+                            data: { finalCashSystem: currentFinalCash + efectivoTotal },
+                     });
               }
 
-              await Promise.all(paymentOps);
+              if (ctaCteTotal > 0) {
+                     if (!customerId) {
+                            throw new Error("Debe seleccionar cliente para Cuenta Corriente.");
+                     }
 
-              // Raffle coupon logic
+                     await Promise.all([
+                            tx.customer.update({
+                                   where: { id: customerId },
+                                   data: { currentBalance: { increment: ctaCteTotal } },
+                            }),
+                            tx.accountMovement.create({
+                                   data: {
+                                          customerId,
+                                          movementType: "PURCHASE",
+                                          amount: ctaCteTotal,
+                                          description: `Compra Mixta Venta #${sale.id}`,
+                                          timestamp: new Date(),
+                                          paymentMethod: "CTA_CTE",
+                                   },
+                            }),
+                     ]);
+              }
+
+              const cashBookEntries = payments
+                     .map((payment) => {
+                            const method = cashbookMethodMap[payment.method];
+                            if (!method) return null;
+
+                            return {
+                                   storeId,
+                                   date: sale.timestamp,
+                                   type: "INGRESO",
+                                   category: "VENTA",
+                                   amount: payment.amount,
+                                   method,
+                                   description: `Venta #${sale.id}`,
+                                   reference: `VENTA-${sale.id}`,
+                            };
+                     })
+                     .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+              if (cashBookEntries.length > 0) {
+                     await tx.cashBookEntry.createMany({
+                            data: cashBookEntries,
+                     });
+              }
+
               let raffleNumber: number | null = null;
-              const qualifiesForRaffle = totalAmount >= 10000 &&
-                     payments.every(p => p.method === "EFECTIVO" || p.method === "TRANSFERENCIA");
+              const qualifiesForRaffle =
+                     totalAmount >= 10000 &&
+                     payments.every((payment) => payment.method === "EFECTIVO" || payment.method === "TRANSFERENCIA");
+
               if (qualifiesForRaffle) {
                      const [raffleEnabled, counterSetting] = await Promise.all([
-                            tx.storeSetting.findUnique({ where: { storeId_key: { storeId, key: "raffle_enabled" } } }),
-                            tx.storeSetting.findUnique({ where: { storeId_key: { storeId, key: "raffle_counter" } } }),
+                            tx.storeSetting.findUnique({
+                                   where: { storeId_key: { storeId, key: "raffle_enabled" } },
+                                   select: { value: true },
+                            }),
+                            tx.storeSetting.findUnique({
+                                   where: { storeId_key: { storeId, key: "raffle_counter" } },
+                                   select: { value: true },
+                            }),
                      ]);
+
                      if (raffleEnabled?.value === "true") {
-                            const newCounter = parseInt(counterSetting?.value || "0") + 1;
+                            const newCounter = parseInt(counterSetting?.value || "0", 10) + 1;
                             await tx.storeSetting.upsert({
                                    where: { storeId_key: { storeId, key: "raffle_counter" } },
                                    update: { value: String(newCounter) },
-                                   create: { storeId, key: "raffle_counter", value: String(newCounter), description: "Contador cupones sorteo" }
+                                   create: {
+                                          storeId,
+                                          key: "raffle_counter",
+                                          value: String(newCounter),
+                                          description: "Contador cupones sorteo",
+                                   },
                             });
                             raffleNumber = newCounter;
                      }
               }
 
               return {
-                     ...sale,
-                     subtotal: Number(sale.subtotal),
-                     discountAmount: Number(sale.discountAmount),
-                     totalAmount: Number(sale.totalAmount),
-                     items: (sale.items as any[]).map((item: any) => ({
-                            ...item,
-                            unitPrice: Number(item.unitPrice),
-                            unitCost: Number(item.unitCost || 0),
-                            subtotal: Number(item.subtotal),
-                            subtotalCost: Number(item.subtotalCost || 0)
-                     })),
-                     payments: sale.payments.map(p => ({
-                            ...p,
-                            amount: Number(p.amount)
-                     })),
-                     raffleNumber
-              } as any;
+                     saleId: sale.id,
+                     raffleNumber,
+              };
+       }, {
+              maxWait: 10000,
+              timeout: 20000,
        });
 }
-

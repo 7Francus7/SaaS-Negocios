@@ -18,40 +18,41 @@ model User {
   updatedAt DateTime @updatedAt
   store     Store?   @relation(fields: [storeId], references: [id])
 
+  @@index([storeId])
   @@map("users")
 }
 
 model Store {
-  id                     String           @id @default(cuid())
+  id                     String    @id @default(cuid())
   name                   String
-  slug                   String           @unique
-  isActive               Boolean          @default(true)
-  hasCompletedOnboarding Boolean          @default(false)
+  slug                   String    @unique
+  isActive               Boolean   @default(true)
+  hasCompletedOnboarding Boolean   @default(false)
   onboardingCompletedAt  DateTime?
   address                String?
   phone                  String?
   cuit                   String?
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-  
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
   // SaaS Subscription
-  plan                   String           @default("FREE")
-  subscriptionStatus     String           @default("ACTIVE") // ACTIVE, PENDING, CANCELLED, PAST_DUE
-  subscriptionId         String?          // MP Preapproval ID
-  nextBillingDate        DateTime?
-  cashSessions           CashSession[]
-  cashBookEntries        CashBookEntry[]
-  categories             Category[]
-  customers              Customer[]
-  productVariants        ProductVariant[]
-  productBarcodes        ProductBarcode[]
-  products               Product[]
-  promotions             Promotion[]
-  purchases              Purchase[]
-  sales                  Sale[]
-  settings               StoreSetting[]
-  suppliers              Supplier[]
-  users                  User[]
+  plan               String           @default("FREE")
+  subscriptionStatus String           @default("ACTIVE") // ACTIVE, PENDING, CANCELLED, PAST_DUE
+  subscriptionId     String? // MP Preapproval ID
+  nextBillingDate    DateTime?
+  cashSessions       CashSession[]
+  cashBookEntries    CashBookEntry[]
+  categories         Category[]
+  customers          Customer[]
+  productVariants    ProductVariant[]
+  productBarcodes    ProductBarcode[]
+  products           Product[]
+  promotions         Promotion[]
+  purchases          Purchase[]
+  sales              Sale[]
+  settings           StoreSetting[]
+  suppliers          Supplier[]
+  users              User[]
 
   @@map("stores")
 }
@@ -65,6 +66,7 @@ model Category {
   promotionItems PromotionItem[]
 
   @@unique([storeId, name])
+  @@index([storeId])
   @@map("categories")
 }
 
@@ -79,25 +81,27 @@ model Product {
   category    Category?        @relation(fields: [categoryId], references: [id])
   store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId, active])
+  @@index([storeId, categoryId, active])
   @@map("products")
 }
 
 model ProductVariant {
-  id             Int             @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   productId      Int
   variantName    String
   barcode        String?
-  costPrice      Decimal         @default(0.00)
-  salePrice      Decimal         @default(0.00)
-  stockQuantity  Float           @default(0)
-  minStock       Float           @default(5)
-  active         Boolean         @default(true)
+  costPrice      Decimal          @default(0.00)
+  salePrice      Decimal          @default(0.00)
+  stockQuantity  Float            @default(0)
+  minStock       Float            @default(5)
+  active         Boolean          @default(true)
   storeId        String
-  isWeighable    Boolean         @default(false)
-  isQuickAccess  Boolean         @default(false)
-  trackStock     Boolean         @default(true)
-  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  isWeighable    Boolean          @default(false)
+  isQuickAccess  Boolean          @default(false)
+  trackStock     Boolean          @default(true)
+  product        Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store          Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   barcodes       ProductBarcode[]
   promotionItems PromotionItem[]
   purchaseItems  PurchaseItem[]
@@ -105,6 +109,10 @@ model ProductVariant {
   stockMovements StockMovement[]
 
   @@unique([storeId, barcode])
+  @@index([productId])
+  @@index([storeId, active])
+  @@index([storeId, active, trackStock, stockQuantity])
+  @@index([storeId, isQuickAccess, active])
   @@map("product_variants")
 }
 
@@ -117,9 +125,9 @@ model ProductBarcode {
   store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, barcode])
+  @@index([variantId])
   @@map("product_barcodes")
 }
-
 
 model Customer {
   id               Int               @id @default(autoincrement())
@@ -136,6 +144,8 @@ model Customer {
   store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
   sales            Sale[]
 
+  @@index([storeId, active])
+  @@index([storeId, currentBalance])
   @@map("customers")
 }
 
@@ -153,19 +163,23 @@ model Sale {
   customer       Customer?     @relation(fields: [customerId], references: [id])
   store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId, timestamp])
+  @@index([storeId, paymentMethod, timestamp])
+  @@index([customerId])
   @@map("sales")
 }
 
 model SalePayment {
-  id            Int      @id @default(autoincrement())
+  id            Int     @id @default(autoincrement())
   saleId        Int
   paymentMethod String
   amount        Decimal
-  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale          Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
+  @@index([saleId])
+  @@index([paymentMethod])
   @@map("sale_payments")
 }
-
 
 model SaleItem {
   id                  Int            @id @default(autoincrement())
@@ -180,6 +194,8 @@ model SaleItem {
   sale                Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
   variant             ProductVariant @relation(fields: [variantId], references: [id])
 
+  @@index([saleId])
+  @@index([variantId])
   @@map("sale_items")
 }
 
@@ -193,6 +209,8 @@ model AccountMovement {
   paymentMethod String?
   customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId, timestamp])
+  @@index([movementType, timestamp])
   @@map("account_movements")
 }
 
@@ -208,6 +226,8 @@ model StockMovement {
   balanceSnapshot Float?
   variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
+  @@index([variantId, timestamp])
+  @@index([movementType, timestamp])
   @@map("stock_movements")
 }
 
@@ -226,6 +246,8 @@ model CashSession {
   movements       CashMovement[]
   store           Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId, status])
+  @@index([storeId, startTime])
   @@map("cash_sessions")
 }
 
@@ -239,6 +261,8 @@ model CashMovement {
   userId        String?
   cashSession   CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
 
+  @@index([cashSessionId, timestamp])
+  @@index([cashSessionId, type])
   @@map("cash_movements")
 }
 
@@ -251,6 +275,7 @@ model StoreSetting {
   store       Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, key])
+  @@index([storeId])
   @@map("store_settings")
 }
 
@@ -267,6 +292,7 @@ model Supplier {
   purchases Purchase[]
   store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId, active])
   @@map("suppliers")
 }
 
@@ -281,6 +307,8 @@ model Purchase {
   store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   supplier    Supplier?      @relation(fields: [supplierId], references: [id])
 
+  @@index([storeId, date])
+  @@index([supplierId])
   @@map("purchases")
 }
 
@@ -294,6 +322,8 @@ model PurchaseItem {
   purchase   Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   variant    ProductVariant @relation(fields: [variantId], references: [id])
 
+  @@index([purchaseId])
+  @@index([variantId])
   @@map("purchase_items")
 }
 
@@ -314,6 +344,8 @@ model Promotion {
   items         PromotionItem[]
   store         Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId, active])
+  @@index([storeId, startDate, endDate])
   @@map("promotions")
 }
 
@@ -326,14 +358,17 @@ model PromotionItem {
   promotion   Promotion       @relation(fields: [promotionId], references: [id], onDelete: Cascade)
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
 
+  @@index([promotionId])
+  @@index([variantId])
+  @@index([categoryId])
   @@map("promotion_items")
 }
 
 model CashBookEntry {
   id          Int      @id @default(autoincrement())
   date        DateTime @default(now())
-  type        String   // INGRESO | EGRESO
-  category    String   // VENTA | INGRESO_EXTRA | COMPRA | GASTO | PROVEEDOR | SUELDO | OTRO
+  type        String // INGRESO | EGRESO
+  category    String // VENTA | INGRESO_EXTRA | COMPRA | GASTO | PROVEEDOR | SUELDO | OTRO
   amount      Decimal
   description String?
   method      String   @default("EFECTIVO") // EFECTIVO | TRANSFERENCIA | TARJETA | OTRO
@@ -341,5 +376,7 @@ model CashBookEntry {
   storeId     String
   store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId, date])
+  @@index([storeId, type, date])
   @@map("cash_book_entries")
 }
