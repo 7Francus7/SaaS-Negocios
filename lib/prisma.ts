@@ -1,20 +1,22 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaNeon } from '@prisma/adapter-neon'
+import { Pool } from '@neondatabase/serverless'
 
-const prismaClientSingleton = () => {
-       const url = process.env.DATABASE_URL;
-
-       if (url && url.startsWith('neondb://')) {
-              process.env.DATABASE_URL = url.replace('neondb://', 'postgresql://');
+function createPrismaClient() {
+       let url = process.env.DATABASE_URL ?? ''
+       if (url.startsWith('neondb://')) {
+              url = url.replace('neondb://', 'postgresql://')
        }
-
-       return new PrismaClient()
+       const pool = new Pool({ connectionString: url })
+       const adapter = new PrismaNeon(pool)
+       return new PrismaClient({ adapter })
 }
 
 declare global {
-       var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
+       var prismaGlobal: undefined | ReturnType<typeof createPrismaClient>
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
+const prisma = globalThis.prismaGlobal ?? createPrismaClient()
 
 export default prisma
 

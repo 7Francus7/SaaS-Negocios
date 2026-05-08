@@ -238,6 +238,7 @@ export default function POSPage() {
                             if (localProduct) {
                                    addToCart(localProduct);
                                    toast(`Agregado: ${localProduct.product.name}`, "success");
+                                   if (window.innerWidth < 1024) setMobileTab("cart");
                             } else {
                                    toast(`Código no encontrado: ${code}`, "warning");
                             }
@@ -248,6 +249,7 @@ export default function POSPage() {
                      if (product) {
                             addToCart(product);
                             toast(`Agregado: ${product.product.name}`, "success");
+                            if (window.innerWidth < 1024) setMobileTab("cart");
                      } else {
                             toast(`Código no encontrado: ${code}`, "warning");
                      }
