@@ -1,5 +1,6 @@
 "use client";
 
+import { getDashboardShellInfo } from "@/app/actions/dashboard";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
@@ -105,20 +106,33 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
        const [godMode, setGodMode] = useState(false);
 
        useEffect(() => {
-              import("@/app/actions/dashboard").then(({ getPublicStoreInfo, getUserRole }) => {
-                     getPublicStoreInfo().then((info) => setStoreName(info.name));
-                     getUserRole().then((r) => setUserRole(r));
-              });
+              let isMounted = true;
 
+              getDashboardShellInfo()
+                     .then((data) => {
+                            if (!isMounted) return;
+                            setStoreName(data.storeName);
+                            setUserRole(data.userRole);
+                     })
+                     .catch(() => {
+                            if (!isMounted) return;
+                            setStoreName("Mi Tienda");
+                            setUserRole("ADMIN");
+                     });
+
+              return () => {
+                     isMounted = false;
+              };
+       }, []);
+
+       useEffect(() => {
               const isGod = searchParams.get("view") === "god";
               if (isGod) {
                      localStorage.setItem("godMode", "true");
                      setGodMode(true);
                      if (pathname === "/dashboard") router.push("/dashboard/admin");
-              } else {
-                     if (typeof window !== "undefined" && localStorage.getItem("godMode") === "true") {
-                            setGodMode(true);
-                     }
+              } else if (typeof window !== "undefined" && localStorage.getItem("godMode") === "true") {
+                     setGodMode(true);
               }
        }, [searchParams, pathname, router]);
 

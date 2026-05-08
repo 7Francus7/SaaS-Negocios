@@ -1,54 +1,73 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import prisma from "@/lib/prisma";
+
+type SessionUserSnapshot = {
+       id: string;
+       email: string;
+       name: string | null;
+       role: string;
+       storeId: string | null;
+};
+
+const getSessionUserSnapshot = cache(async (): Promise<SessionUserSnapshot | null> => {
+       const cookieStore = await cookies();
+       const email = cookieStore.get("user_email")?.value;
+
+       if (!email) return null;
+
+       const id = cookieStore.get("user_id")?.value;
+       const role = cookieStore.get("user_role")?.value;
+       const storeId = cookieStore.get("user_store_id")?.value;
+       const name = cookieStore.get("user_name")?.value ?? null;
+
+       if (id && role) {
+              return {
+                     id,
+                     email,
+                     name,
+                     role,
+                     storeId: storeId || null,
+              };
+       }
+
+       return await prisma.user.findUnique({
+              where: { email },
+              select: { id: true, email: true, name: true, role: true, storeId: true },
+       });
+});
 
 export async function getStoreId(): Promise<string> {
        try {
-              // 1. Try to get user from cookie
-              const cookieStore = await cookies();
-              const userEmail = cookieStore.get("user_email")?.value;
+              const user = await getSessionUserSnapshot();
 
-              if (userEmail) {
-                     const user = await prisma.user.findUnique({
-                            where: { email: userEmail },
-                            select: { id: true, storeId: true, name: true }
+              if (user) {
+                     if (user.storeId) {
+                            return user.storeId;
+                     }
+
+                     console.log(`Usuario ${user.email} sin tienda. Creando nueva tienda...`);
+
+                     const randomSlug = Math.random().toString(36).substring(2, 8);
+                     const slug = `store-${randomSlug}-${Date.now()}`;
+
+                     const newStore = await prisma.store.create({
+                            data: {
+                                   name: user.name ? `Negocio de ${user.name}` : "Mi Nuevo Negocio",
+                                   slug,
+                                   isActive: true,
+                                   users: {
+                                          connect: { id: user.id },
+                                   },
+                            },
                      });
 
-                     if (user) {
-                            // If user is assigned to a store, return it
-                            if (user.storeId) {
-                                   return user.storeId;
-                            }
-
-                            // 2. AUTO-PROVISIONING: If user exists but has no store, create one for them.
-                            console.log(`Usuario ${userEmail} sin tienda. Creando nueva tienda...`);
-
-                            // Generate a simple unique slug
-                            const randomSlug = Math.random().toString(36).substring(2, 8);
-                            const slug = `store-${randomSlug}-${Date.now()}`;
-
-                            // Create the store and associate it with the user
-                            const newStore = await prisma.store.create({
-                                   data: {
-                                          name: user.name ? `Negocio de ${user.name}` : "Mi Nuevo Negocio",
-                                          slug: slug,
-                                          isActive: true,
-                                          users: {
-                                                 connect: { id: user.id }
-                                          }
-                                   }
-                            });
-
-                            return newStore.id;
-                     }
+                     return newStore.id;
               }
 
-              // 3. IF NO USER FOUND -> SECURITY ERROR
-              // The middleware should have caught this, but this is a second layer of defense.
-              throw new Error("❌ SEGURIDAD: Usuario no autenticado.");
-
+              throw new Error("SEGURIDAD: Usuario no autenticado.");
        } catch (error) {
               console.error("Store Security Error:", error);
-              // Do not return any data if we can't identify the user's store
               throw new Error("Acceso Denegado: No se pudo verificar la identidad de la tienda.");
        }
 }
@@ -58,26 +77,18 @@ export async function getStoreName(): Promise<string> {
               const id = await getStoreId();
               const store = await prisma.store.findUnique({
                      where: { id },
-                     select: { name: true }
+                     select: { name: true },
               });
-              return store?.name || "Gestión de Despensas";
-       } catch (e) {
-              return "Gestión de Despensas";
+              return store?.name || "Gestion de Despensas";
+       } catch {
+              return "Gestion de Despensas";
        }
 }
 
 export async function getCurrentUser() {
-    try {
-        const cookieStore = await cookies();
-        const userEmail = cookieStore.get("user_email")?.value;
-        if (!userEmail) return null;
-        
-        const user = await prisma.user.findUnique({
-            where: { email: userEmail },
-            select: { id: true, email: true, name: true, role: true, storeId: true }
-        });
-        return user;
-    } catch(e) {
-        return null;
-    }
+       try {
+              return await getSessionUserSnapshot();
+       } catch {
+              return null;
+       }
 }

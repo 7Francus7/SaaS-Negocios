@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { checkHasOpenSession } from "@/app/actions/cash";
 import { autoCloseMonthlyAccounts } from "@/app/actions/customers";
+import { getUserRole } from "@/app/actions/dashboard";
 import { Wallet, ShieldAlert } from "lucide-react";
 import { OfflineSyncProvider } from "@/components/providers/offline-sync-provider";
 
@@ -23,50 +24,80 @@ export default function DashboardLayout({
        const [userRole, setUserRole] = useState<string | null>(null);
 
        useEffect(() => {
-              // Auto-cierre siempre corre, sin importar en qué página estemos
-              autoCloseMonthlyAccounts().then((result) => {
-                     if (result?.executed && result?.closed && result.closed > 0) {
-                            console.log(`✅ Cierre automático de mes: ${result.closed} cuentas cerradas.`);
-                     }
-              }).catch(err => {
-                     console.error("Error en cierre automático de cuentas:", err);
-              });
+              let isMounted = true;
 
+              autoCloseMonthlyAccounts()
+                     .then((result) => {
+                            if (isMounted && result?.executed && result?.closed && result.closed > 0) {
+                                   console.log(`Cierre automatico de mes: ${result.closed} cuentas cerradas.`);
+                            }
+                     })
+                     .catch((err) => {
+                            if (isMounted) {
+                                   console.error("Error en cierre automatico de cuentas:", err);
+                            }
+                     });
+
+              getUserRole()
+                     .then((role) => {
+                            if (isMounted) {
+                                   setUserRole(role);
+                            }
+                     })
+                     .catch(() => {
+                            if (isMounted) {
+                                   setUserRole("ADMIN");
+                            }
+                     });
+
+              return () => {
+                     isMounted = false;
+              };
+       }, []);
+
+       useEffect(() => {
               if (isAdminPage || isCashPage) {
-                     setHasOpenCash(true);
                      return;
               }
 
               let isMounted = true;
 
-              import("@/app/actions/dashboard").then(m => m.getUserRole().then(r => setUserRole(r)));
-              checkHasOpenSession().then((isOpen) => {
-                     if (isMounted) {
-                            setHasOpenCash(isOpen);
-                     }
-              }).catch(() => {
-                     if (isMounted) {
-                            setHasOpenCash(true);
-                     }
-              });
+              checkHasOpenSession()
+                     .then((isOpen) => {
+                            if (isMounted) {
+                                   setHasOpenCash(isOpen);
+                            }
+                     })
+                     .catch(() => {
+                            if (isMounted) {
+                                   setHasOpenCash(true);
+                            }
+                     });
 
               return () => {
                      isMounted = false;
               };
-       }, [pathname, isAdminPage, isCashPage]);
+       }, [isAdminPage, isCashPage, pathname]);
 
-       const isCashierNotAllowed = userRole === "CASHIER" && ["/dashboard/products", "/dashboard/reports", "/dashboard/promotions", "/dashboard/suppliers", "/dashboard/settings"].some(p => pathname?.startsWith(p));
-       const isBlocked = hasOpenCash === false && !isAdminPage && !isCashPage;
-       const isChecking = hasOpenCash === null && !isAdminPage && !isCashPage;
+       const skipsCashGate = isAdminPage || isCashPage;
+       const isCashierNotAllowed =
+              userRole === "CASHIER" &&
+              ["/dashboard/products", "/dashboard/reports", "/dashboard/promotions", "/dashboard/suppliers", "/dashboard/settings"].some((p) =>
+                     pathname?.startsWith(p)
+              );
+       const isBlocked = hasOpenCash === false && !skipsCashGate;
+       const isChecking = hasOpenCash === null && !skipsCashGate;
 
        return (
               <div className="min-h-screen bg-gray-50 flex font-[family-name:var(--font-geist-sans)]">
                      <OfflineSyncProvider />
                      <Sidebar />
-                     <main className={cn(
-                            "flex-1 lg:ml-72 transition-all duration-500 print:ml-0 print:p-0 min-w-0",
-                            isAdminPage ? "p-0 pt-14 lg:pt-0" : "p-4 pt-16 lg:p-8 lg:pt-8"
-                     )}>
+                     <main
+                            className={cn(
+                                   "flex-1 lg:ml-72 transition-all duration-500 print:ml-0 print:p-0 min-w-0",
+                                   isAdminPage ? "p-0 pt-14 lg:pt-0" : "p-4 pt-16 lg:p-8 lg:pt-8"
+                            )}
+                     >
                             {isChecking ? (
                                    <div className="h-[80vh] flex flex-col items-center justify-center text-gray-400 gap-4 animate-pulse">
                                           <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-500 rounded-full animate-spin" />
@@ -77,8 +108,13 @@ export default function DashboardLayout({
                                           <div className="bg-white p-8 lg:p-12 rounded-[2rem] shadow-xl max-w-xl w-full text-center border border-gray-100 flex flex-col items-center">
                                                  <ShieldAlert className="w-16 h-16 text-red-500 mb-6" />
                                                  <h2 className="text-2xl lg:text-3xl font-black text-gray-900 mb-4 tracking-tight">Acceso Denegado</h2>
-                                                 <p className="text-gray-500 font-medium mb-8">Tu rango actual de Cajero no permite el acceso a esta sección administrativa.</p>
-                                                 <button onClick={() => router.push('/dashboard/pos')} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-blue-700">Ir al Punto de Venta</button>
+                                                 <p className="text-gray-500 font-medium mb-8">Tu rango actual de Cajero no permite el acceso a esta seccion administrativa.</p>
+                                                 <button
+                                                        onClick={() => router.push("/dashboard/pos")}
+                                                        className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-blue-700"
+                                                 >
+                                                        Ir al Punto de Venta
+                                                 </button>
                                           </div>
                                    </div>
                             ) : isBlocked ? (
@@ -93,7 +129,7 @@ export default function DashboardLayout({
                                                         Por seguridad, es estrictamente necesario <strong className="text-gray-900">Abrir la Caja</strong> antes de poder realizar ventas, registrar pagos o utilizar el sistema.
                                                  </p>
                                                  <button
-                                                        onClick={() => router.push('/dashboard/cash')}
+                                                        onClick={() => router.push("/dashboard/cash")}
                                                         className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white p-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/30 hover:scale-[1.02]"
                                                  >
                                                         <Wallet className="w-6 h-6" />

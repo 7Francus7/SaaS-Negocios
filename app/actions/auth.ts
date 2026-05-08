@@ -1,9 +1,10 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { clearSessionCookies, setSessionCookies } from "@/lib/session-cookies";
 import bcrypt from "bcryptjs";
 
-export async function login(prevState: any, formData: FormData) {
+export async function login(_prevState: unknown, formData: FormData) {
        const email = (formData.get("email") as string || "").trim().toLowerCase();
        const password = (formData.get("password") as string || "");
 
@@ -22,13 +23,12 @@ export async function login(prevState: any, formData: FormData) {
                      email === superAdminEmail &&
                      password === superAdminPassword
               ) {
-                     const { cookies } = await import("next/headers");
-                     (await cookies()).set("user_email", email, {
-                            httpOnly: true,
-                            secure: process.env.NODE_ENV === "production",
-                            sameSite: "lax",
-                            maxAge: 60 * 60 * 24, // 24 hours for admin
-                            path: "/",
+                     await setSessionCookies({
+                            email,
+                            id: "superadmin",
+                            role: "SUPERADMIN",
+                            name: "Root Admin",
+                            maxAge: 60 * 60 * 24,
                      });
                      return { success: true, godMode: true };
               }
@@ -47,13 +47,12 @@ export async function login(prevState: any, formData: FormData) {
                      return { error: "Credenciales inválidas" };
               }
 
-              const { cookies } = await import("next/headers");
-              (await cookies()).set("user_email", email, {
-                     httpOnly: true,
-                     secure: process.env.NODE_ENV === "production",
-                     sameSite: "lax",
-                     maxAge: 60 * 60 * 24 * 365 * 10,
-                     path: "/",
+              await setSessionCookies({
+                     email: user.email,
+                     id: user.id,
+                     role: user.role,
+                     storeId: user.storeId,
+                     name: user.name,
               });
 
               return { success: true };
@@ -63,7 +62,7 @@ export async function login(prevState: any, formData: FormData) {
        }
 }
 
-export async function register(prevState: any, formData: FormData) {
+export async function register(_prevState: unknown, formData: FormData) {
        const name = (formData.get("name") as string || "").trim();
        const email = (formData.get("email") as string || "").trim().toLowerCase();
        const storeName = (formData.get("storeName") as string || "").trim();
@@ -105,7 +104,7 @@ export async function register(prevState: any, formData: FormData) {
                      .substring(0, 30) || "tienda";
               const uniqueSlug = `${baseSlug}-${Date.now()}`;
 
-              await prisma.user.create({
+              const user = await prisma.user.create({
                      data: {
                             name,
                             email,
@@ -121,13 +120,12 @@ export async function register(prevState: any, formData: FormData) {
                      },
               });
 
-              const { cookies } = await import("next/headers");
-              (await cookies()).set("user_email", email, {
-                     httpOnly: true,
-                     secure: process.env.NODE_ENV === "production",
-                     sameSite: "lax",
-                     maxAge: 60 * 60 * 24 * 365 * 10,
-                     path: "/",
+              await setSessionCookies({
+                     email: user.email,
+                     id: user.id,
+                     role: user.role,
+                     storeId: user.storeId,
+                     name: user.name,
               });
 
               return { success: true };
@@ -138,6 +136,5 @@ export async function register(prevState: any, formData: FormData) {
 }
 
 export async function logout() {
-       const { cookies } = await import("next/headers");
-       (await cookies()).delete("user_email");
+       await clearSessionCookies();
 }

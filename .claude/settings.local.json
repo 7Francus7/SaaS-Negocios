@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__code-review-graph__semantic_search_nodes_tool",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('@neondatabase/serverless'\\); console.log\\('ok'\\)\")",
+      "Bash(npx prisma *)",
+      "Bash(node -e \"const m = require\\('@prisma/adapter-neon'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('@prisma/adapter-neon/package.json'\\).version, require\\('@prisma/client/package.json'\\).version, require\\('@neondatabase/serverless/package.json'\\).version\\)\")",
+      "Bash(npm uninstall *)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "code-review-graph"
+  ]
+}

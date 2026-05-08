@@ -55,7 +55,7 @@ export async function getProducts(filter: ProductFilter = {}) {
               ...v,
               costPrice: Number(v.costPrice),
               salePrice: Number(v.salePrice),
-              barcodes: includeBarcodes ? (v.barcodes as any[]).map((b: any) => b.barcode) : [],
+              barcodes: includeBarcodes ? v.barcodes.map((b) => b.barcode) : [],
               product: {
                      ...v.product,
                      description: v.product.description || ""
@@ -67,16 +67,17 @@ export async function getProducts(filter: ProductFilter = {}) {
 
 export async function findProductByBarcode(barcode: string) {
        const storeId = await getStoreId();
+       const normalizedBarcode = barcode.trim();
 
-       if (!barcode) return null;
+       if (!normalizedBarcode) return null;
 
        const [variantByPrimary, barcodeEntry] = await Promise.all([
               prisma.productVariant.findFirst({
-                     where: { storeId, barcode, active: true },
+                     where: { storeId, barcode: normalizedBarcode, active: true },
                      include: { product: true, barcodes: true },
               }),
               prisma.productBarcode.findFirst({
-                     where: { storeId, barcode },
+                     where: { storeId, barcode: normalizedBarcode },
                      include: {
                             variant: {
                                    include: { product: true, barcodes: true },
@@ -189,9 +190,9 @@ export async function createProduct(data: {
                             salePrice: Number(variant.salePrice),
                      }
               };
-       } catch (error: any) {
+       } catch (error: unknown) {
               console.error("Error creating product:", error);
-              return { error: error.message || "Error al crear el producto" };
+              return { error: error instanceof Error ? error.message : "Error al crear el producto" };
        }
 }
 
@@ -516,9 +517,9 @@ export async function updateProductDetails(
                             salePrice: Number(result.salePrice),
                      }
               };
-       } catch (error: any) {
+       } catch (error: unknown) {
               console.error("Error updating product:", error);
-              return { error: error.message || "Error al actualizar el producto" };
+              return { error: error instanceof Error ? error.message : "Error al actualizar el producto" };
        }
 }
 

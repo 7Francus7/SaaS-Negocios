@@ -24,7 +24,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
        const { request } = event;
-       if (request.method !== "GET") {
+       const url = new URL(request.url);
+
+       if (request.method !== "GET" || !url.protocol.startsWith("http")) {
               return;
        }
 
@@ -65,7 +67,7 @@ self.addEventListener("fetch", (event) => {
                                    }
                                    return response;
                             })
-                            .catch(() => cached);
+                            .catch(() => cached || Response.error());
 
                      return cached || networkFetch;
               })

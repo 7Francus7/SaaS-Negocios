@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getStoreId } from "@/lib/store";
+import { getCurrentUser, getStoreId } from "@/lib/store";
 import { safeSerialize } from "@/lib/utils";
 
 export async function getPublicStoreInfo() {
@@ -11,6 +11,24 @@ export async function getPublicStoreInfo() {
               select: { name: true }
        });
        return { name: store?.name || "Mi Negocio" };
+}
+
+export async function getDashboardShellInfo() {
+       const user = await getCurrentUser();
+
+       if (user?.role === "SUPERADMIN") {
+              return {
+                     userRole: "SUPERADMIN",
+                     storeName: "God Mode",
+              };
+       }
+
+       const storeInfo = await getPublicStoreInfo();
+
+       return {
+              userRole: user?.role || "ADMIN",
+              storeName: storeInfo.name,
+       };
 }
 
 // ... existing code ...
@@ -88,7 +106,14 @@ export type DashboardStats = {
        productsCount: number;
        lowStockCount: number;
        customersCount: number;
-       criticalStockItems: any[];
+       criticalStockItems: Array<{
+              id: number;
+              stockQuantity: number;
+              variantName: string;
+              product: {
+                     name: string;
+              };
+       }>;
 };
 
 export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') {
@@ -145,4 +170,7 @@ export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') 
        }
 }
 
-export async function getUserRole() { const user = await import("@/lib/store").then(m => m.getCurrentUser()); return user?.role || "ADMIN"; }
+export async function getUserRole() {
+       const user = await getCurrentUser();
+       return user?.role || "ADMIN";
+}

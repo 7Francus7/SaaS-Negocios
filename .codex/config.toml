@@ -1,0 +1,3 @@
+[mcp_servers.code-review-graph]
+args = ["serve"]
+command = 'C:\Users\dello\AppData\Roaming\Python\Python311\Scripts\code-review-graph.exe'

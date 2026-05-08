@@ -322,40 +322,67 @@ export default function POSPage() {
        useEffect(() => {
               let buffer = "";
               let lastTime = 0;
+              let resetTimer: number | null = null;
+
+              const clearBuffer = () => {
+                     buffer = "";
+                     lastTime = 0;
+                     if (resetTimer) {
+                            window.clearTimeout(resetTimer);
+                            resetTimer = null;
+                     }
+              };
+
+              const scheduleReset = () => {
+                     if (resetTimer) {
+                            window.clearTimeout(resetTimer);
+                     }
+                     resetTimer = window.setTimeout(() => {
+                            clearBuffer();
+                     }, 120);
+              };
 
               const handleKeyDown = (e: KeyboardEvent) => {
-                     if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
+                     if (["Shift", "Control", "Alt", "Meta"].includes(e.key) || e.isComposing) return;
 
                      const now = Date.now();
                      const timeDiff = now - lastTime;
-                     lastTime = now;
+                     const isScannerGap = buffer.length === 0 || timeDiff <= 80;
 
-                     if (e.key === 'Enter') {
-                            if (buffer.length > 2) {
+                     if (e.key === "Enter" || e.key === "NumpadEnter" || e.key === "Tab") {
+                            if (buffer.length >= 6) {
                                    handleBarcodeScanRef.current(buffer);
-                                   buffer = "";
                                    e.preventDefault();
                                    e.stopPropagation();
-                            } else {
-                                   buffer = "";
                             }
+                            clearBuffer();
                             return;
                      }
 
                      if (e.key.length === 1) {
                             // Si es un caracter rápido (scanner) y ya hay buffer, evitar que vaya al input de búsqueda
-                            const isFastFollowUp = timeDiff < 50 && buffer.length > 0;
-                            if (isFastFollowUp) e.preventDefault();
-
-                            if (!isFastFollowUp && buffer.length > 0 && timeDiff > 100) {
-                                   buffer = "";
+                            if (!isScannerGap) {
+                                   clearBuffer();
                             }
+
+                            if (buffer.length > 0) {
+                                   e.preventDefault();
+                                   e.stopPropagation();
+                            }
+
                             buffer += e.key;
+                            lastTime = now;
+                            scheduleReset();
                      }
               };
 
               window.addEventListener('keydown', handleKeyDown, true);
-              return () => window.removeEventListener('keydown', handleKeyDown, true);
+              return () => {
+                     if (resetTimer) {
+                            window.clearTimeout(resetTimer);
+                     }
+                     window.removeEventListener('keydown', handleKeyDown, true);
+              };
        }, []);
 
        // Weighable Modal State
@@ -578,10 +605,6 @@ export default function POSPage() {
 
        const handleCheckout = async () => {
               if (cart.length === 0) return;
-              if (!session) {
-                     toast("Debe abrir la caja antes de realizar ventas.", "warning");
-                     return;
-              }
 
               let finalPayments: { method: string, amount: number }[] = [];
 
@@ -594,6 +617,12 @@ export default function POSPage() {
                      }
               } else {
                      finalPayments = [{ method: paymentMethod, amount: total }];
+              }
+
+              const requiresOpenSession = finalPayments.some((payment) => payment.method === "EFECTIVO");
+              if (requiresOpenSession && !session) {
+                     toast("Debe abrir la caja antes de realizar ventas en efectivo.", "warning");
+                     return;
               }
 
               setProcessing(true);
