@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Receipt, Search, XCircle, ChevronDown, ChevronUp, Filter, Printer } from "lucide-react";
+import { Receipt, XCircle, ChevronDown, ChevronUp, Printer } from "lucide-react";
 import { getSalesHistory, voidSale } from "@/app/actions/sales-history";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import { Ticket } from "@/components/pos/ticket";
@@ -63,9 +63,13 @@ export default function SalesHistoryPage() {
        }, [filterMethod, dateFrom, dateTo]);
 
        useEffect(() => { fetchSales(); }, [fetchSales]);
-       useEffect(() => { getStoreSettings().then(setStoreSettings); }, []);
 
-       const handleReprint = (sale: Sale) => {
+       const handleReprint = async (sale: Sale) => {
+              const settings = storeSettings ?? await getStoreSettings();
+              if (!storeSettings) {
+                     setStoreSettings(settings);
+              }
+
               const ticketData = {
                      items: sale.items.map(item => ({
                             quantity: item.quantity,
@@ -76,13 +80,13 @@ export default function SalesHistoryPage() {
                      total: Number(sale.totalAmount),
                      date: new Date(sale.timestamp),
                      paymentMethod: PAYMENT_LABELS[sale.paymentMethod] || sale.paymentMethod,
-                     store: storeSettings ? {
-                            name: storeSettings.name,
-                            address: storeSettings.address,
-                            phone: storeSettings.phone,
-                            cuit: storeSettings.cuit,
-                            ticketFooter: storeSettings.ticketFooter,
-                            ticketInstagram: storeSettings.ticketInstagram,
+                     store: settings ? {
+                            name: settings.name,
+                            address: settings.address,
+                            phone: settings.phone,
+                            cuit: settings.cuit,
+                            ticketFooter: settings.ticketFooter,
+                            ticketInstagram: settings.ticketInstagram,
                      } : undefined,
               };
               setReprintData(ticketData);

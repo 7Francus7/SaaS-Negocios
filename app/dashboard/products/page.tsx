@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Plus, Search, Filter, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp, Star } from "lucide-react";
-import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess, getInventoryValue } from "@/app/actions/products";
+import { Plus, Search, UploadCloud, Download, Trash2, Pencil, Tag, FolderPlus, X, PackagePlus, Minus, TrendingUp, Star } from "lucide-react";
+import { getProducts, exportProductsToCSV, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory, adjustStock, bulkUpdatePrices, toggleQuickAccess, getProductsPageSnapshot } from "@/app/actions/products";
 import { CreateProductModal } from "@/components/products/create-product-modal";
 import { EditProductModal } from "@/components/products/edit-product-modal";
 import { BulkImportModal } from "@/components/products/bulk-import-modal";
@@ -58,9 +58,10 @@ export default function ProductsPage() {
        const fetchProducts = useCallback(async () => {
               setLoading(true);
               try {
-                     const [data, value] = await Promise.all([getProducts(), getInventoryValue()]);
-                     setProducts(data);
-                     setInventoryValue(value);
+                     const snapshot = await getProductsPageSnapshot();
+                     setProducts(snapshot.products);
+                     setCategories(snapshot.categories);
+                     setInventoryValue(snapshot.inventoryValue);
               } catch (e) {
                      console.error(e);
               } finally {
@@ -79,8 +80,7 @@ export default function ProductsPage() {
 
        useEffect(() => {
               fetchProducts();
-              fetchCategories();
-       }, [fetchProducts, fetchCategories]);
+       }, [fetchProducts]);
 
        const handleExport = async () => {
               const csv = await exportProductsToCSV();

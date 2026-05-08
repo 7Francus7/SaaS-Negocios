@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser, getStoreId } from "@/lib/store";
 import { safeSerialize } from "@/lib/utils";
 
@@ -69,12 +70,21 @@ export async function getDashboardStats() {
               const profitToday = salesTodayTotal - Number(costAgg._sum.subtotalCost ?? 0);
 
               // Find critical Low Stock items for list
-              const criticalStockItems = await prisma.productVariant.findMany({
-                     where: { storeId, active: true, trackStock: true, stockQuantity: { lte: 5 } },
-                     take: 5,
-                     include: { product: true },
-                     orderBy: { stockQuantity: 'asc' }
-              });
+               const criticalStockItems = await prisma.productVariant.findMany({
+                      where: { storeId, active: true, trackStock: true, stockQuantity: { lte: 5 } },
+                      take: 5,
+                      select: {
+                             id: true,
+                             stockQuantity: true,
+                             variantName: true,
+                             product: {
+                                    select: {
+                                           name: true,
+                                    },
+                             },
+                      },
+                      orderBy: { stockQuantity: 'asc' }
+               });
 
               return safeSerialize({
                      salesTodayTotal,
@@ -116,31 +126,32 @@ export type DashboardStats = {
        }>;
 };
 
+function buildDashboardRange(range: "7d" | "30d" | "90d" = "7d") {
+       const today = new Date();
+       const startDate = new Date(today);
+       const daysMap = { "7d": 7, "30d": 30, "90d": 90 };
+       const days = daysMap[range] || 7;
+
+       startDate.setDate(today.getDate() - days);
+       startDate.setHours(0, 0, 0, 0);
+
+       return { today, startDate, days };
+}
+
 export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') {
        try {
-              const storeId = await getStoreId();
+               const storeId = await getStoreId();
+               const { today, startDate, days } = buildDashboardRange(range);
+               const rows = await prisma.$queryRaw<Array<{ day: Date; total: string }>>(Prisma.sql`
+                      SELECT DATE_TRUNC('day', "timestamp") AS day, COALESCE(SUM("totalAmount"), 0)::text AS total
+                      FROM "sales"
+                      WHERE "storeId" = ${storeId}
+                        AND "timestamp" >= ${startDate}
+                      GROUP BY 1
+                      ORDER BY 1 ASC
+               `);
 
-              const today = new Date();
-              const startDate = new Date(today);
-
-              const daysMap = { '7d': 7, '30d': 30, '90d': 90 };
-              const days = daysMap[range] || 7;
-
-              startDate.setDate(today.getDate() - days);
-              startDate.setHours(0, 0, 0, 0);
-
-              const sales = await prisma.sale.findMany({
-                     where: {
-                            storeId,
-                            timestamp: { gte: startDate }
-                     },
-                     select: {
-                            timestamp: true,
-                            totalAmount: true
-                     }
-              });
-
-              const salesByDay: Record<string, number> = {};
+               const salesByDay: Record<string, number> = {};
 
               // Initialize keys
               for (let i = days - 1; i >= 0; i--) {
@@ -150,24 +161,36 @@ export async function getDashboardChartData(range: '7d' | '30d' | '90d' = '7d') 
                      salesByDay[dayName] = 0;
               }
 
-              sales.forEach(sale => {
-                     const d = new Date(sale.timestamp);
-                     const dayName = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-                     if (salesByDay[dayName] !== undefined) {
-                            salesByDay[dayName] += Number(sale.totalAmount);
-                     }
-              });
+               rows.forEach((sale) => {
+                      const d = new Date(sale.day);
+                      const dayName = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+                      if (salesByDay[dayName] !== undefined) {
+                             salesByDay[dayName] += Number(sale.total);
+                      }
+               });
 
-              const chartData = Object.entries(salesByDay).map(([name, total]) => ({
-                     name,
+               const chartData = Object.entries(salesByDay).map(([name, total]) => ({
+                      name,
                      total
               }));
 
               return safeSerialize(chartData);
        } catch (error) {
-              console.error("CHART_ERROR:", error);
-              return [];
+               console.error("CHART_ERROR:", error);
+               return [];
        }
+}
+
+export async function getDashboardSnapshot(range: "7d" | "30d" | "90d" = "7d") {
+       const [stats, chartData] = await Promise.all([
+              getDashboardStats(),
+              getDashboardChartData(range),
+       ]);
+
+       return safeSerialize({
+              stats,
+              chartData,
+       });
 }
 
 export async function getUserRole() {

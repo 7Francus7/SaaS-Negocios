@@ -20,9 +20,22 @@ export async function getSalesHistory(options?: {
                      ...(options?.to ? { timestamp: { lte: options.to } } : {}),
                      ...(options?.paymentMethod ? { paymentMethod: options.paymentMethod } : {}),
               },
-              include: {
-                     items: true,
-                     payments: true,
+              select: {
+                     id: true,
+                     timestamp: true,
+                     paymentMethod: true,
+                     subtotal: true,
+                     discountAmount: true,
+                     totalAmount: true,
+                     items: {
+                            select: {
+                                   id: true,
+                                   productNameSnapshot: true,
+                                   quantity: true,
+                                   unitPrice: true,
+                                   subtotal: true,
+                            },
+                     },
                      customer: { select: { name: true } },
               },
               orderBy: { timestamp: "desc" },

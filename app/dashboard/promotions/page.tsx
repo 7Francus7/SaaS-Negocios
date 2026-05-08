@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Tag, Plus, Trash2, Edit2, Play, Pause, AlertCircle, ShoppingBag, CreditCard, Percent } from "lucide-react";
+import { Tag, Plus, Trash2, Play, Pause, ShoppingBag, CreditCard, Percent } from "lucide-react";
 import { getPromotions, createPromotion, togglePromotion, deletePromotion, type PromotionInput } from "@/app/actions/promotions";
 import { getCategories } from "@/app/actions/products";
 import { Modal } from "@/components/ui/modal";
@@ -15,9 +15,11 @@ export default function PromotionsPage() {
        const fetchPromos = useCallback(async () => {
               setLoading(true);
               try {
-                     const data = await getPromotions();
+                     const [data, cats] = await Promise.all([
+                            getPromotions(),
+                            getCategories(),
+                     ]);
                      setPromotions(data);
-                     const cats = await getCategories();
                      setCategories(cats);
               } catch (e) {
                      console.error(e);
@@ -52,7 +54,7 @@ export default function PromotionsPage() {
                             itemVariants: [],
                             itemCategories: []
                      });
-              } catch (e) {
+              } catch {
                      alert("Error al crear promoción");
               }
        };
@@ -61,7 +63,7 @@ export default function PromotionsPage() {
               try {
                      await togglePromotion(id, active);
                      fetchPromos();
-              } catch (e) {
+              } catch {
                      alert("Error");
               }
        };
@@ -71,7 +73,7 @@ export default function PromotionsPage() {
                      try {
                             await deletePromotion(id);
                             fetchPromos();
-                     } catch (e) {
+                     } catch {
                             alert("Error");
                      }
               }

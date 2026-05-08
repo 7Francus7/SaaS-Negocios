@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Package, Users, AlertTriangle, TrendingUp, ShoppingBag, DollarSign, Zap, CheckCircle2, Settings } from "lucide-react";
-import { getDashboardStats, getDashboardChartData, DashboardStats } from "@/app/actions/dashboard";
+import { Package, AlertTriangle, TrendingUp, ShoppingBag, DollarSign, Zap, Users } from "lucide-react";
+import { getDashboardSnapshot, type DashboardStats } from "@/app/actions/dashboard";
 import { checkOnboardingStatus } from "@/app/actions/onboarding";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { formatCurrency } from "@/lib/utils";
@@ -35,27 +35,24 @@ export default function DashboardPage() {
               });
        }, [router]);
 
-       const fetchData = async () => {
-              setLoading(true);
-              setError("");
-              try {
-                     const [statsData, chartData] = await Promise.all([
-                            getDashboardStats(),
-                            getDashboardChartData(range)
-                     ]);
-                     setStats(statsData);
-                     setChartData(chartData);
+        const fetchData = useCallback(async () => {
+               setLoading(true);
+               setError("");
+               try {
+                     const snapshot = await getDashboardSnapshot(range);
+                     setStats(snapshot.stats);
+                     setChartData(snapshot.chartData);
               } catch (err) {
                      console.error("Dashboard Error:", err);
                      setError(err instanceof Error ? err.message : "Error desconocido al cargar el tablero");
-              } finally {
-                     setLoading(false);
-              }
-       };
+               } finally {
+                      setLoading(false);
+               }
+        }, [range]);
 
-       useEffect(() => {
-              fetchData();
-       }, [range]); // Refetch when range changes
+        useEffect(() => {
+               fetchData();
+        }, [fetchData]);
 
        if (loading && !stats) return <div className="p-8 flex justify-center text-gray-500">Cargando tablero...</div>;
 
@@ -129,7 +126,7 @@ export default function DashboardPage() {
                                    <span className="text-sm text-gray-500 font-medium">Periodo:</span>
                                    <select
                                           value={range}
-                                          onChange={(e) => setRange(e.target.value as any)}
+                                          onChange={(e) => setRange(e.target.value as "7d" | "30d" | "90d")}
                                           className="border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer hover:border-blue-400 transition-colors"
                                    >
                                           <option value="7d">Últimos 7 Días</option>

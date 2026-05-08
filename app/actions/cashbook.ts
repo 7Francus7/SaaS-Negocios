@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getStoreId } from "@/lib/store";
 import { safeSerialize } from "@/lib/utils";
 import type { EntryType, EntryCategory, PaymentMethod } from "@/lib/cashbook-constants";
@@ -23,10 +24,8 @@ export interface GetEntriesFilter {
   method?: string;
 }
 
-export async function getCashBookEntries(filter: GetEntriesFilter = {}) {
-  const storeId = await getStoreId();
+function buildCashbookWhere(storeId: string, filter: GetEntriesFilter = {}) {
   const { dateFrom, dateTo, type, category, method } = filter;
-
   const where: Record<string, unknown> = { storeId };
 
   if (dateFrom || dateTo) {
@@ -43,10 +42,27 @@ export async function getCashBookEntries(filter: GetEntriesFilter = {}) {
   if (category) where.category = category;
   if (method) where.method = method;
 
+  return where;
+}
+
+export async function getCashBookEntries(filter: GetEntriesFilter = {}) {
+  const storeId = await getStoreId();
+  const where = buildCashbookWhere(storeId, filter);
+
   const entries = await prisma.cashBookEntry.findMany({
     where,
     orderBy: { date: "desc" },
     take: 300,
+    select: {
+      id: true,
+      date: true,
+      type: true,
+      category: true,
+      amount: true,
+      description: true,
+      method: true,
+      reference: true,
+    },
   });
 
   return entries.map(e => ({
@@ -198,11 +214,16 @@ export async function getMonthlyChartData(year: number) {
 
   const start = new Date(year, 0, 1);
   const end = new Date(year, 11, 31, 23, 59, 59, 999);
-
-  const entries = await prisma.cashBookEntry.findMany({
-    where: { storeId, date: { gte: start, lte: end } },
-    select: { date: true, type: true, amount: true },
-  });
+  const rows = await prisma.$queryRaw<Array<{ month_index: number; type: string; total: string }>>(Prisma.sql`
+    SELECT EXTRACT(MONTH FROM "date")::int - 1 AS month_index,
+           "type" AS type,
+           COALESCE(SUM("amount"), 0)::text AS total
+    FROM "cash_book_entries"
+    WHERE "storeId" = ${storeId}
+      AND "date" >= ${start}
+      AND "date" <= ${end}
+    GROUP BY 1, 2
+  `);
 
   const MONTHS = [
     "Ene","Feb","Mar","Abr","May","Jun",
@@ -210,10 +231,10 @@ export async function getMonthlyChartData(year: number) {
   ];
   const months = MONTHS.map((m) => ({ month: m, ingresos: 0, egresos: 0 }));
 
-  entries.forEach((e) => {
-    const idx = new Date(e.date).getMonth();
-    if (e.type === "INGRESO") months[idx].ingresos += Number(e.amount);
-    else months[idx].egresos += Number(e.amount);
+  rows.forEach((row) => {
+    const idx = Number(row.month_index);
+    if (row.type === "INGRESO") months[idx].ingresos += Number(row.total);
+    else months[idx].egresos += Number(row.total);
   });
 
   return months;
@@ -278,4 +299,20 @@ export async function getDailySummary(dateStr?: string) {
     saldoCierre: saldoApertura + totalIngresos - totalEgresos,
     entries: safeSerialize(dayEntries),
   };
+}
+
+export async function getCashbookSnapshot(year: number, filter: GetEntriesFilter = {}) {
+  const [stats, chartData, entries, balanceBefore] = await Promise.all([
+    getDashboardStats(),
+    getMonthlyChartData(year),
+    getCashBookEntries(filter),
+    getBalanceBefore(filter.dateFrom),
+  ]);
+
+  return safeSerialize({
+    stats,
+    chartData,
+    entries,
+    balanceBefore,
+  });
 }

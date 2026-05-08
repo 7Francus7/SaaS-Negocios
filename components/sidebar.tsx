@@ -81,15 +81,6 @@ const menuGroups: MenuGroup[] = [
 ];
 
 const cashierAllowed = ["Inicio", "Punto de Venta", "Caja y Turnos", "Historial Ventas", "Clientes"];
-const menuPrefetchHrefs = Array.from(
-       new Set(menuGroups.flatMap((group) => group.items.map((item) => item.href)).concat([
-              "/dashboard/admin",
-              "/dashboard/admin/metrics",
-              "/dashboard/admin/logs",
-              "/dashboard/admin/deployment",
-       ]))
-);
-
 export type SidebarProps = {
        initialStoreName: string;
        initialUserRole: string;
@@ -124,12 +115,6 @@ function SidebarContent({
        const [storeName] = useState(initialStoreName);
        const [userRole] = useState(initialUserRole);
        const [godMode, setGodMode] = useState(false);
-
-       useEffect(() => {
-              for (const href of menuPrefetchHrefs) {
-                     router.prefetch(href);
-              }
-       }, [router]);
 
        useEffect(() => {
               const isGod = searchParams.get("view") === "god";

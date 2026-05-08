@@ -12,6 +12,17 @@ export async function getCustomers(activeOnly: boolean = true) {
                      storeId,
                      ...(activeOnly ? { active: true } : {}),
               },
+              select: {
+                     id: true,
+                     name: true,
+                     dni: true,
+                     phone: true,
+                     address: true,
+                     currentBalance: true,
+                     closedBalance: true,
+                     creditLimit: true,
+                     active: true,
+              },
               orderBy: { name: "asc" },
        });
 
@@ -170,6 +181,15 @@ export async function getCustomerHistoryByMonth(customerId: number) {
        // Get ALL movements (no limit) sorted chronologically
        const allMovements = await prisma.accountMovement.findMany({
               where: { customerId },
+              select: {
+                     id: true,
+                     customerId: true,
+                     movementType: true,
+                     amount: true,
+                     description: true,
+                     paymentMethod: true,
+                     timestamp: true,
+              },
               orderBy: { timestamp: "asc" },
        });
 
@@ -183,7 +203,18 @@ export async function getCustomerHistoryByMonth(customerId: number) {
        const salesWithItems = saleIds.length > 0
               ? await prisma.sale.findMany({
                      where: { id: { in: saleIds }, storeId },
-                     include: { items: true }
+                     select: {
+                            id: true,
+                            items: {
+                                   select: {
+                                          id: true,
+                                          productNameSnapshot: true,
+                                          quantity: true,
+                                          unitPrice: true,
+                                          subtotal: true,
+                                   },
+                            },
+                     },
               })
               : [];
 
@@ -220,7 +251,6 @@ export async function getCustomerHistoryByMonth(customerId: number) {
 
        const months: MonthGroup[] = [];
        let currentGroupMovements: any[] = [];
-       let currentGroupStartDate: Date | null = null;
        let runningBalance = 0; // Maintain the accumulating balance
 
        for (const mov of allMovements) {
@@ -247,7 +277,6 @@ export async function getCustomerHistoryByMonth(customerId: number) {
                             runningBalance = total;
                      }
                      currentGroupMovements = [];
-                     currentGroupStartDate = new Date(mov.timestamp);
               } else {
                      currentGroupMovements.push(mov);
               }
@@ -298,6 +327,15 @@ export async function getCustomerHistory(customerId: number) {
 
        const history = await prisma.accountMovement.findMany({
               where: { customerId },
+              select: {
+                     id: true,
+                     customerId: true,
+                     movementType: true,
+                     amount: true,
+                     description: true,
+                     paymentMethod: true,
+                     timestamp: true,
+              },
               orderBy: { timestamp: "desc" },
               take: 50
        });
@@ -312,7 +350,18 @@ export async function getCustomerHistory(customerId: number) {
        const salesWithItems = saleIds.length > 0
               ? await prisma.sale.findMany({
                      where: { id: { in: saleIds }, storeId },
-                     include: { items: true }
+                     select: {
+                            id: true,
+                            items: {
+                                   select: {
+                                          id: true,
+                                          productNameSnapshot: true,
+                                          quantity: true,
+                                          unitPrice: true,
+                                          subtotal: true,
+                                   },
+                            },
+                     },
               })
               : [];
 
@@ -591,13 +640,12 @@ export async function removeProductFromAccountSale(movementId: number, saleId: n
               // it's a credit in their favor.
               const customer = sale.customer;
               if (customer) {
-                     let amountToCredit = amountToDeduct;
                      // We just create an AccountMovement that acts as a payment/credit
                      // But ideally we just reduce currentBalance
                      await tx.customer.update({
                             where: { id: customer.id },
                             data: {
-                                   currentBalance: { decrement: amountToCredit }
+                                   currentBalance: { decrement: amountToDeduct }
                             }
                      });
 
@@ -605,7 +653,7 @@ export async function removeProductFromAccountSale(movementId: number, saleId: n
                             data: {
                                    customerId: customer.id,
                                    movementType: "VOID_ITEM",
-                                   amount: -amountToCredit,
+                                   amount: -amountToDeduct,
                                    description: `Devolución: ${item.productNameSnapshot} (Venta #${saleId})`,
                                    timestamp: new Date()
                             }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Save, Store, Receipt, MapPin, Phone, Hash, Lock, Eye, EyeOff, Users, Ticket } from "lucide-react";
 import { getStoreSettings, updateStoreSettings, changePassword, getRaffleSettings, toggleRaffle, resetRaffleCounter } from "@/app/actions/settings";
 
 export default function SettingsPage() {
+       const router = useRouter();
        const [loading, setLoading] = useState(true);
        const [saving, setSaving] = useState(false);
 
@@ -63,8 +65,8 @@ export default function SettingsPage() {
               try {
                      await updateStoreSettings(formData);
                      alert("¡Configuración guardada con éxito!");
-                     window.location.reload();
-              } catch (e) {
+                     router.refresh();
+              } catch {
                      alert("Error al guardar");
               } finally {
                      setSaving(false);
@@ -81,9 +83,10 @@ export default function SettingsPage() {
                      await changePassword(passwordForm.current, passwordForm.newPass);
                      alert("¡Contraseña actualizada con éxito!");
                      setPasswordForm({ current: "", newPass: "", confirm: "" });
-              } catch (e: any) {
-                     alert(e.message || "Error al cambiar contraseña");
-              } finally {
+               } catch (e) {
+                      const message = e instanceof Error ? e.message : "Error al cambiar contraseña";
+                      alert(message);
+               } finally {
                      setSavingPassword(false);
               }
        };

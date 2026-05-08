@@ -428,12 +428,13 @@ export default function POSPage() {
        const [session, setSession] = useState<any>(null);
 
        // UI State
-       const [showPayModal, setShowPayModal] = useState(false);
-       const searchInputRef = useRef<HTMLInputElement>(null);
-       const [processing, setProcessing] = useState(false);
-       const [printMode, setPrintMode] = useState<PrintMode>(getInitialPrintMode);
-       const backgroundSyncTimeoutRef = useRef<number | null>(null);
-       const backgroundSyncInFlightRef = useRef(false);
+        const [showPayModal, setShowPayModal] = useState(false);
+        const searchInputRef = useRef<HTMLInputElement>(null);
+        const queryRef = useRef("");
+        const [processing, setProcessing] = useState(false);
+        const [printMode, setPrintMode] = useState<PrintMode>(getInitialPrintMode);
+        const backgroundSyncTimeoutRef = useRef<number | null>(null);
+        const backgroundSyncInFlightRef = useRef(false);
 
        interface SaleReceipt {
               items: CartItem[];
@@ -448,10 +449,14 @@ export default function POSPage() {
 
        const [storeSettings, setStoreSettings] = useState<any>(null);
 
-       useEffect(() => {
-              if (!isClient) return;
-              window.localStorage.setItem("pos-print-mode", printMode);
-       }, [isClient, printMode]);
+        useEffect(() => {
+               queryRef.current = query;
+        }, [query]);
+
+        useEffect(() => {
+               if (!isClient) return;
+               window.localStorage.setItem("pos-print-mode", printMode);
+        }, [isClient, printMode]);
 
        useEffect(() => {
               const updateConnectionState = () => {
@@ -476,13 +481,13 @@ export default function POSPage() {
               };
        }, []);
 
-       useEffect(() => {
-              const bootstrap = async () => {
-                     await loadCachedSnapshots();
+        useEffect(() => {
+               const bootstrap = async () => {
+                      await loadCachedSnapshots();
 
-                     if (navigator.onLine) {
-                            try {
-                                   await syncReferenceData();
+                      if (navigator.onLine) {
+                             try {
+                                    await syncReferenceData();
                                    setIsOfflineMode(false);
                             } catch (error) {
                                    if (isOfflineError(error)) {
@@ -495,22 +500,21 @@ export default function POSPage() {
                      }
               };
 
-              const handleOfflineUpdate = () => {
-                     if (navigator.onLine) {
-                            syncReferenceData().catch(() => loadCachedSnapshots());
-                            return;
-                     }
+                const handleOfflineUpdate = () => {
+                       // Snapshot writes also emit this event; re-syncing here creates a
+                       // feedback loop that keeps the POS refreshing and the search spinner alive.
+                       loadCachedSnapshots(queryRef.current).catch((error) => {
+                              console.error("Error al refrescar snapshots locales del POS", error);
+                       });
+                };
 
-                     loadCachedSnapshots();
-              };
-
-              bootstrap();
-              window.addEventListener("saas-offline-updated", handleOfflineUpdate);
+               bootstrap();
+               window.addEventListener("saas-offline-updated", handleOfflineUpdate);
 
               return () => {
                      window.removeEventListener("saas-offline-updated", handleOfflineUpdate);
               };
-       }, [loadCachedSnapshots, syncReferenceData]);
+        }, [loadCachedSnapshots, syncReferenceData]);
 
        const recalcPromotions = async (currentCart: CartItem[], method: string) => {
               if (currentCart.length === 0) {

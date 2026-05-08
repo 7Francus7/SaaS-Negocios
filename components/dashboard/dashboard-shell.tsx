@@ -30,10 +30,27 @@ export function DashboardShell({
        const [hasOpenCash, setHasOpenCash] = useState(initialHasOpenCash);
 
        useEffect(() => {
+              if (initialUserRole === "SUPERADMIN") {
+                     return;
+              }
+
+              const now = new Date();
+              if (now.getDate() !== 1) {
+                     return;
+              }
+
+              const runKey = `auto-close-monthly-accounts:${now.toISOString().slice(0, 10)}`;
+              if (typeof window !== "undefined" && window.sessionStorage.getItem(runKey) === "done") {
+                     return;
+              }
+
               let isMounted = true;
 
               autoCloseMonthlyAccounts()
                      .then((result) => {
+                            if (typeof window !== "undefined") {
+                                   window.sessionStorage.setItem(runKey, "done");
+                            }
                             if (isMounted && result?.executed && result?.closed && result.closed > 0) {
                                    console.log(`Cierre automatico de mes: ${result.closed} cuentas cerradas.`);
                             }
@@ -47,7 +64,7 @@ export function DashboardShell({
               return () => {
                      isMounted = false;
               };
-       }, []);
+       }, [initialUserRole]);
 
        useEffect(() => {
               const cameFromCashPage = previousPathname.current === "/dashboard/cash";

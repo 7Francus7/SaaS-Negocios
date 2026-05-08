@@ -26,7 +26,6 @@ export function OfflineSyncProvider() {
                      try {
                             const pendingSales = await listPendingSales();
                             if (pendingSales.length === 0) {
-                                   await markOfflineSync();
                                    return;
                             }
 
@@ -53,10 +52,9 @@ export function OfflineSyncProvider() {
                                    }
                             }
 
-                            await markOfflineSync();
-                            emitOfflineUpdate();
-
                             if (synced > 0) {
+                                   await markOfflineSync();
+                                   emitOfflineUpdate();
                                    toast(
                                           synced === 1
                                                  ? "1 venta offline sincronizada."

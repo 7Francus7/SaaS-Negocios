@@ -36,13 +36,31 @@ export async function getProducts(filter: ProductFilter = {}) {
 
        const variants = await prisma.productVariant.findMany({
               where,
-              include: {
+              select: {
+                     id: true,
+                     variantName: true,
+                     barcode: true,
+                     costPrice: true,
+                     salePrice: true,
+                     stockQuantity: true,
+                     minStock: true,
+                     active: true,
+                     storeId: true,
+                     isWeighable: true,
+                     isQuickAccess: true,
+                     trackStock: true,
                      product: {
-                            include: {
+                            select: {
+                                   id: true,
+                                   name: true,
+                                   description: true,
+                                   categoryId: true,
+                                   active: true,
+                                   storeId: true,
                                    category: true,
-                            },
+                            }
                      },
-                     barcodes: includeBarcodes,
+                     barcodes: includeBarcodes ? { select: { barcode: true } } : false,
               },
               orderBy: [
                      { product: { name: "asc" } },
@@ -73,16 +91,46 @@ export async function findProductByBarcode(barcode: string) {
 
        const [variantByPrimary, barcodeEntry] = await Promise.all([
               prisma.productVariant.findFirst({
-                     where: { storeId, barcode: normalizedBarcode, active: true },
-                     include: { product: true, barcodes: true },
+                      where: { storeId, barcode: normalizedBarcode, active: true },
+                      select: {
+                             id: true,
+                             variantName: true,
+                             barcode: true,
+                             costPrice: true,
+                             salePrice: true,
+                             stockQuantity: true,
+                             minStock: true,
+                             active: true,
+                             storeId: true,
+                             isWeighable: true,
+                             isQuickAccess: true,
+                             trackStock: true,
+                             product: true,
+                             barcodes: { select: { barcode: true } },
+                      },
               }),
               prisma.productBarcode.findFirst({
-                     where: { storeId, barcode: normalizedBarcode },
-                     include: {
-                            variant: {
-                                   include: { product: true, barcodes: true },
-                            },
-                     },
+                      where: { storeId, barcode: normalizedBarcode },
+                      include: {
+                             variant: {
+                                    select: {
+                                           id: true,
+                                           variantName: true,
+                                           barcode: true,
+                                           costPrice: true,
+                                           salePrice: true,
+                                           stockQuantity: true,
+                                           minStock: true,
+                                           active: true,
+                                           storeId: true,
+                                           isWeighable: true,
+                                           isQuickAccess: true,
+                                           trackStock: true,
+                                           product: true,
+                                           barcodes: { select: { barcode: true } },
+                                    },
+                             },
+                      },
               }),
        ]);
 
@@ -585,4 +633,18 @@ export async function getQuickAccessProducts() {
                      description: v.product.description || ""
               }
        }));
+}
+
+export async function getProductsPageSnapshot() {
+       const [products, categories, inventoryValue] = await Promise.all([
+              getProducts(),
+              getCategories(),
+              getInventoryValue(),
+       ]);
+
+       return {
+              products,
+              categories,
+              inventoryValue,
+       };
 }

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import {
-       BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell
+       XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
-import { AlertTriangle, TrendingUp, Users, ShoppingBag, Calendar, Clock, BarChart3, PieChart as PieChartIcon, Printer, Download, Tag } from "lucide-react";
-import { getAdvancedReports, getSalesByCategory, type AdvancedReportData, type CategorySalesItem, type ReportRange } from "@/app/actions/reports";
+import { Users, ShoppingBag, Clock, PieChart as PieChartIcon, Printer, Download, Tag } from "lucide-react";
+import { getReportsSnapshot, type AdvancedReportData, type CategorySalesItem, type ReportRange } from "@/app/actions/reports";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
@@ -20,12 +20,9 @@ export default function ReportsPage() {
               async function fetch() {
                      setLoading(true);
                      try {
-                            const [report, cats] = await Promise.all([
-                                   getAdvancedReports(range),
-                                   getSalesByCategory(range)
-                            ]);
-                            setData(report);
-                            setCategoryData(cats);
+                            const snapshot = await getReportsSnapshot(range);
+                            setData(snapshot.report);
+                            setCategoryData(snapshot.categoryData);
                      } catch (e) {
                             console.error(e);
                      } finally {
@@ -179,7 +176,7 @@ export default function ReportsPage() {
                                                         />
                                                         <Tooltip
                                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                               formatter={(value: any) => [`${value} ventas`, 'Volumen']}
+                                                               formatter={(value) => [`${value ?? 0} ventas`, 'Volumen']}
                                                         />
                                                         <Area
                                                                type="monotone"

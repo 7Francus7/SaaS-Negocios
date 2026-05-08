@@ -145,6 +145,7 @@ model Customer {
   sales            Sale[]
 
   @@index([storeId, active])
+  @@index([storeId, active, name])
   @@index([storeId, currentBalance])
   @@map("customers")
 }
@@ -378,5 +379,7 @@ model CashBookEntry {
 
   @@index([storeId, date])
   @@index([storeId, type, date])
+  @@index([storeId, category, date])
+  @@index([storeId, method, date])
   @@map("cash_book_entries")
 }

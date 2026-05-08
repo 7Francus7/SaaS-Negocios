@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -28,13 +28,10 @@ import {
 import { Modal } from "@/components/ui/modal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
-  getCashBookEntries,
   createCashBookEntry,
   updateCashBookEntry,
   deleteCashBookEntry,
-  getDashboardStats,
-  getMonthlyChartData,
-  getBalanceBefore,
+  getCashbookSnapshot,
   type GetEntriesFilter,
 } from "@/app/actions/cashbook";
 import {
@@ -103,44 +100,52 @@ export default function CashbookPage() {
   const [deleting, setDeleting] = useState(false);
 
   const loadStats = useCallback(async () => {
-    const s = await getDashboardStats();
-    setStats(s);
-  }, []);
+    const snapshot = await getCashbookSnapshot(chartYear, currentFilterRef.current);
+    setStats(snapshot.stats);
+    setChartData(snapshot.chartData);
+    setEntries(snapshot.entries as Entry[]);
+    setBalanceBefore(snapshot.balanceBefore);
+  }, [chartYear]);
 
-  const loadChart = useCallback(async (year: number) => {
-    const data = await getMonthlyChartData(year);
-    setChartData(data);
+  const currentFilterRef = useRef<GetEntriesFilter>({});
+
+  const loadChart = useCallback(async (year: number, filter: GetEntriesFilter = currentFilterRef.current) => {
+    const snapshot = await getCashbookSnapshot(year, filter);
+    setStats(snapshot.stats);
+    setChartData(snapshot.chartData);
+    setEntries(snapshot.entries as Entry[]);
+    setBalanceBefore(snapshot.balanceBefore);
   }, []);
 
   const loadEntries = useCallback(async (filter: GetEntriesFilter = {}) => {
+    currentFilterRef.current = filter;
     setLoadingEntries(true);
     try {
-      const [data, before] = await Promise.all([
-        getCashBookEntries(filter),
-        getBalanceBefore(filter.dateFrom),
-      ]);
-      setEntries(data as Entry[]);
-      setBalanceBefore(before);
+      const snapshot = await getCashbookSnapshot(chartYear, filter);
+      setStats(snapshot.stats);
+      setChartData(snapshot.chartData);
+      setEntries(snapshot.entries as Entry[]);
+      setBalanceBefore(snapshot.balanceBefore);
     } finally {
       setLoadingEntries(false);
     }
-  }, []);
+  }, [chartYear]);
 
   useEffect(() => {
     async function init() {
       setLoading(true);
-      await Promise.all([loadStats(), loadChart(chartYear), loadEntries()]);
+      await loadStats();
       setLoading(false);
     }
     init();
-  }, []);
+  }, [loadStats]);
 
   useEffect(() => {
     loadChart(chartYear);
-  }, [chartYear]);
+  }, [chartYear, loadChart]);
 
   // Compute running balance map (entry id → balance after that entry)
-  const runningBalances = (() => {
+  const runningBalances = useMemo(() => {
     const sorted = [...entries].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -151,7 +156,7 @@ export default function CashbookPage() {
       map.set(e.id, bal);
     });
     return map;
-  })();
+  }, [entries, balanceBefore]);
 
   const applyFilters = () => {
     loadEntries({
@@ -196,11 +201,8 @@ export default function CashbookPage() {
   };
 
   const refreshAll = async (filter: GetEntriesFilter = {}) => {
-    await Promise.all([
-      loadStats(),
-      loadChart(chartYear),
-      loadEntries(filter),
-    ]);
+    currentFilterRef.current = filter;
+    await loadEntries(filter);
   };
 
   const currentFilter: GetEntriesFilter = {
