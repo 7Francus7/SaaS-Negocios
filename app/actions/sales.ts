@@ -46,6 +46,7 @@ export async function processSale(
 
               let subtotal = 0;
               const saleItemsData = [];
+              const stockOps: Promise<unknown>[] = [];
 
               // 2. Validate & Calculate
               for (const item of items) {
@@ -68,24 +69,25 @@ export async function processSale(
                             subtotalCost: lineTotalCost,
                      });
 
-                     // Update Stock
                      const newStock = variant.stockQuantity - item.quantity;
-                     await tx.productVariant.update({
-                            where: { id: variant.id },
-                            data: { stockQuantity: newStock },
-                     });
-
-                     // Log Movement
-                     await tx.stockMovement.create({
-                            data: {
-                                   variantId: variant.id,
-                                   movementType: "SALE",
-                                   quantity: -item.quantity,
-                                   reason: "Venta POS",
-                                   balanceSnapshot: newStock,
-                            },
-                     });
+                     stockOps.push(
+                            tx.productVariant.update({
+                                   where: { id: variant.id },
+                                   data: { stockQuantity: newStock },
+                            }),
+                            tx.stockMovement.create({
+                                   data: {
+                                          variantId: variant.id,
+                                          movementType: "SALE",
+                                          quantity: -item.quantity,
+                                          reason: "Venta POS",
+                                          balanceSnapshot: newStock,
+                                   },
+                            })
+                     );
               }
+
+              await Promise.all(stockOps);
 
               // 3. Totals
               const totalAmount = Math.max(0, subtotal - discountAmount);
@@ -125,76 +127,79 @@ export async function processSale(
                      TARJETA: "TARJETA",
               };
 
+              const hasEfectivo = payments.some(p => p.method === "EFECTIVO");
+              let cashSession: { id: number; finalCashSystem: any; initialCash: any } | null = null;
+              if (hasEfectivo) {
+                     cashSession = await tx.cashSession.findFirst({
+                            where: { storeId, status: "OPEN" },
+                            orderBy: { startTime: "desc" },
+                            select: { id: true, finalCashSystem: true, initialCash: true },
+                     });
+                     if (!cashSession) throw new Error("No hay caja abierta para procesar pago en efectivo.");
+              }
+
+              const paymentOps: Promise<unknown>[] = [];
+
               for (const payment of payments) {
                      if (payment.method === "EFECTIVO") {
-                            const session = await tx.cashSession.findFirst({
-                                   where: { storeId, status: "OPEN" },
-                                   orderBy: { startTime: "desc" },
-                            });
-
-                            if (!session) {
-                                   throw new Error("No hay caja abierta para procesar pago en efectivo.");
-                            }
-
-                            const currentFinalCash = Number(session.finalCashSystem || session.initialCash || 0);
-                            await tx.cashSession.update({
-                                   where: { id: session.id },
-                                   data: {
-                                          finalCashSystem: currentFinalCash + payment.amount,
-                                   },
-                            });
+                            const currentFinalCash = Number(cashSession!.finalCashSystem || cashSession!.initialCash || 0);
+                            paymentOps.push(
+                                   tx.cashSession.update({
+                                          where: { id: cashSession!.id },
+                                          data: { finalCashSystem: currentFinalCash + payment.amount },
+                                   })
+                            );
                      } else if (payment.method === "CTA_CTE") {
                             if (!customerId) throw new Error("Debe seleccionar cliente para Cuenta Corriente.");
-
-                            await tx.customer.update({
-                                   where: { id: customerId },
-                                   data: {
-                                          currentBalance: { increment: payment.amount },
-                                   },
-                            });
-
-                            await tx.accountMovement.create({
-                                   data: {
-                                          customerId,
-                                          movementType: "PURCHASE",
-                                          amount: payment.amount,
-                                          description: `Compra Mixta Venta #${sale.id}`,
-                                          timestamp: new Date(),
-                                          paymentMethod: "CTA_CTE"
-                                   },
-                            });
+                            paymentOps.push(
+                                   tx.customer.update({
+                                          where: { id: customerId },
+                                          data: { currentBalance: { increment: payment.amount } },
+                                   }),
+                                   tx.accountMovement.create({
+                                          data: {
+                                                 customerId,
+                                                 movementType: "PURCHASE",
+                                                 amount: payment.amount,
+                                                 description: `Compra Mixta Venta #${sale.id}`,
+                                                 timestamp: new Date(),
+                                                 paymentMethod: "CTA_CTE"
+                                          },
+                                   })
+                            );
                      }
 
-                     // Auto-register income in cashbook for cash payments (skip CTA_CTE - deferred payment)
                      const cashbookMethod = cashbookMethodMap[payment.method];
                      if (cashbookMethod) {
-                            await tx.cashBookEntry.create({
-                                   data: {
-                                          storeId,
-                                          date: sale.timestamp,
-                                          type: "INGRESO",
-                                          category: "VENTA",
-                                          amount: payment.amount,
-                                          method: cashbookMethod,
-                                          description: `Venta #${sale.id}`,
-                                          reference: `VENTA-${sale.id}`,
-                                   },
-                            });
+                            paymentOps.push(
+                                   tx.cashBookEntry.create({
+                                          data: {
+                                                 storeId,
+                                                 date: sale.timestamp,
+                                                 type: "INGRESO",
+                                                 category: "VENTA",
+                                                 amount: payment.amount,
+                                                 method: cashbookMethod,
+                                                 description: `Venta #${sale.id}`,
+                                                 reference: `VENTA-${sale.id}`,
+                                          },
+                                   })
+                            );
                      }
               }
+
+              await Promise.all(paymentOps);
 
               // Raffle coupon logic
               let raffleNumber: number | null = null;
               const qualifiesForRaffle = totalAmount >= 10000 &&
                      payments.every(p => p.method === "EFECTIVO" || p.method === "TRANSFERENCIA");
               if (qualifiesForRaffle) {
-                     const raffleEnabled = await tx.storeSetting.findUnique({
-                            where: { storeId_key: { storeId, key: "raffle_enabled" } }
-                     });
+                     const [raffleEnabled, counterSetting] = await Promise.all([
+                            tx.storeSetting.findUnique({ where: { storeId_key: { storeId, key: "raffle_enabled" } } }),
+                            tx.storeSetting.findUnique({ where: { storeId_key: { storeId, key: "raffle_counter" } } }),
+                     ]);
                      if (raffleEnabled?.value === "true") {
-                            const counterSetting = await tx.storeSetting.findUnique({
-                                   where: { storeId_key: { storeId, key: "raffle_counter" } }
-                            });
                             const newCounter = parseInt(counterSetting?.value || "0") + 1;
                             await tx.storeSetting.upsert({
                                    where: { storeId_key: { storeId, key: "raffle_counter" } },

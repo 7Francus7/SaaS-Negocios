@@ -26,7 +26,9 @@ export async function getOpenSession() {
               include: {
                      store: true,
                      movements: {
-                            orderBy: { timestamp: 'desc' }
+                            orderBy: { timestamp: 'desc' },
+                            take: 50,
+                            select: { id: true, type: true, amount: true, description: true, timestamp: true },
                      }
               }
        });

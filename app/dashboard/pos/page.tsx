@@ -133,6 +133,7 @@ export default function POSPage() {
        const [quickAccessProducts, setQuickAccessProducts] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
        const [cart, setCart] = useState<CartItem[]>([]);
        const [loadingSearch, setLoadingSearch] = useState(false);
+       const [loadingBarcode, setLoadingBarcode] = useState(false);
        const { toast } = useToast();
        const [isClient, setIsClient] = useState(false);
        const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -229,8 +230,8 @@ export default function POSPage() {
        }, [refreshOfflineMeta]);
 
        const handleBarcodeScan = useCallback(async (code: string) => {
-              if (loadingSearch) return;
-              setLoadingSearch(true);
+              if (loadingBarcode) return;
+              setLoadingBarcode(true);
               try {
                      if (isOfflineMode || !navigator.onLine) {
                             const localProduct = findOfflineProductByBarcode(catalogSnapshot, code);
@@ -238,7 +239,7 @@ export default function POSPage() {
                                    addToCart(localProduct);
                                    toast(`Agregado: ${localProduct.product.name}`, "success");
                             } else {
-                                   toast(`CÃ³digo no encontrado: ${code}`, "warning");
+                                   toast(`Código no encontrado: ${code}`, "warning");
                             }
                             return;
                      }
@@ -258,16 +259,16 @@ export default function POSPage() {
                                    addToCart(localProduct);
                                    toast(`Agregado sin internet: ${localProduct.product.name}`, "warning");
                             } else {
-                                   toast(`CÃ³digo no encontrado: ${code}`, "warning");
+                                   toast(`Código no encontrado: ${code}`, "warning");
                             }
                      } else {
                             console.error("Scan error:", error);
                             toast("Error al buscar el código escaneado.", "error");
                      }
               } finally {
-                     setLoadingSearch(false);
+                     setLoadingBarcode(false);
               }
-       }, [catalogSnapshot, isOfflineMode, loadingSearch, toast]);
+       }, [catalogSnapshot, isOfflineMode, loadingBarcode, toast]);
 
        // Robust Barcode Scanner Listener
        useEffect(() => {
@@ -746,7 +747,7 @@ export default function POSPage() {
                                           value={query}
                                           onChange={(e) => setQuery(e.target.value)}
                                    />
-                                   {loadingSearch && <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin"><RotateCcw className="h-5 w-5 text-blue-500" /></div>}
+                                   {(loadingSearch || loadingBarcode) && <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin"><RotateCcw className="h-5 w-5 text-blue-500" /></div>}
                             </div>
 
                             {/* ── QUICK ACCESS BAR ── */}

@@ -70,40 +70,22 @@ export async function findProductByBarcode(barcode: string) {
 
        if (!barcode) return null;
 
-       // Search in variant primary barcode
-       let variant = await prisma.productVariant.findFirst({
-              where: {
-                     storeId,
-                     barcode: barcode,
-                     active: true
-              },
-              include: {
-                     product: true,
-                     barcodes: true,
-              }
-       });
-
-       // Search in additional barcodes
-       if (!variant) {
-              const barcodeEntry = await prisma.productBarcode.findFirst({
-                     where: {
-                            storeId,
-                            barcode: barcode,
-                     },
+       const [variantByPrimary, barcodeEntry] = await Promise.all([
+              prisma.productVariant.findFirst({
+                     where: { storeId, barcode, active: true },
+                     include: { product: true, barcodes: true },
+              }),
+              prisma.productBarcode.findFirst({
+                     where: { storeId, barcode },
                      include: {
                             variant: {
-                                   include: {
-                                          product: true,
-                                          barcodes: true,
-                                   }
-                            }
-                     }
-              });
+                                   include: { product: true, barcodes: true },
+                            },
+                     },
+              }),
+       ]);
 
-              if (barcodeEntry && barcodeEntry.variant.active) {
-                     variant = barcodeEntry.variant;
-              }
-       }
+       const variant = variantByPrimary ?? (barcodeEntry?.variant.active ? barcodeEntry.variant : null);
 
        if (!variant) return null;
 
