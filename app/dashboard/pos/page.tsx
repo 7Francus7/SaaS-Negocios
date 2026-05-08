@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, Tag, QrCode, Zap, WifiOff, RefreshCw } from "lucide-react";
+import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Tag, QrCode, Zap, WifiOff, RefreshCw } from "lucide-react";
 import { getProducts, findProductByBarcode } from "@/app/actions/products";
 import { processSale, type SaleItemInput } from "@/app/actions/sales";
 import { getCustomers } from "@/app/actions/customers";
@@ -126,6 +126,27 @@ interface CartItem {
        maxStock: number;
        isWeighable?: boolean;
 }
+
+type PrintMode = "auto" | "ask" | "off";
+
+const PRINT_MODE_LABELS: Record<PrintMode, string> = {
+       auto: "Automática",
+       ask: "Preguntar",
+       off: "No imprimir",
+};
+
+const getInitialPrintMode = (): PrintMode => {
+       if (typeof window === "undefined") {
+              return "ask";
+       }
+
+       const savedMode = window.localStorage.getItem("pos-print-mode");
+       if (savedMode === "auto" || savedMode === "ask" || savedMode === "off") {
+              return savedMode;
+       }
+
+       return "ask";
+};
 
 export default function POSPage() {
        const [query, setQuery] = useState("");
@@ -410,8 +431,9 @@ export default function POSPage() {
        const [showPayModal, setShowPayModal] = useState(false);
        const searchInputRef = useRef<HTMLInputElement>(null);
        const [processing, setProcessing] = useState(false);
-       const [showSuccessModal, setShowSuccessModal] = useState(false);
-       const [lastSaleWasOffline, setLastSaleWasOffline] = useState(false);
+       const [printMode, setPrintMode] = useState<PrintMode>(getInitialPrintMode);
+       const backgroundSyncTimeoutRef = useRef<number | null>(null);
+       const backgroundSyncInFlightRef = useRef(false);
 
        interface SaleReceipt {
               items: CartItem[];
@@ -427,6 +449,11 @@ export default function POSPage() {
        const [storeSettings, setStoreSettings] = useState<any>(null);
 
        useEffect(() => {
+              if (!isClient) return;
+              window.localStorage.setItem("pos-print-mode", printMode);
+       }, [isClient, printMode]);
+
+       useEffect(() => {
               const updateConnectionState = () => {
                      setIsOfflineMode(!navigator.onLine);
               };
@@ -438,6 +465,14 @@ export default function POSPage() {
               return () => {
                      window.removeEventListener("online", updateConnectionState);
                      window.removeEventListener("offline", updateConnectionState);
+              };
+       }, []);
+
+       useEffect(() => {
+              return () => {
+                     if (backgroundSyncTimeoutRef.current) {
+                            window.clearTimeout(backgroundSyncTimeoutRef.current);
+                     }
               };
        }, []);
 
@@ -581,6 +616,113 @@ export default function POSPage() {
               );
        };
 
+       const focusSearchInput = useCallback(() => {
+              window.setTimeout(() => {
+                     searchInputRef.current?.focus();
+              }, 0);
+       }, []);
+
+       const waitForPrintableTicket = useCallback(async () => {
+              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+       }, []);
+
+       const scheduleBackgroundSync = useCallback(() => {
+              if (backgroundSyncTimeoutRef.current) {
+                     window.clearTimeout(backgroundSyncTimeoutRef.current);
+              }
+
+              backgroundSyncTimeoutRef.current = window.setTimeout(() => {
+                     if (backgroundSyncInFlightRef.current || !navigator.onLine) {
+                            return;
+                     }
+
+                     backgroundSyncInFlightRef.current = true;
+                     syncReferenceData()
+                            .catch(() => undefined)
+                            .finally(() => {
+                                   backgroundSyncInFlightRef.current = false;
+                            });
+              }, 1200);
+       }, [syncReferenceData]);
+
+       const updateProductsAfterSale = useCallback((products: any[], soldItems: SaleItemInput[]) => {
+              if (products.length === 0) return products;
+
+              const soldByVariant = new Map(soldItems.map((item) => [item.variantId, item.quantity]));
+
+              return products.map((product) => {
+                     const soldQty = soldByVariant.get(product.id);
+                     if (!soldQty || product.isWeighable || product.trackStock === false) {
+                            return product;
+                     }
+
+                     return {
+                            ...product,
+                            stockQuantity: Math.max(0, Number(product.stockQuantity || 0) - soldQty),
+                     };
+              });
+       }, []);
+
+       const applySuccessfulSaleLocally = useCallback((
+              soldItems: SaleItemInput[],
+              payments: { method: string, amount: number }[],
+              customerId?: number
+       ) => {
+              const cashPaid = payments
+                     .filter((payment) => payment.method === "EFECTIVO")
+                     .reduce((sum, payment) => sum + payment.amount, 0);
+              const ctaCtePaid = payments
+                     .filter((payment) => payment.method === "CTA_CTE")
+                     .reduce((sum, payment) => sum + payment.amount, 0);
+
+              setCatalogSnapshotState((prev) => updateProductsAfterSale(prev, soldItems));
+              setSearchResults((prev) => updateProductsAfterSale(prev, soldItems));
+              setQuickAccessProducts((prev) => updateProductsAfterSale(prev, soldItems));
+
+              setSession((prev: any) => {
+                     if (!prev) return prev;
+
+                     return {
+                            ...prev,
+                            currentSales: Number(prev.currentSales || 0) + cashPaid,
+                            expectedCash: Number(prev.expectedCash || prev.initialCash || 0) + cashPaid,
+                     };
+              });
+
+              if (customerId && ctaCtePaid > 0) {
+                     setCustomers((prev) =>
+                            prev.map((customer) =>
+                                   customer.id === customerId
+                                          ? {
+                                                   ...customer,
+                                                   currentBalance: Number(customer.currentBalance || 0) + ctaCtePaid,
+                                            }
+                                          : customer
+                            )
+                     );
+              }
+       }, [updateProductsAfterSale]);
+
+       const runPrintFlow = useCallback(async (mode: PrintMode = printMode) => {
+              if (mode === "off") {
+                     return false;
+              }
+
+              if (mode === "ask") {
+                     const confirmed = window.confirm("¿Imprimir ticket ahora?");
+                     if (!confirmed) {
+                            focusSearchInput();
+                            return false;
+                     }
+              }
+
+              await waitForPrintableTicket();
+              window.print();
+              focusSearchInput();
+              return true;
+       }, [focusSearchInput, printMode, waitForPrintableTicket]);
+
        const resetSaleUi = () => {
               setCart([]);
               setShowPayModal(false);
@@ -592,12 +734,8 @@ export default function POSPage() {
               ]);
               setTenderedAmount("");
               setSelectedCustomerId(null);
-              setShowSuccessModal(true);
               playCashSound();
-
-              setTimeout(() => {
-                     window.print();
-              }, 300);
+              focusSearchInput();
        };
 
        const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -667,8 +805,8 @@ export default function POSPage() {
                              await loadCachedSnapshots("");
 
                              setLastSale(saleReceipt);
-                             setLastSaleWasOffline(true);
                              resetSaleUi();
+                             await runPrintFlow();
                              toast("Venta guardada offline. Se sincronizará cuando vuelva internet.", "warning");
                              return;
                       }
@@ -684,9 +822,11 @@ export default function POSPage() {
                              ...saleReceipt,
                              raffleNumber: saleResult.raffleNumber ?? null,
                       });
-                      setLastSaleWasOffline(false);
+                      applySuccessfulSaleLocally(itemsInput, finalPayments, selectedCustomerId || undefined);
                       resetSaleUi();
-                      syncReferenceData().catch(() => undefined);
+                      await runPrintFlow();
+                      toast("Venta registrada correctamente.", "success");
+                      scheduleBackgroundSync();
                } catch (e: any) {
                       if (isOfflineError(e)) {
                              setIsOfflineMode(true);
@@ -700,13 +840,13 @@ export default function POSPage() {
                }
        };
 
-       const handlePrint = () => { window.print(); };
+       const handlePrint = async () => {
+              if (!lastSale) {
+                     toast("Todavia no hay ticket para reimprimir.", "warning");
+                     return;
+              }
 
-       const handleNewSale = () => {
-              setShowSuccessModal(false);
-              setLastSale(null);
-              setLastSaleWasOffline(false);
-              searchInputRef.current?.focus();
+              await runPrintFlow("auto");
        };
 
        // Colors for product cards
@@ -939,6 +1079,37 @@ export default function POSPage() {
                                           <span>{formatCurrency(total)}</span>
                                    </div>
 
+                                   <div className="space-y-2">
+                                          <div className="flex items-center justify-between gap-3">
+                                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Impresión</span>
+                                                 <span className="text-xs font-bold text-gray-500">{PRINT_MODE_LABELS[printMode]}</span>
+                                          </div>
+                                          <div className="grid grid-cols-3 gap-2">
+                                                 {(["auto", "ask", "off"] as PrintMode[]).map((mode) => (
+                                                        <button
+                                                               key={mode}
+                                                               onClick={() => setPrintMode(mode)}
+                                                               className={`rounded-lg px-2 py-2 text-[11px] font-black transition-all border ${printMode === mode
+                                                                      ? "border-blue-600 bg-blue-50 text-blue-700"
+                                                                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                                                                      }`}
+                                                        >
+                                                               {PRINT_MODE_LABELS[mode]}
+                                                        </button>
+                                                 ))}
+                                          </div>
+                                   </div>
+
+                                   {lastSale && (
+                                          <button
+                                                 onClick={handlePrint}
+                                                 className="w-full py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-200 hover:border-gray-300 rounded-xl transition-all flex items-center justify-center gap-2"
+                                          >
+                                                 <Printer className="h-4 w-4" />
+                                                 Reimprimir último ticket
+                                          </button>
+                                   )}
+
                                    {!session && (
                                           <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-xs text-center font-bold uppercase tracking-tight">
                                                  ⚠️ Atención: La caja está cerrada
@@ -1117,27 +1288,6 @@ export default function POSPage() {
                      </Modal>
 
                      {/* Success Modal */}
-                     <Modal isOpen={showSuccessModal} onClose={handleNewSale} title="¡Venta Exitosa!">
-                            <div className="text-center space-y-6 py-4">
-                                   <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-bounce">
-                                          <Check className="h-10 w-10" />
-                                   </div>
-                                   <div className="space-y-1">
-                                          <p className="text-2xl font-black text-gray-900">{lastSaleWasOffline ? "Venta Guardada" : "Venta Registrada"}</p>
-                                          <p className="text-sm text-gray-500 font-medium">Monto total: <span className="text-lg font-bold text-gray-900">{formatCurrency(lastSale?.total || 0)}</span></p>
-                                          <p className="text-xs text-emerald-600 font-bold mt-2">✅ Ticket enviado a imprimir automáticamente</p>
-                                   </div>
-                                   <div className="flex flex-col gap-3 mt-8">
-                                          <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-gray-100 text-gray-700 font-bold rounded-xl hover:border-gray-200 transition-all text-sm">
-                                                 <Printer className="h-4 w-4" /> Reimprimir Ticket
-                                          </button>
-                                          <button onClick={handleNewSale} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
-                                                 Nueva Venta <ArrowRight className="h-5 w-5" />
-                                          </button>
-                                   </div>
-                            </div>
-                     </Modal>
-
                      {/* Weighable Product Modal */}
                      <Modal isOpen={!!weighableProduct} onClose={() => setWeighableProduct(null)} title="Producto de Precio Variable">
                             {weighableProduct && (

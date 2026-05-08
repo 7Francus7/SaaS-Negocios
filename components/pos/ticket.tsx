@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 
 interface TicketItem {
@@ -32,14 +32,14 @@ const PAPER_PROFILES: Record<number, { width: number, fontSize: number, showLogo
 };
 
 export function Ticket({ data }: { data: TicketData | null }) {
-       const [paperWidthMm, setPaperWidthMm] = useState<number>(58);
-
-       useEffect(() => {
-              const savedItem = localStorage.getItem("paperWidthMm");
-              if (savedItem) {
-                     setPaperWidthMm(Number(savedItem));
+       const [paperWidthMm] = useState<number>(() => {
+              if (typeof window === "undefined") {
+                     return 58;
               }
-       }, []);
+
+              const savedItem = window.localStorage.getItem("paperWidthMm");
+              return savedItem ? Number(savedItem) : 58;
+       });
 
        if (!data) return null;
 

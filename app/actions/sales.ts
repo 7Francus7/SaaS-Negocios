@@ -162,17 +162,16 @@ export async function processSale(
                      const cashSession = await tx.cashSession.findFirst({
                             where: { storeId, status: "OPEN" },
                             orderBy: { startTime: "desc" },
-                            select: { id: true, finalCashSystem: true, initialCash: true },
+                            select: { id: true },
                      });
 
                      if (!cashSession) {
                             throw new Error("No hay caja abierta para procesar pago en efectivo.");
                      }
 
-                     const currentFinalCash = Number(cashSession.finalCashSystem || cashSession.initialCash || 0);
                      await tx.cashSession.update({
                             where: { id: cashSession.id },
-                            data: { finalCashSystem: currentFinalCash + efectivoTotal },
+                            data: { finalCashSystem: { increment: efectivoTotal } },
                      });
               }
 
