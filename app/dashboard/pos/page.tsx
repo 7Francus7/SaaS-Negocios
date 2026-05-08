@@ -637,12 +637,20 @@ export default function POSPage() {
                              return;
                       }
 
-                      const saleResult = await processSale(
-                             itemsInput,
-                             finalPayments,
-                             selectedCustomerId || undefined,
-                             promotionInfo.totalDiscount
-                      );
+                      const saleResult = await Promise.race([
+                             processSale(
+                                    itemsInput,
+                                    finalPayments,
+                                    selectedCustomerId || undefined,
+                                    promotionInfo.totalDiscount
+                             ),
+                             new Promise<never>((_, reject) =>
+                                    setTimeout(
+                                           () => reject(new Error("La operación tardó demasiado. Verificá el historial de ventas antes de reintentar para evitar duplicados.")),
+                                           30000
+                                    )
+                             ),
+                      ]);
 
                       setLastSale({
                              ...saleReceipt,
@@ -924,7 +932,7 @@ export default function POSPage() {
                      </div>
 
                      {/* Payment Modal */}
-                     <Modal isOpen={showPayModal} onClose={() => setShowPayModal(false)} title="Finalizar Venta">
+                     <Modal isOpen={showPayModal} onClose={() => { if (!processing) setShowPayModal(false); }} title="Finalizar Venta">
                             <div className="space-y-5 lg:space-y-6">
                                    <div className="bg-gray-50 p-5 lg:p-6 rounded-2xl text-center border border-gray-100">
                                           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Total a Pagar</p>
