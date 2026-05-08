@@ -29,8 +29,9 @@ export default function middleware(request: NextRequest) {
 export const config = {
        matcher: [
               '/',
-              '/dashboard/:path*', // Protect all dashboard routes
-              '/onboarding',       // Protect onboarding
-              '/admin/:path*',      // Also protect any top-level admin paths if they exist
+              '/register',
+              '/dashboard/:path*',
+              '/onboarding',
+              '/admin/:path*',
        ]
 };

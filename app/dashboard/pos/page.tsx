@@ -1,8 +1,9 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, MessageSquare, Tag, QrCode, Zap } from "lucide-react";
-import { getProducts, findProductByBarcode, getQuickAccessProducts, type ProductFilter } from "@/app/actions/products";
+import { Search, ShoppingCart, Trash2, CreditCard, RotateCcw, Plus, Minus, User, Printer, Check, ArrowRight, Tag, QrCode, Zap, WifiOff, RefreshCw } from "lucide-react";
+import { getProducts, findProductByBarcode } from "@/app/actions/products";
 import { processSale, type SaleItemInput } from "@/app/actions/sales";
 import { getCustomers } from "@/app/actions/customers";
 import { getOpenSession } from "@/app/actions/cash";
@@ -11,6 +12,31 @@ import { Modal } from "@/components/ui/modal";
 import { Ticket } from "@/components/pos/ticket";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/components/providers/toast-provider";
+import {
+       applyPendingSaleToSnapshots,
+       buildPendingSaleId,
+       calculatePromotionsOffline,
+       countPendingSales,
+       enqueuePendingSale,
+       findOfflineProductByBarcode,
+       getCatalogSnapshot,
+       getCustomerSnapshot,
+       getLastOfflineSyncAt,
+       getOfflineQuickAccessProducts,
+       getPromotionSnapshot,
+       getSessionSnapshot,
+       getStoreSettingsSnapshot,
+       isOfflineError,
+       markOfflineSync,
+       searchOfflineProducts,
+       setCatalogSnapshot,
+       setCustomerSnapshot,
+       setPromotionSnapshot,
+       setSessionSnapshot,
+       setStoreSettingsSnapshot,
+       type OfflineProduct,
+       type OfflinePromotion,
+} from "@/lib/offline-pos";
 
 let _audioCtx: AudioContext | null = null;
 const getAudioCtx = () => {
@@ -48,6 +74,48 @@ const playCashSound = () => {
        });
 };
 
+const normalizeSessionForOffline = (session: any) => {
+       if (!session) return null;
+
+       return {
+              ...session,
+              initialCash: Number(session.initialCash || 0),
+              finalCashSystem: session.finalCashSystem != null ? Number(session.finalCashSystem) : null,
+              finalCashReal: session.finalCashReal != null ? Number(session.finalCashReal) : null,
+              currentSales: Number(session.currentSales || 0),
+              totalIn: Number(session.totalIn || 0),
+              totalOut: Number(session.totalOut || 0),
+              expectedCash: Number(session.expectedCash || 0),
+              movements: Array.isArray(session.movements)
+                     ? session.movements.map((movement: any) => ({
+                            ...movement,
+                            amount: Number(movement.amount || 0),
+                     }))
+                     : [],
+       };
+};
+
+const normalizePromotionsForOffline = (promotions: any[]): OfflinePromotion[] =>
+       promotions.map((promotion) => ({
+              id: promotion.id,
+              name: promotion.name,
+              type: promotion.type,
+              value: Number(promotion.value || 0),
+              buyQuantity: promotion.buyQuantity ?? null,
+              payQuantity: promotion.payQuantity ?? null,
+              paymentMethod: promotion.paymentMethod ?? null,
+              active: promotion.active,
+              allProducts: promotion.allProducts,
+              startDate: promotion.startDate ?? null,
+              endDate: promotion.endDate ?? null,
+              items: Array.isArray(promotion.items)
+                     ? promotion.items.map((item: any) => ({
+                            variantId: item.variantId ?? item.variant?.id ?? null,
+                            categoryId: item.categoryId ?? item.category?.id ?? null,
+                     }))
+                     : [],
+       }));
+
 // Types
 interface CartItem {
        variantId: number;
@@ -62,11 +130,16 @@ interface CartItem {
 export default function POSPage() {
        const [query, setQuery] = useState("");
        const [searchResults, setSearchResults] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
-       const [quickAccessProducts, setQuickAccessProducts] = useState<Awaited<ReturnType<typeof getQuickAccessProducts>>>([]);
+       const [quickAccessProducts, setQuickAccessProducts] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
        const [cart, setCart] = useState<CartItem[]>([]);
        const [loadingSearch, setLoadingSearch] = useState(false);
        const { toast } = useToast();
        const [isClient, setIsClient] = useState(false);
+       const [isOfflineMode, setIsOfflineMode] = useState(false);
+       const [catalogSnapshot, setCatalogSnapshotState] = useState<OfflineProduct[]>([]);
+       const [cachedPromotions, setCachedPromotions] = useState<OfflinePromotion[]>([]);
+       const [pendingSalesCount, setPendingSalesCount] = useState(0);
+       const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
        // Mobile tab: "catalog" or "cart"
        const [mobileTab, setMobileTab] = useState<"catalog" | "cart">("catalog");
 
@@ -89,10 +162,87 @@ export default function POSPage() {
               }
        }, [cart, isClient]);
 
+       const refreshOfflineMeta = useCallback(async () => {
+              const [pendingCount, syncAt] = await Promise.all([
+                     countPendingSales(),
+                     getLastOfflineSyncAt(),
+              ]);
+              setPendingSalesCount(pendingCount);
+              setLastSyncAt(syncAt);
+       }, []);
+
+       const loadCachedSnapshots = useCallback(async (searchQuery: string = "") => {
+              const [cachedCatalog, cachedCustomers, cachedSession, cachedSettings, cachedPromos] = await Promise.all([
+                     getCatalogSnapshot(),
+                     getCustomerSnapshot(),
+                     getSessionSnapshot(),
+                     getStoreSettingsSnapshot(),
+                     getPromotionSnapshot(),
+              ]);
+
+              setCatalogSnapshotState(cachedCatalog);
+              setSearchResults(searchOfflineProducts(cachedCatalog, searchQuery) as Awaited<ReturnType<typeof getProducts>>);
+              setQuickAccessProducts(getOfflineQuickAccessProducts(cachedCatalog) as Awaited<ReturnType<typeof getProducts>>);
+              setCustomers(cachedCustomers as Awaited<ReturnType<typeof getCustomers>>);
+              setSession(cachedSession);
+              if (cachedSettings) {
+                     setStoreSettings(cachedSettings);
+              }
+              setCachedPromotions(cachedPromos);
+              await refreshOfflineMeta();
+       }, [refreshOfflineMeta]);
+
+       const syncReferenceData = useCallback(async () => {
+              const [{ getStoreSettings }, { getPromotions }] = await Promise.all([
+                     import("@/app/actions/settings"),
+                     import("@/app/actions/promotions"),
+              ]);
+
+              const [products, customersData, currentSession, settings, promotions] = await Promise.all([
+                     getProducts({ includeBarcodes: true }),
+                     getCustomers(),
+                     getOpenSession(),
+                     getStoreSettings(),
+                     getPromotions(),
+              ]);
+
+              const normalizedSession = normalizeSessionForOffline(currentSession);
+              const normalizedPromotions = normalizePromotionsForOffline(promotions as any[]);
+
+              await Promise.all([
+                     setCatalogSnapshot(products as OfflineProduct[]),
+                     setCustomerSnapshot(customersData),
+                     setSessionSnapshot(normalizedSession),
+                     setStoreSettingsSnapshot(settings),
+                     setPromotionSnapshot(normalizedPromotions),
+                     markOfflineSync(),
+              ]);
+
+              setCatalogSnapshotState(products as OfflineProduct[]);
+              setSearchResults(searchOfflineProducts(products as OfflineProduct[], "") as Awaited<ReturnType<typeof getProducts>>);
+              setQuickAccessProducts(getOfflineQuickAccessProducts(products as OfflineProduct[]) as Awaited<ReturnType<typeof getProducts>>);
+              setCustomers(customersData);
+              setSession(normalizedSession);
+              setStoreSettings(settings);
+              setCachedPromotions(normalizedPromotions);
+              await refreshOfflineMeta();
+       }, [refreshOfflineMeta]);
+
        const handleBarcodeScan = useCallback(async (code: string) => {
               if (loadingSearch) return;
               setLoadingSearch(true);
               try {
+                     if (isOfflineMode || !navigator.onLine) {
+                            const localProduct = findOfflineProductByBarcode(catalogSnapshot, code);
+                            if (localProduct) {
+                                   addToCart(localProduct);
+                                   toast(`Agregado: ${localProduct.product.name}`, "success");
+                            } else {
+                                   toast(`CÃ³digo no encontrado: ${code}`, "warning");
+                            }
+                            return;
+                     }
+
                      const product = await findProductByBarcode(code);
                      if (product) {
                             addToCart(product);
@@ -101,11 +251,23 @@ export default function POSPage() {
                             toast(`Código no encontrado: ${code}`, "warning");
                      }
               } catch (error) {
-                     console.error("Scan error:", error);
+                     if (isOfflineError(error)) {
+                            setIsOfflineMode(true);
+                            const localProduct = findOfflineProductByBarcode(catalogSnapshot, code);
+                            if (localProduct) {
+                                   addToCart(localProduct);
+                                   toast(`Agregado sin internet: ${localProduct.product.name}`, "warning");
+                            } else {
+                                   toast(`CÃ³digo no encontrado: ${code}`, "warning");
+                            }
+                     } else {
+                            console.error("Scan error:", error);
+                            toast("Error al buscar el código escaneado.", "error");
+                     }
               } finally {
                      setLoadingSearch(false);
               }
-       }, [loadingSearch, toast]);
+       }, [catalogSnapshot, isOfflineMode, loadingSearch, toast]);
 
        // Robust Barcode Scanner Listener
        useEffect(() => {
@@ -175,6 +337,7 @@ export default function POSPage() {
        const searchInputRef = useRef<HTMLInputElement>(null);
        const [processing, setProcessing] = useState(false);
        const [showSuccessModal, setShowSuccessModal] = useState(false);
+       const [lastSaleWasOffline, setLastSaleWasOffline] = useState(false);
 
        interface SaleReceipt {
               items: CartItem[];
@@ -187,30 +350,58 @@ export default function POSPage() {
        }
        const [lastSale, setLastSale] = useState<SaleReceipt | null>(null);
 
-       // Debounce search
-       useEffect(() => {
-              const timer = setTimeout(() => {
-                     if (query.trim().length > 1) {
-                            handleSearch(query);
-                     } else if (query.trim().length === 0) {
-                            // Default state: Show all products
-                            handleSearch("");
-                     }
-              }, 300);
-              return () => clearTimeout(timer);
-       }, [query]);
-
        const [storeSettings, setStoreSettings] = useState<any>(null);
 
-       // Initial Data
        useEffect(() => {
-              getCustomers().then(setCustomers);
-              getOpenSession().then(setSession);
-              getQuickAccessProducts().then(setQuickAccessProducts);
-              import("@/app/actions/settings").then(mod => {
-                     mod.getStoreSettings().then(setStoreSettings);
-              });
+              const updateConnectionState = () => {
+                     setIsOfflineMode(!navigator.onLine);
+              };
+
+              updateConnectionState();
+              window.addEventListener("online", updateConnectionState);
+              window.addEventListener("offline", updateConnectionState);
+
+              return () => {
+                     window.removeEventListener("online", updateConnectionState);
+                     window.removeEventListener("offline", updateConnectionState);
+              };
        }, []);
+
+       useEffect(() => {
+              const bootstrap = async () => {
+                     await loadCachedSnapshots();
+
+                     if (navigator.onLine) {
+                            try {
+                                   await syncReferenceData();
+                                   setIsOfflineMode(false);
+                            } catch (error) {
+                                   if (isOfflineError(error)) {
+                                          setIsOfflineMode(true);
+                                          await loadCachedSnapshots();
+                                   } else {
+                                          console.error("Error al sincronizar datos del POS", error);
+                                   }
+                            }
+                     }
+              };
+
+              const handleOfflineUpdate = () => {
+                     if (navigator.onLine) {
+                            syncReferenceData().catch(() => loadCachedSnapshots());
+                            return;
+                     }
+
+                     loadCachedSnapshots();
+              };
+
+              bootstrap();
+              window.addEventListener("saas-offline-updated", handleOfflineUpdate);
+
+              return () => {
+                     window.removeEventListener("saas-offline-updated", handleOfflineUpdate);
+              };
+       }, [loadCachedSnapshots, syncReferenceData]);
 
        const recalcPromotions = async (currentCart: CartItem[], method: string) => {
               if (currentCart.length === 0) {
@@ -218,25 +409,77 @@ export default function POSPage() {
                      return;
               }
               try {
+                     if (isOfflineMode || !navigator.onLine) {
+                            const localResult = calculatePromotionsOffline(
+                                   currentCart.map((item) => ({
+                                          ...item,
+                                          product: catalogSnapshot.find((product) => product.id === item.variantId)?.product,
+                                   })),
+                                   method,
+                                   cachedPromotions
+                            );
+
+                            setPromotionInfo(localResult);
+                            return;
+                     }
+
                      const result = await calculatePromotions(currentCart, method);
                      setPromotionInfo({
                             totalDiscount: result.totalDiscount,
                             appliedPromos: result.appliedPromos
                      });
-              } catch (e) {
-                     console.error("Promo calc error:", e);
-              }
+               } catch (e) {
+                     if (isOfflineError(e)) {
+                            setIsOfflineMode(true);
+                            const localResult = calculatePromotionsOffline(
+                                   currentCart.map((item) => ({
+                                          ...item,
+                                          product: catalogSnapshot.find((product) => product.id === item.variantId)?.product,
+                                   })),
+                                   method,
+                                   cachedPromotions
+                            );
+
+                            setPromotionInfo(localResult);
+                     } else {
+                            console.error("Promo calc error:", e);
+                     }
+               }
        };
 
-       const handleSearch = async (q: string) => {
+       const handleSearch = useCallback(async (q: string) => {
               setLoadingSearch(true);
               try {
+                     if (isOfflineMode || !navigator.onLine) {
+                            setSearchResults(searchOfflineProducts(catalogSnapshot, q) as Awaited<ReturnType<typeof getProducts>>);
+                            return;
+                     }
+
                      const results = await getProducts({ searchQuery: q, limit: 100, includeBarcodes: false });
                      setSearchResults(results);
+              } catch (error) {
+                     if (isOfflineError(error)) {
+                            setIsOfflineMode(true);
+                            setSearchResults(searchOfflineProducts(catalogSnapshot, q) as Awaited<ReturnType<typeof getProducts>>);
+                     } else {
+                            console.error("Search error:", error);
+                     }
               } finally {
                      setLoadingSearch(false);
               }
-       };
+       }, [catalogSnapshot, isOfflineMode]);
+
+       useEffect(() => {
+              const timer = setTimeout(() => {
+                     if (query.trim().length > 1) {
+                            handleSearch(query);
+                     } else if (query.trim().length === 0) {
+                            handleSearch("");
+                     }
+              }, 300);
+
+              return () => clearTimeout(timer);
+       }, [handleSearch, query]);
 
        const addToCart = (variant: any, customPrice?: number, customQuantity?: number) => {
               if (variant.isWeighable && customPrice === undefined) {
@@ -304,6 +547,25 @@ export default function POSPage() {
               );
        };
 
+       const resetSaleUi = () => {
+              setCart([]);
+              setShowPayModal(false);
+              setPaymentMethod("EFECTIVO");
+              setIsSplitPayment(false);
+              setSplitPayments([
+                     { method: "EFECTIVO", amount: 0 },
+                     { method: "TRANSFERENCIA", amount: 0 }
+              ]);
+              setTenderedAmount("");
+              setSelectedCustomerId(null);
+              setShowSuccessModal(true);
+              playCashSound();
+
+              setTimeout(() => {
+                     window.print();
+              }, 300);
+       };
+
        const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
        const total = Math.max(0, subtotal - promotionInfo.totalDiscount);
 
@@ -329,57 +591,77 @@ export default function POSPage() {
 
               setProcessing(true);
               try {
-                     const itemsInput: SaleItemInput[] = cart.map(i => ({
-                            variantId: i.variantId,
-                            quantity: i.quantity,
-                            unitPrice: i.price
-                     }));
+                      const itemsInput: SaleItemInput[] = cart.map(i => ({
+                             variantId: i.variantId,
+                             quantity: i.quantity,
+                             unitPrice: i.price
+                      }));
 
-                     const saleResult = await processSale(
-                            itemsInput,
-                            finalPayments,
-                            selectedCustomerId || undefined,
-                            promotionInfo.totalDiscount
-                     );
+                      const saleReceipt = {
+                             items: [...cart],
+                             total,
+                             date: new Date(),
+                             paymentMethod: isSplitPayment ? "MIXTO" : paymentMethod,
+                             store: {
+                                    name: storeSettings?.name || session?.store?.name,
+                                    address: storeSettings?.address || session?.store?.address,
+                                    phone: storeSettings?.phone || session?.store?.phone,
+                                    cuit: storeSettings?.cuit || session?.store?.cuit,
+                                    ticketFooter: storeSettings?.ticketFooter,
+                                    ticketInstagram: storeSettings?.ticketInstagram
+                             }
+                      } satisfies SaleReceipt;
 
-                     setLastSale({
-                            items: [...cart],
-                            total,
-                            date: new Date(),
-                            paymentMethod: isSplitPayment ? "MIXTO" : paymentMethod,
-                            raffleNumber: saleResult.raffleNumber ?? null,
-                            store: {
-                                   name: storeSettings?.name || session?.store?.name,
-                                   address: storeSettings?.address || session?.store?.address,
-                                   phone: storeSettings?.phone || session?.store?.phone,
-                                   cuit: storeSettings?.cuit || session?.store?.cuit,
-                                   ticketFooter: storeSettings?.ticketFooter,
-                                   ticketInstagram: storeSettings?.ticketInstagram
-                            }
-                     });
+                      if (isOfflineMode || !navigator.onLine) {
+                             const pendingSale = {
+                                    id: buildPendingSaleId(),
+                                    createdAt: new Date().toISOString(),
+                                    items: itemsInput,
+                                    payments: finalPayments,
+                                    customerId: selectedCustomerId || undefined,
+                                    discountAmount: promotionInfo.totalDiscount,
+                                    receipt: {
+                                           ...saleReceipt,
+                                           date: saleReceipt.date.toISOString(),
+                                    }
+                             };
 
-                     setCart([]);
-                     setShowPayModal(false);
-                     setPaymentMethod("EFECTIVO");
-                     setIsSplitPayment(false);
-                     setSplitPayments([
-                            { method: "EFECTIVO", amount: 0 },
-                            { method: "TRANSFERENCIA", amount: 0 }
-                     ]);
-                     setTenderedAmount("");
-                     setSelectedCustomerId(null);
-                     setShowSuccessModal(true);
-                     playCashSound();
+                             await enqueuePendingSale(pendingSale);
+                             await applyPendingSaleToSnapshots(pendingSale);
+                             await loadCachedSnapshots("");
 
-                     // Auto-imprimir ticket al confirmar la venta
-                     setTimeout(() => {
-                            window.print();
-                     }, 300);
-              } catch (e: any) {
-                     toast(e.message || "Error al procesar la venta", "error");
-              } finally {
-                     setProcessing(false);
-              }
+                             setLastSale(saleReceipt);
+                             setLastSaleWasOffline(true);
+                             resetSaleUi();
+                             toast("Venta guardada offline. Se sincronizará cuando vuelva internet.", "warning");
+                             return;
+                      }
+
+                      const saleResult = await processSale(
+                             itemsInput,
+                             finalPayments,
+                             selectedCustomerId || undefined,
+                             promotionInfo.totalDiscount
+                      );
+
+                      setLastSale({
+                             ...saleReceipt,
+                             raffleNumber: saleResult.raffleNumber ?? null,
+                      });
+                      setLastSaleWasOffline(false);
+                      resetSaleUi();
+                      syncReferenceData().catch(() => undefined);
+               } catch (e: any) {
+                      if (isOfflineError(e)) {
+                             setIsOfflineMode(true);
+                             await loadCachedSnapshots("");
+                             toast("La conexión se cortó durante el cobro. Revisa historial o caja antes de reintentar para evitar duplicados.", "error");
+                      } else {
+                             toast(e.message || "Error al procesar la venta", "error");
+                      }
+               } finally {
+                      setProcessing(false);
+               }
        };
 
        const handlePrint = () => { window.print(); };
@@ -387,6 +669,7 @@ export default function POSPage() {
        const handleNewSale = () => {
               setShowSuccessModal(false);
               setLastSale(null);
+              setLastSaleWasOffline(false);
               searchInputRef.current?.focus();
        };
 
@@ -429,6 +712,30 @@ export default function POSPage() {
 
                      {/* ── LEFT COLUMN: Search & Catalog ── */}
                      <div className={`flex-1 flex flex-col gap-3 lg:gap-4 min-h-0 ${mobileTab === "cart" ? "hidden lg:flex" : "flex"}`}>
+                            {(isOfflineMode || pendingSalesCount > 0) && (
+                                   <div className={`rounded-2xl border px-4 py-3 shadow-sm ${isOfflineMode ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-blue-50 border-blue-200 text-blue-900"}`}>
+                                          <div className="flex items-start gap-3">
+                                                 <div className={`mt-0.5 ${isOfflineMode ? "text-amber-600" : "text-blue-600"}`}>
+                                                        {isOfflineMode ? <WifiOff className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
+                                                 </div>
+                                                 <div className="space-y-1">
+                                                        <p className="text-sm font-black uppercase tracking-wide">
+                                                               {isOfflineMode ? "Modo contingencia activo" : "Sincronización pendiente"}
+                                                        </p>
+                                                        <p className="text-sm font-medium">
+                                                               {isOfflineMode
+                                                                      ? "El POS está usando datos locales. Las ventas nuevas quedarán en cola hasta recuperar conexión."
+                                                                      : "Hay ventas guardadas localmente esperando sincronización automática."}
+                                                        </p>
+                                                        <p className="text-xs font-bold uppercase tracking-wide opacity-80">
+                                                               Pendientes: {pendingSalesCount}
+                                                               {lastSyncAt ? ` • Última sync: ${new Date(lastSyncAt).toLocaleString("es-AR")}` : ""}
+                                                        </p>
+                                                 </div>
+                                          </div>
+                                   </div>
+                            )}
+
                             <div className="relative">
                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                                    <input
@@ -780,7 +1087,7 @@ export default function POSPage() {
                                           <Check className="h-10 w-10" />
                                    </div>
                                    <div className="space-y-1">
-                                          <p className="text-2xl font-black text-gray-900">Venta Registrada</p>
+                                          <p className="text-2xl font-black text-gray-900">{lastSaleWasOffline ? "Venta Guardada" : "Venta Registrada"}</p>
                                           <p className="text-sm text-gray-500 font-medium">Monto total: <span className="text-lg font-bold text-gray-900">{formatCurrency(lastSale?.total || 0)}</span></p>
                                           <p className="text-xs text-emerald-600 font-bold mt-2">✅ Ticket enviado a imprimir automáticamente</p>
                                    </div>

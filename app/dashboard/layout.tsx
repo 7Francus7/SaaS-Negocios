@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { checkHasOpenSession } from "@/app/actions/cash";
 import { autoCloseMonthlyAccounts } from "@/app/actions/customers";
 import { Wallet, ShieldAlert } from "lucide-react";
+import { OfflineSyncProvider } from "@/components/providers/offline-sync-provider";
 
 export default function DashboardLayout({
        children,
@@ -60,6 +61,7 @@ export default function DashboardLayout({
 
        return (
               <div className="min-h-screen bg-gray-50 flex font-[family-name:var(--font-geist-sans)]">
+                     <OfflineSyncProvider />
                      <Sidebar />
                      <main className={cn(
                             "flex-1 lg:ml-72 transition-all duration-500 print:ml-0 print:p-0 min-w-0",

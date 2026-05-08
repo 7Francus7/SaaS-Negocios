@@ -41,7 +41,10 @@ export async function createSystemUser(data: {
                      return { success: false, error: "El email ya está registrado" };
               }
 
-              const hashedPassword = bcrypt.hashSync(data.password || "123456", 10);
+              if (!data.password) {
+                     return { success: false, error: "La contraseña es requerida" };
+              }
+              const hashedPassword = bcrypt.hashSync(data.password, 10);
 
               const user = await prisma.user.create({
                      data: {
