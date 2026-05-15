@@ -846,13 +846,13 @@ export default function CustomersPage() {
                             ${receiptData.deductedFromClosed > 0 ? `
                             <div class="row small">
                                    <span>Aplicado a deuda anterior:</span>
-                                   <span>-${fmtCurr(receiptData.deductedFromClosed)}</span>
+                                   <span>${fmtCurr(receiptData.deductedFromClosed)}</span>
                             </div>
                             ` : ''}
                             ${receiptData.deductedFromCurrent > 0 ? `
                             <div class="row small">
                                    <span>Aplicado a deuda actual:</span>
-                                   <span>-${fmtCurr(receiptData.deductedFromCurrent)}</span>
+                                   <span>${fmtCurr(receiptData.deductedFromCurrent)}</span>
                             </div>
                             ` : ''}
                             
@@ -1367,8 +1367,8 @@ export default function CustomersPage() {
                                                   <p className="text-xs text-emerald-600 mt-1 uppercase font-bold">{receiptData.paymentMethod}</p>
                                            </div>
                                            {(receiptData.deductedFromClosed > 0 || receiptData.deductedFromCurrent > 0) && (<div className="space-y-1 text-xs text-gray-500">
-                                                  {receiptData.deductedFromClosed > 0 && (<div className="flex justify-between"><span>â†’ Aplicado a deuda anterior:</span><span className="text-emerald-600 font-bold">-{formatCurrency(receiptData.deductedFromClosed)}</span></div>)}
-                                                  {receiptData.deductedFromCurrent > 0 && (<div className="flex justify-between"><span>â†’ Aplicado a deuda actual:</span><span className="text-emerald-600 font-bold">-{formatCurrency(receiptData.deductedFromCurrent)}</span></div>)}
+                                                  {receiptData.deductedFromClosed > 0 && (<div className="flex justify-between"><span>â†’ Aplicado a deuda anterior:</span><span className="text-emerald-600 font-bold">{formatCurrency(receiptData.deductedFromClosed)}</span></div>)}
+                                                  {receiptData.deductedFromCurrent > 0 && (<div className="flex justify-between"><span>â†’ Aplicado a deuda actual:</span><span className="text-emerald-600 font-bold">{formatCurrency(receiptData.deductedFromCurrent)}</span></div>)}
                                            </div>)}
                                            <div className="border-t-2 border-gray-300 pt-3 text-center">
                                                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Saldo Restante</p>
