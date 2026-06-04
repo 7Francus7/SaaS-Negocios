@@ -578,6 +578,149 @@ export async function autoCloseMonthlyAccounts() {
 }
 
 
+/**
+ * Aplica un recargo/interés sobre la deuda anterior (closedBalance) de UN cliente.
+ * mode "PERCENT": value es el % a aplicar sobre closedBalance.
+ * mode "FIXED": value es el monto fijo a sumar.
+ * Accrual: solo aumenta la deuda. NO toca caja (el ingreso real ocurre al cobrar).
+ */
+export async function applySurchargeToCustomer(
+       customerId: number,
+       mode: "PERCENT" | "FIXED",
+       value: number
+) {
+       try {
+              const storeId = await getStoreId();
+
+              if (!(value > 0)) return { error: "El valor del recargo debe ser mayor a 0." };
+              if (mode === "PERCENT" && value > 1000) {
+                     return { error: "El porcentaje es demasiado alto." };
+              }
+
+              const result = await prisma.$transaction(async (tx) => {
+                     const customer = await tx.customer.findUnique({ where: { id: customerId } });
+                     if (!customer || customer.storeId !== storeId) {
+                            throw new Error("Cliente no encontrado.");
+                     }
+
+                     const base = Number(customer.closedBalance || 0);
+                     if (base <= 0) {
+                            throw new Error("El cliente no tiene deuda anterior sobre la cual aplicar recargo.");
+                     }
+
+                     const rawAmount = mode === "PERCENT" ? (base * value) / 100 : value;
+                     const amount = Math.round(rawAmount * 100) / 100;
+                     if (amount <= 0) {
+                            throw new Error("El recargo calculado es 0.");
+                     }
+
+                     const description = mode === "PERCENT"
+                            ? `Recargo ${value}% sobre deuda anterior`
+                            : `Recargo fijo sobre deuda anterior`;
+
+                     await tx.customer.update({
+                            where: { id: customerId },
+                            data: { closedBalance: { increment: amount } },
+                     });
+
+                     await tx.accountMovement.create({
+                            data: {
+                                   customerId,
+                                   movementType: "SURCHARGE",
+                                   amount, // positivo => aumenta deuda
+                                   description,
+                                   timestamp: new Date(),
+                            },
+                     });
+
+                     return { amount, newClosedBalance: base + amount };
+              });
+
+              return { success: true, ...result };
+       } catch (err: any) {
+              console.error("applySurchargeToCustomer error:", err);
+              return { error: err?.message ?? "Error al aplicar el recargo." };
+       }
+}
+
+/**
+ * Aplica un recargo/interés sobre la deuda anterior (closedBalance) de TODOS los
+ * clientes activos que tengan deuda anterior > 0. Mismo % o mismo monto fijo a cada uno.
+ * Cada cliente en su propia transacción corta (evita timeout con muchos clientes).
+ */
+export async function applySurchargeToAll(
+       mode: "PERCENT" | "FIXED",
+       value: number
+) {
+       try {
+              const storeId = await getStoreId();
+
+              if (!(value > 0)) return { error: "El valor del recargo debe ser mayor a 0." };
+              if (mode === "PERCENT" && value > 1000) {
+                     return { error: "El porcentaje es demasiado alto." };
+              }
+
+              const customers = await prisma.customer.findMany({
+                     where: { storeId, active: true, closedBalance: { gt: 0 } },
+              });
+
+              if (customers.length === 0) {
+                     return { success: true, applied: 0, total: 0, reason: "No hay clientes con deuda anterior." };
+              }
+
+              const description = mode === "PERCENT"
+                     ? `Recargo ${value}% sobre deuda anterior`
+                     : `Recargo fijo sobre deuda anterior`;
+
+              let applied = 0;
+              let total = 0;
+              const failed: number[] = [];
+
+              for (const customer of customers) {
+                     try {
+                            const amount = await prisma.$transaction(async (tx) => {
+                                   const fresh = await tx.customer.findUnique({ where: { id: customer.id } });
+                                   const base = Number(fresh?.closedBalance || 0);
+                                   if (!fresh || base <= 0) return 0;
+
+                                   const rawAmount = mode === "PERCENT" ? (base * value) / 100 : value;
+                                   const amt = Math.round(rawAmount * 100) / 100;
+                                   if (amt <= 0) return 0;
+
+                                   await tx.customer.update({
+                                          where: { id: customer.id },
+                                          data: { closedBalance: { increment: amt } },
+                                   });
+
+                                   await tx.accountMovement.create({
+                                          data: {
+                                                 customerId: customer.id,
+                                                 movementType: "SURCHARGE",
+                                                 amount: amt,
+                                                 description,
+                                                 timestamp: new Date(),
+                                          },
+                                   });
+                                   return amt;
+                            });
+
+                            if (amount > 0) {
+                                   applied++;
+                                   total += amount;
+                            }
+                     } catch (err) {
+                            console.error(`applySurchargeToAll: falló cliente ${customer.id}`, err);
+                            failed.push(customer.id);
+                     }
+              }
+
+              return { success: true, applied, total: Math.round(total * 100) / 100, failed: failed.length };
+       } catch (err: any) {
+              console.error("applySurchargeToAll error:", err);
+              return { error: err?.message ?? "Error al aplicar el recargo masivo." };
+       }
+}
+
 export async function removeProductFromAccountSale(movementId: number, saleId: number, saleItemId: number) {
        const storeId = await getStoreId();
 

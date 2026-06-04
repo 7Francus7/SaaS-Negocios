@@ -3,8 +3,8 @@
 import React from "react";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare, Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus, Printer, FileText, Receipt } from "lucide-react";
-import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale, getCustomerHistoryByMonth, autoCloseMonthlyAccounts } from "@/app/actions/customers";
+import { UserPlus, Search, Wallet, History, Shield, MapPin, Hash, DollarSign, Pencil, Trash2, MessageSquare, Download, CalendarCheck, ChevronDown, ChevronUp, PackageMinus, Printer, FileText, Receipt, Percent, TrendingUp } from "lucide-react";
+import { getCustomers, registerPayment, createCustomer, getCustomerHistory, updateCustomer, deleteCustomer, closeCustomerMonth, getSaleDetailsForMovement, removeProductFromAccountSale, getCustomerHistoryByMonth, autoCloseMonthlyAccounts, applySurchargeToCustomer, applySurchargeToAll } from "@/app/actions/customers";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
@@ -62,6 +62,13 @@ export default function CustomersPage() {
         const [closingMonth, setClosingMonth] = useState(false);
         const [isPaying, setIsPaying] = useState(false);
 
+        // Recargo / interés sobre deuda anterior
+        const [isSurchargeOpen, setIsSurchargeOpen] = useState(false);
+        const [isBulkSurchargeOpen, setIsBulkSurchargeOpen] = useState(false);
+        const [surchargeMode, setSurchargeMode] = useState<"PERCENT" | "FIXED">("PERCENT");
+        const [surchargeValue, setSurchargeValue] = useState("");
+        const [applyingSurcharge, setApplyingSurcharge] = useState(false);
+
        const fetchCustomers = useCallback(async () => {
               setLoading(true);
               setError("");
@@ -99,6 +106,67 @@ export default function CustomersPage() {
                      alert("Error al cerrar el mes: " + e.message);
               } finally {
                      setClosingMonth(false);
+              }
+       };
+
+       const openSurcharge = (customer: Customer) => {
+              setSelectedCustomer(customer);
+              setSurchargeMode("PERCENT");
+              setSurchargeValue("");
+              setIsSurchargeOpen(true);
+       };
+
+       const handleApplySurcharge = async () => {
+              if (!selectedCustomer || applyingSurcharge) return;
+              const val = Number(surchargeValue);
+              if (isNaN(val) || val <= 0) {
+                     alert("Ingrese un valor mayor a 0.");
+                     return;
+              }
+              setApplyingSurcharge(true);
+              try {
+                     const res: any = await applySurchargeToCustomer(selectedCustomer.id, surchargeMode, val);
+                     if (res?.error) {
+                            alert(res.error);
+                            return;
+                     }
+                     setIsSurchargeOpen(false);
+                     setSurchargeValue("");
+                     fetchCustomers();
+                     alert(`Recargo de ${formatCurrency(res.amount)} aplicado. Nueva deuda anterior: ${formatCurrency(res.newClosedBalance)}.`);
+              } catch (e: any) {
+                     alert(e.message);
+              } finally {
+                     setApplyingSurcharge(false);
+              }
+       };
+
+       const handleApplyBulkSurcharge = async () => {
+              if (applyingSurcharge) return;
+              const val = Number(surchargeValue);
+              if (isNaN(val) || val <= 0) {
+                     alert("Ingrese un valor mayor a 0.");
+                     return;
+              }
+              const affected = customers.filter(c => Number(c.closedBalance) > 0).length;
+              const label = surchargeMode === "PERCENT" ? `${val}%` : formatCurrency(val);
+              if (!confirm(`¿Aplicar recargo de ${label} a la deuda anterior de ${affected} cliente(s)? Esta acción suma a la deuda, no cobra.`)) return;
+              setApplyingSurcharge(true);
+              try {
+                     const res: any = await applySurchargeToAll(surchargeMode, val);
+                     if (res?.error) {
+                            alert(res.error);
+                            return;
+                     }
+                     setIsBulkSurchargeOpen(false);
+                     setSurchargeValue("");
+                     fetchCustomers();
+                     const failedMsg = res?.failed > 0 ? `\n\n⚠ ${res.failed} cliente(s) fallaron. Reintentá.` : "";
+                     alert(`Recargo aplicado a ${res.applied} cliente(s). Total sumado: ${formatCurrency(res.total)}.${failedMsg}`);
+              } catch (e: any) {
+                     alert(e.message);
+              } finally {
+                     setApplyingSurcharge(false);
               }
        };
 
@@ -901,6 +969,13 @@ export default function CustomersPage() {
                             </div>
                             <div className="flex gap-2">
                                    <button
+                                          onClick={() => { setSurchargeMode("PERCENT"); setSurchargeValue(""); setIsBulkSurchargeOpen(true); }}
+                                          className="bg-rose-500 text-white px-4 py-2 rounded-xl border-b-4 border-rose-700 flex items-center gap-2 hover:bg-rose-600 active:border-b-0 active:translate-y-[2px] transition-all font-bold"
+                                   >
+                                          <TrendingUp className="h-4 w-4" />
+                                          RECARGO MASIVO
+                                   </button>
+                                   <button
                                           onClick={handleManualMonthClose}
                                           disabled={closingMonth}
                                           className="bg-amber-500 text-white px-4 py-2 rounded-xl border-b-4 border-amber-700 flex items-center gap-2 hover:bg-amber-600 active:border-b-0 active:translate-y-[2px] transition-all font-bold disabled:opacity-50"
@@ -1047,10 +1122,174 @@ export default function CustomersPage() {
                                                         <MessageSquare className="h-4 w-4" />
                                                         WhatsApp
                                                  </button>
+                                                 {Number(customer.closedBalance) > 0 && (
+                                                        <button
+                                                               onClick={() => openSurcharge(customer)}
+                                                               className="flex-[1_1_30%] bg-rose-50 text-rose-700 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-rose-100 transition-colors flex items-center justify-center gap-1.5"
+                                                               title="Aplicar recargo/interés a la deuda anterior"
+                                                        >
+                                                               <Percent className="h-4 w-4" />
+                                                               RECARGO
+                                                        </button>
+                                                 )}
                                           </div>
                                    </div>
                             ))}
                      </div>
+
+                     {/* Recargo individual Modal */}
+                     <Modal isOpen={isSurchargeOpen} onClose={() => setIsSurchargeOpen(false)} title={`Recargo a deuda anterior`}>
+                            {selectedCustomer && (() => {
+                                   const base = Number(selectedCustomer.closedBalance || 0);
+                                   const val = Number(surchargeValue) || 0;
+                                   const amount = surchargeMode === "PERCENT" ? Math.round((base * val) / 100 * 100) / 100 : Math.round(val * 100) / 100;
+                                   return (
+                                          <div className="space-y-5">
+                                                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                                        <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">Cliente</p>
+                                                        <p className="text-lg font-black text-gray-900">{selectedCustomer.name}</p>
+                                                        <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mt-2">Deuda anterior actual</p>
+                                                        <p className="text-2xl font-black text-rose-600">{formatCurrency(base)}</p>
+                                                 </div>
+
+                                                 <div className="flex gap-2">
+                                                        <button
+                                                               onClick={() => setSurchargeMode("PERCENT")}
+                                                               className={cn("flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors",
+                                                                      surchargeMode === "PERCENT" ? "bg-rose-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
+                                                        >
+                                                               <Percent className="h-4 w-4" /> Porcentaje
+                                                        </button>
+                                                        <button
+                                                               onClick={() => setSurchargeMode("FIXED")}
+                                                               className={cn("flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors",
+                                                                      surchargeMode === "FIXED" ? "bg-rose-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
+                                                        >
+                                                               <DollarSign className="h-4 w-4" /> Monto fijo
+                                                        </button>
+                                                 </div>
+
+                                                 <div>
+                                                        <label className="text-[10px] uppercase font-black tracking-widest text-gray-400">
+                                                               {surchargeMode === "PERCENT" ? "Porcentaje a aplicar (%)" : "Monto a sumar ($)"}
+                                                        </label>
+                                                        <input
+                                                               type="number"
+                                                               inputMode="decimal"
+                                                               autoFocus
+                                                               value={surchargeValue}
+                                                               onChange={e => setSurchargeValue(e.target.value)}
+                                                               placeholder={surchargeMode === "PERCENT" ? "Ej: 10" : "Ej: 500"}
+                                                               className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-rose-500 font-bold text-lg"
+                                                        />
+                                                 </div>
+
+                                                 <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 space-y-1">
+                                                        <div className="flex justify-between text-sm">
+                                                               <span className="font-bold text-gray-600">Recargo a sumar</span>
+                                                               <span className="font-black text-rose-600">{formatCurrency(amount)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm">
+                                                               <span className="font-bold text-gray-600">Nueva deuda anterior</span>
+                                                               <span className="font-black text-gray-900">{formatCurrency(base + amount)}</span>
+                                                        </div>
+                                                 </div>
+                                                 <p className="text-[11px] text-gray-400 font-medium">Suma a la deuda del cliente. No registra ingreso en caja hasta que el cliente pague.</p>
+
+                                                 <div className="flex gap-2 pt-2">
+                                                        <button
+                                                               onClick={() => setIsSurchargeOpen(false)}
+                                                               className="flex-1 py-3 bg-gray-100 text-gray-700 font-black rounded-xl hover:bg-gray-200 uppercase text-xs tracking-widest transition-colors"
+                                                        >
+                                                               Cancelar
+                                                        </button>
+                                                        <button
+                                                               onClick={handleApplySurcharge}
+                                                               disabled={applyingSurcharge || amount <= 0}
+                                                               className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-700 uppercase text-xs tracking-widest transition-colors disabled:opacity-50"
+                                                        >
+                                                               {applyingSurcharge ? "Aplicando..." : "Aplicar recargo"}
+                                                        </button>
+                                                 </div>
+                                          </div>
+                                   );
+                            })()}
+                     </Modal>
+
+                     {/* Recargo masivo Modal */}
+                     <Modal isOpen={isBulkSurchargeOpen} onClose={() => setIsBulkSurchargeOpen(false)} title={`Recargo masivo a deuda anterior`}>
+                            {(() => {
+                                   const affected = customers.filter(c => Number(c.closedBalance) > 0);
+                                   const val = Number(surchargeValue) || 0;
+                                   const estTotal = surchargeMode === "PERCENT"
+                                          ? affected.reduce((s, c) => s + Math.round((Number(c.closedBalance) * val) / 100 * 100) / 100, 0)
+                                          : Math.round(val * 100) / 100 * affected.length;
+                                   return (
+                                          <div className="space-y-5">
+                                                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                                        <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">Clientes con deuda anterior</p>
+                                                        <p className="text-2xl font-black text-gray-900">{affected.length}</p>
+                                                 </div>
+
+                                                 <div className="flex gap-2">
+                                                        <button
+                                                               onClick={() => setSurchargeMode("PERCENT")}
+                                                               className={cn("flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors",
+                                                                      surchargeMode === "PERCENT" ? "bg-rose-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
+                                                        >
+                                                               <Percent className="h-4 w-4" /> Porcentaje
+                                                        </button>
+                                                        <button
+                                                               onClick={() => setSurchargeMode("FIXED")}
+                                                               className={cn("flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors",
+                                                                      surchargeMode === "FIXED" ? "bg-rose-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
+                                                        >
+                                                               <DollarSign className="h-4 w-4" /> Monto fijo
+                                                        </button>
+                                                 </div>
+
+                                                 <div>
+                                                        <label className="text-[10px] uppercase font-black tracking-widest text-gray-400">
+                                                               {surchargeMode === "PERCENT" ? "Porcentaje a aplicar a cada uno (%)" : "Monto a sumar a cada uno ($)"}
+                                                        </label>
+                                                        <input
+                                                               type="number"
+                                                               inputMode="decimal"
+                                                               autoFocus
+                                                               value={surchargeValue}
+                                                               onChange={e => setSurchargeValue(e.target.value)}
+                                                               placeholder={surchargeMode === "PERCENT" ? "Ej: 10" : "Ej: 500"}
+                                                               className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-rose-500 font-bold text-lg"
+                                                        />
+                                                 </div>
+
+                                                 <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4">
+                                                        <div className="flex justify-between text-sm">
+                                                               <span className="font-bold text-gray-600">Total estimado a sumar</span>
+                                                               <span className="font-black text-rose-600">{formatCurrency(estTotal)}</span>
+                                                        </div>
+                                                 </div>
+                                                 <p className="text-[11px] text-gray-400 font-medium">Aplica {surchargeMode === "PERCENT" ? "el mismo %" : "el mismo monto"} a la deuda anterior de cada cliente. No registra ingreso en caja hasta el cobro.</p>
+
+                                                 <div className="flex gap-2 pt-2">
+                                                        <button
+                                                               onClick={() => setIsBulkSurchargeOpen(false)}
+                                                               className="flex-1 py-3 bg-gray-100 text-gray-700 font-black rounded-xl hover:bg-gray-200 uppercase text-xs tracking-widest transition-colors"
+                                                        >
+                                                               Cancelar
+                                                        </button>
+                                                        <button
+                                                               onClick={handleApplyBulkSurcharge}
+                                                               disabled={applyingSurcharge || affected.length === 0 || val <= 0}
+                                                               className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-700 uppercase text-xs tracking-widest transition-colors disabled:opacity-50"
+                                                        >
+                                                               {applyingSurcharge ? "Aplicando..." : "Aplicar a todos"}
+                                                        </button>
+                                                 </div>
+                                          </div>
+                                   );
+                            })()}
+                     </Modal>
 
                      {/* History Modal */}
                      <Modal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} title={`Cuenta Corriente: ${selectedCustomer?.name}`} className="sm:max-w-4xl">
