@@ -527,13 +527,22 @@ export async function autoCloseMonthlyAccounts() {
                 const failed: number[] = [];
 
                 for (const customer of customersWithDebt) {
-                        const amountToMove = Number(customer.currentBalance);
-                        if (amountToMove <= 0) continue;
+                        if (Number(customer.currentBalance) <= 0) continue;
 
                         try {
                                 await prisma.$transaction(async (tx) => {
-                                        const fresh = await tx.customer.findUnique({ where: { id: customer.id } });
-                                        if (!fresh || Number(fresh.currentBalance) <= 0) return;
+                                        // Bloqueo de fila (FOR UPDATE): serializa cierres concurrentes
+                                        // del mismo cliente. El cierre se dispara al cargar la app en cada
+                                        // terminal, así que el día 1 pueden correr varias ejecuciones a la
+                                        // vez. Sin este bloqueo, dos transacciones leían currentBalance > 0
+                                        // antes de que la otra confirmara y ambas incrementaban closedBalance
+                                        // y creaban un MONTH_CLOSE → el saldo quedaba cargado dos veces.
+                                        // Con el bloqueo, la segunda transacción espera, relee 0 y se saltea.
+                                        const locked = await tx.$queryRaw<{ currentBalance: unknown }[]>`
+                                                SELECT "currentBalance" FROM "customers" WHERE "id" = ${customer.id} FOR UPDATE
+                                        `;
+                                        const amountToMove = locked.length ? Number(locked[0].currentBalance) : 0;
+                                        if (amountToMove <= 0) return;
 
                                         await tx.customer.update({
                                                 where: { id: customer.id },
