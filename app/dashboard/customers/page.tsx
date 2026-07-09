@@ -797,20 +797,21 @@ export default function CustomersPage() {
                      };
                      const profile = PAPER_PROFILES[paperWidthMm] || PAPER_PROFILES[58];
                      const fs = profile.fontSize;
+                     const printableWidthMm = `${paperWidthMm}mm`;
 
                      const fmtCurr = (n: number) =>
                             new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n);
                      const fmtDate2 = (ts: string) => {
                             const d = new Date(ts);
-                            return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                            return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
                      };
 
                      const totalPreviousDebt = receiptData.previousClosedBalance + receiptData.previousCurrentBalance;
                      const totalRemainingDebt = receiptData.remainingClosedBalance + receiptData.remainingCurrentBalance;
 
-                     const printWindow = window.open('', '_blank', 'width=400,height=600');
+                     const printWindow = window.open('', '_blank', 'width=400,height=700');
                      if (!printWindow) {
-                            alert('No se pudo abrir la ventana de impresiÃ³n.');
+                            alert('No se pudo abrir la ventana de impresion.');
                             return;
                      }
 
@@ -821,34 +822,60 @@ export default function CustomersPage() {
                             <meta charset="utf-8">
                             <title>Comprobante de Pago</title>
                             <style>
-                                   @page { margin: 0; }
+                                   @page {
+                                          size: ${printableWidthMm} auto;
+                                          margin: 0;
+                                   }
                                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                                   html, body {
+                                          width: ${printableWidthMm};
+                                          max-width: ${printableWidthMm};
+                                          margin: 0;
+                                          padding: 0;
+                                          background: #fff;
+                                          overflow: hidden;
+                                   }
                                    body { 
                                           font-family: Arial, sans-serif; 
                                           font-size: ${fs}px; 
-                                          padding: 2mm 4mm;
+                                          line-height: 1.25;
+                                          padding: 2mm 3mm 3mm;
                                           color: #000;
-                                          max-width: 100%;
+                                          -webkit-print-color-adjust: exact;
+                                          print-color-adjust: exact;
                                    }
                                    .center { text-align: center; }
-                                   .bold { font-weight: bold; }
+                                   .bold { font-weight: 700; }
                                    .sep { border-top: 1px dashed #000; margin: 4px 0; }
                                    .sep-double { border-top: 2px solid #000; margin: 6px 0; }
-                                   .row { display: flex; justify-content: space-between; padding: 1px 0; }
+                                   .row {
+                                          display: grid;
+                                          grid-template-columns: minmax(0, 1fr) auto;
+                                          gap: 8px;
+                                          align-items: start;
+                                          padding: 1px 0;
+                                   }
                                    .big { font-size: ${fs + 4}px; font-weight: 900; }
                                    .small { font-size: ${fs - 2}px; color: #555; }
+                                   .value {
+                                          text-align: right;
+                                          white-space: nowrap;
+                                          font-variant-numeric: tabular-nums;
+                                   }
                                    .amount-paid { 
                                           font-size: ${fs + 6}px; 
                                           font-weight: 900; 
                                           text-align: center;
-                                          padding: 6px;
-                                          background: #000;
-                                          color: #fff;
+                                          line-height: 1.1;
+                                          padding: 5px 4px;
+                                          border: 2px solid #000;
+                                          background: #fff;
+                                          color: #000;
                                           margin: 4px 0;
                                    }
                                    .remaining {
                                           text-align: center;
-                                          padding: 4px;
+                                          padding: 5px 4px;
                                           border: 2px solid #000;
                                           margin: 4px 0;
                                    }
@@ -861,66 +888,66 @@ export default function CustomersPage() {
                             <div class="center small">
                                    ${store.address ? store.address + '<br>' : ''}
                                    ${store.phone ? 'Tel: ' + store.phone : ''}
-                                   ${store.cuit ? ' â€¢ CUIT: ' + store.cuit : ''}
+                                   ${store.cuit ? ' - CUIT: ' + store.cuit : ''}
                             </div>
                             
                             <div class="sep-double"></div>
                             
-                            <div class="center bold" style="font-size: ${fs + 2}px; text-transform: uppercase; letter-spacing: 3px;">
+                            <div class="center bold" style="font-size: ${fs + 2}px; text-transform: uppercase; letter-spacing: 1px;">
                                    COMPROBANTE DE PAGO
                             </div>
                             
                             <div class="sep"></div>
                             
                             <div class="row small">
-                                   <span>FECHA:</span>
-                                   <span class="bold">${fmtDate2(receiptData.timestamp)}</span>
+                                   <span>FECHA</span>
+                                   <span class="bold value">${fmtDate2(receiptData.timestamp)}</span>
                             </div>
                             
                             <div class="sep"></div>
                             
                             <div class="row">
-                                   <span class="bold">CLIENTE:</span>
-                                   <span class="bold">${receiptData.customerName}</span>
+                                   <span class="bold">CLIENTE</span>
+                                   <span class="bold" style="text-align: right; max-width: 60%; word-break: break-word;">${receiptData.customerName}</span>
                             </div>
-                            ${receiptData.customerDni ? `<div class="row small"><span>DNI:</span><span>${receiptData.customerDni}</span></div>` : ''}
+                            ${receiptData.customerDni ? `<div class="row small"><span>DNI</span><span class="value">${receiptData.customerDni}</span></div>` : ''}
                             
                             <div class="sep"></div>
                             
                             <div class="row small">
-                                   <span>DEUDA ANTERIOR:</span>
-                                   <span>${fmtCurr(receiptData.previousClosedBalance)}</span>
+                                   <span>DEUDA ANTERIOR</span>
+                                   <span class="value">${fmtCurr(receiptData.previousClosedBalance)}</span>
                             </div>
                             <div class="row small">
-                                   <span>DEUDA MES ACTUAL:</span>
-                                   <span>${fmtCurr(receiptData.previousCurrentBalance)}</span>
+                                   <span>DEUDA MES ACTUAL</span>
+                                   <span class="value">${fmtCurr(receiptData.previousCurrentBalance)}</span>
                             </div>
                             <div class="row bold">
-                                   <span>TOTAL ADEUDADO:</span>
-                                   <span>${fmtCurr(totalPreviousDebt)}</span>
+                                   <span>TOTAL ADEUDADO</span>
+                                   <span class="value">${fmtCurr(totalPreviousDebt)}</span>
                             </div>
                             
                             <div class="sep-double"></div>
                             
                             <div class="row small">
-                                   <span>MÃ‰TODO DE PAGO:</span>
-                                   <span class="bold">${receiptData.paymentMethod}</span>
+                                   <span>METODO DE PAGO</span>
+                                   <span class="bold value">${receiptData.paymentMethod}</span>
                             </div>
                             
                             <div class="amount-paid">
-                                   ABONÃ“: ${fmtCurr(receiptData.paidAmount)}
+                                   PAGO RECIBIDO: ${fmtCurr(receiptData.paidAmount)}
                             </div>
                             
                             ${receiptData.deductedFromClosed > 0 ? `
                             <div class="row small">
                                    <span>Aplicado a deuda anterior:</span>
-                                   <span>${fmtCurr(receiptData.deductedFromClosed)}</span>
+                                   <span class="value">${fmtCurr(receiptData.deductedFromClosed)}</span>
                             </div>
                             ` : ''}
                             ${receiptData.deductedFromCurrent > 0 ? `
                             <div class="row small">
                                    <span>Aplicado a deuda actual:</span>
-                                   <span>${fmtCurr(receiptData.deductedFromCurrent)}</span>
+                                   <span class="value">${fmtCurr(receiptData.deductedFromCurrent)}</span>
                             </div>
                             ` : ''}
                             
@@ -929,13 +956,13 @@ export default function CustomersPage() {
                             <div class="remaining">
                                    <div class="small bold" style="text-transform: uppercase; letter-spacing: 2px;">SALDO RESTANTE</div>
                                    <div class="big">${fmtCurr(totalRemainingDebt)}</div>
-                                   <div class="small">Anterior: ${fmtCurr(receiptData.remainingClosedBalance)} â€¢ Actual: ${fmtCurr(receiptData.remainingCurrentBalance)}</div>
+                                   <div class="small">Anterior: ${fmtCurr(receiptData.remainingClosedBalance)} | Actual: ${fmtCurr(receiptData.remainingCurrentBalance)}</div>
                             </div>
                             
                             <div class="sep-double"></div>
                             
                             <div class="center bold" style="margin-top: 6px; font-size: ${fs}px;">
-                                   ${store.ticketFooter || 'Â¡Gracias por su pago!'}
+                                   ${store.ticketFooter || 'Gracias por su pago'}
                             </div>
                             <div class="center small" style="margin-top: 4px;">
                                    Este comprobante certifica el pago recibido
