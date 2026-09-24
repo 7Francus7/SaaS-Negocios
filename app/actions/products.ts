@@ -168,21 +168,41 @@ export async function createProduct(data: {
 
               const storeId = await getStoreId();
 
-              // Check barcode uniqueness (including inactive ones to avoid DB constraint failure)
-              if (parsed.barcode) {
-                     const existing = await prisma.productVariant.findFirst({
-                            where: {
-                                   storeId,
-                                   barcode: parsed.barcode,
-                            },
-                     });
-                     if (existing) {
-                            return { error: `El código '${parsed.barcode}' ya está en uso (puede estar en un producto eliminado).` };
-                     }
+              const requestedBarcodes = [parsed.barcode, ...(parsed.barcodes ?? [])]
+                     .filter((barcode): barcode is string => Boolean(barcode));
+              if (new Set(requestedBarcodes).size !== requestedBarcodes.length) {
+                     return { error: "Un código de barras está repetido en este producto." };
               }
 
               // Transaction: Create Product -> Variant -> StockMovement
               const variant = await prisma.$transaction(async (tx) => {
+                     if (requestedBarcodes.length) {
+                            const [activeVariant, activeAdditionalBarcode] = await Promise.all([
+                                   tx.productVariant.findFirst({
+                                          where: { storeId, active: true, barcode: { in: requestedBarcodes } },
+                                          select: { barcode: true },
+                                   }),
+                                   tx.productBarcode.findFirst({
+                                          where: { storeId, barcode: { in: requestedBarcodes }, variant: { active: true } },
+                                          select: { barcode: true },
+                                   }),
+                            ]);
+                            const usedBarcode = activeVariant?.barcode ?? activeAdditionalBarcode?.barcode;
+                            if (usedBarcode) {
+                                   throw new Error(`El código '${usedBarcode}' ya está en uso.`);
+                            }
+
+                            // Older deleted products still hold unique barcode reservations.
+                            // Release only the codes being reused, keeping the product and sales history.
+                            await tx.productVariant.updateMany({
+                                   where: { storeId, active: false, barcode: { in: requestedBarcodes } },
+                                   data: { barcode: null },
+                            });
+                            await tx.productBarcode.deleteMany({
+                                   where: { storeId, barcode: { in: requestedBarcodes }, variant: { active: false } },
+                            });
+                     }
+
                      const product = await tx.product.create({
                             data: {
                                    name: parsed.name,
